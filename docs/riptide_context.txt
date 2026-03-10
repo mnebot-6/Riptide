@@ -1,0 +1,188 @@
+[CONTEXTO COMPLETO — PROYECTO RIPTIDE]
+
+Soy desarrollador Android (Kotlin + Jetpack Compose), desarrollador web y tengo experiencia con Kotlin Multiplatform (KMP). Estoy desarrollando una app personal llamada Riptide en mi tiempo libre, partiendo de cero como proyecto propio.
+
+---
+
+CONCEPTO DE LA APP
+
+App de productividad con ecosistema marino que crece con la constancia. La puntuación existe internamente pero nunca se muestra como número. El feedback es siempre emocional: mensajes, crecimiento visual del estanque, sensación de progreso sin métricas explícitas. La constancia construye algo bonito. El abandono lo pausa. Nunca lo destruye.
+
+---
+
+STACK TÉCNICO
+
+- Kotlin Multiplatform con Compose Multiplatform (una sola UI para Android e iOS)
+- Proyecto generado con el KMP Wizard de JetBrains (kmp.jetbrains.com)
+- La estructura no tiene carpeta shared: todo vive en composeApp/src/
+- commonMain: lógica de negocio, modelos, repositorios, use cases, UI, ViewModels
+- androidMain / iosMain: implementaciones específicas de plataforma
+- Persistencia MVP: Room (local, offline-first)
+- IDs String (UUID como String) desde el primer día para facilitar sincronización futura
+- Capa repositorio que abstrae el origen de datos
+- Patrón MVVM para la UI
+
+VERSIONES CLAVE (libs.versions.toml):
+- kotlin = "2.3.10"
+- agp = "8.12.3"
+- composeMultiplatform = "1.10.2"
+- androidx-room = "2.8.4"
+- ksp = "2.3.0"
+- kotlinxDatetime = "0.7.1"
+- androidx-lifecycle = "2.9.6"
+
+---
+
+ARQUITECTURA DE CARPETAS
+
+composeApp/src/commonMain/kotlin/com/mnebot/riptide/
+  App.kt
+  domain/
+    model/
+    repository/
+  usecase/
+  presentation/
+    main/
+      CurrentDate.kt         (expect)
+      ParseColor.kt          (expect)
+      MainUiState.kt
+      MainViewModel.kt
+      MainScreen.kt
+
+composeApp/src/androidMain/kotlin/com/mnebot/riptide/
+  MainActivity.kt
+  DataSeeder.kt
+  data/
+    local/
+      entity/
+      dao/
+      db/
+      mapper/
+    repository/
+  presentation/
+    main/
+      CurrentDate.android.kt  (actual)
+      ParseColor.android.kt   (actual)
+      MainViewModelFactory.kt
+
+composeApp/src/iosMain/kotlin/com/mnebot/riptide/
+  MainViewController.kt
+  presentation/
+    main/
+      CurrentDate.ios.kt      (actual)
+      ParseColor.ios.kt       (actual)
+
+---
+
+MODELOS DE DATOS (commonMain, Kotlin puro, sin Room)
+
+WorkBlock: id (String), name (String), marineCategory (MarineCategory), color (String hex), icon (String emoji), recurrence (Recurrence), isActive (Boolean)
+
+Recurrence es una sealed class:
+- None: bloque sin recurrencia
+- Weekly(slots: List<WeeklySlot>): recurrencia semanal con uno o varios slots
+
+WeeklySlot: dayOfWeek (Int, 1=Lunes...7=Domingo), startTime (LocalTime?), endTime (LocalTime?)
+Los bloques sin horario (startTime y endTime null) no aparecen en el schedule diario a menos que tengan una tarea asignada ese día.
+
+MarineCategory enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC
+
+DayTask: id (String), blockId (String), date (LocalDate), title (String), estimatedMinutes (Int?), isCompleted (Boolean), completedAt (LocalDateTime?), order (Int)
+
+DaySummary: id (String), date (LocalDate), score (Float 0.0-1.0, nunca visible al usuario), tasksTotal (Int), tasksCompleted (Int), streakDay (Int), feedbackMessage (String, sí visible)
+
+BlockStreak: blockId (String), currentStreak (Int), lastActiveDate (LocalDate)
+
+EcosystemState: id (String), category (MarineCategory), totalExperience (Int, nunca visible), currentLevel (Int, nunca visible directamente), lastUpdated (LocalDateTime)
+
+MarineCreature: id (String), ecosystemId (String), species (CreatureSpecies), nickname (String?), unlockedAtLevel (Int), experience (Int), creatureLevel (Int), unlockedAt (LocalDateTime)
+
+CreatureSpecies enum (vinculada a MarineCategory, con displayName en español):
+- FISH: CLOWNFISH (Pez payaso), ANGELFISH (Pez ángel)
+- FLORA: BRAIN_CORAL (Coral cerebro), ANEMONE (Anémona)
+- CRUSTACEAN: HERMIT_CRAB (Cangrejo ermitaño), LOBSTER (Langosta)
+- MOLLUSK: STARFISH (Estrella de mar), SEA_URCHIN (Erizo de mar)
+- PELAGIC: MOON_JELLYFISH (Medusa luna), MANTA_RAY (Raya manta)
+
+---
+
+INTERFACES DE REPOSITORIO (commonMain)
+
+WorkBlockRepository: getAll, getById, insert, update, delete
+DayTaskRepository: getByDate, getByBlock, insert, update, delete
+DaySummaryRepository: getByDate, insert
+EcosystemStateRepository: getByCategory, update
+MarineCreatureRepository: getByEcosystem, insert, update
+
+---
+
+ROOM — IMPLEMENTACIÓN ANDROID (androidMain)
+
+Entities (data/local/entity/): WorkBlockEntity, DayTaskEntity, DaySummaryEntity, BlockStreakEntity, EcosystemStateEntity, MarineCreatureEntity
+Daos (data/local/dao/): WorkBlockDao, DayTaskDao, DaySummaryDao, BlockStreakDao, EcosystemStateDao, MarineCreatureDao
+Database (data/local/db/): RiptideDatabase (version 3), DatabaseProvider (singleton, fallbackToDestructiveMigration)
+Mappers (data/local/mapper/): WorkBlockMapper, DayTaskMapper, DaySummaryMapper, BlockStreakMapper, EcosystemStateMapper, MarineCreatureMapper
+Implementaciones (data/repository/): WorkBlockRepositoryImpl, DayTaskRepositoryImpl, DaySummaryRepositoryImpl, EcosystemStateRepositoryImpl, MarineCreatureRepositoryImpl
+
+Fechas y enums se serializan como String. Recurrence.Weekly se serializa como JSON plano.
+
+---
+
+MVVM — PANTALLA PRINCIPAL
+
+MainUiState: selectedDate (LocalDate), blocks (List<WorkBlock>), tasksByBlock (Map<String, List<DayTask>>), isLoading (Boolean), error (String?)
+
+MainViewModel: recibe WorkBlockRepository y DayTaskRepository. Expone uiState como StateFlow. Funciones: selectDate, toggleTaskCompleted, addTask, reload.
+
+MainScreen: fondo gradiente oceánico (OceanDeep #0A1628 → OceanMid #1B3A6B → OceanLight #2E5F9E). Tarjetas con efecto frosted glass (blanco 20% opacidad). Bloques con cabecera que muestra emoji, nombre y horario. Tareas tachadas al completarse. FAB para ver el estanque a pantalla completa.
+
+MainViewModelFactory (androidMain): construye el MainViewModel con las implementaciones Room de los repositorios.
+
+CurrentDate: función expect/actual que devuelve la fecha actual usando kotlin.time.Clock.System.
+
+ParseColor: función expect/actual que convierte un String hex a Color de Compose. Android usa android.graphics.Color.parseColor, iOS parsea manualmente.
+
+DataSeeder (androidMain): rellena la base de datos con datos de prueba si está vacía. Crea 3 bloques (💼 Trabajo FISH, 🏐 Voleibol CRUSTACEAN, 💚 Salud FLORA) y 5 tareas para hoy.
+
+---
+
+LÓGICA DEL ECOSISTEMA (flexible, pendiente de definir en detalle)
+
+Las criaturas son individuales con especie, mote y nivel propio.
+La experiencia nueva se reparte equitativamente entre todas las criaturas activas: ExpNueva / nºCriaturas.
+El desbloqueo de nuevas criaturas depende de algún tipo de progreso acumulado (niveles exactos por definir).
+El tamaño y detalle visual de cada criatura se deriva de su creatureLevel individual.
+Dos usuarios con el mismo nivel global pueden tener ecosistemas visualmente distintos.
+
+---
+
+LÓGICA DE PUNTUACIÓN INTERNA
+
+calculateDayScore = tasksCompleted / tasksTotal
+0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
+0.5 → "Buen empuje hoy."
+0.8 → "El estanque está vivo."
+1.0 → "Hoy el estanque brilló."
+
+---
+
+FEEDBACK AL USUARIO
+
+Dos sistemas en paralelo:
+1. Feedback en racha: mensaje sutil al completar tarea en bloque con racha activa. Ej: "Llevas una semana sólida en el trabajo" o "El coral está creciendo". Nunca muestra el número de días exacto.
+2. Resumen nocturno: notificación a hora configurable con mensaje según el score del día. Nunca incluye porcentajes ni números.
+
+---
+
+ROADMAP
+
+MVP: solo local con Room, calendario semanal, tareas por bloque, marcar completadas, resumen nocturno básico, ecosistema con 2 especies por categoría.
+v2: rachas por bloque, mensajes contextuales, ecosistema más rico con más especies y animaciones, configuración avanzada del resumen nocturno.
+v3: backend Ktor + PostgreSQL, perfiles de usuario, añadir amigos, visitar estanque de amigos (solo ver, nunca competir ni rankear), Google Sign-In.
+
+---
+
+PUNTO ACTUAL
+
+Pantalla principal funcional con diseño visual marino: fondo gradiente oceánico, tarjetas frosted glass, cabeceras de bloque con emoji e icono de color, tareas que se tachan al completarse, FAB para ver el estanque a pantalla completa. Todo persistido en Room.
+Siguiente paso: subir a GitHub y continuar con funcionalidades (calendario semanal, añadir tareas, etc.).
