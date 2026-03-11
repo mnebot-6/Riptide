@@ -1,28 +1,24 @@
-package com.mnebot.riptide.presentation.main
+package com.mnebot.riptide.presentation.block
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.mnebot.riptide.data.local.db.RiptideDatabase
 import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
-import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 
-class MainViewModelFactory(
+class BlockFormViewModelFactory(
     private val database: RiptideDatabase
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val workBlockRepository = WorkBlockRepositoryImpl(database.workBlockDao())
         val blockCategoryRepository = BlockCategoryRepositoryImpl(database.blockCategoryDao())
-        val dayTaskRepository = DayTaskRepositoryImpl(database.dayTaskDao())
         val marineCategoryAssigner = MarineCategoryAssigner(workBlockRepository, blockCategoryRepository)
 
         @Suppress("UNCHECKED_CAST")
-        return MainViewModel(
+        return BlockFormViewModel(
             workBlockRepository = workBlockRepository,
-            blockCategoryRepository = blockCategoryRepository,
-            dayTaskRepository = dayTaskRepository,
             marineCategoryAssigner = marineCategoryAssigner
         ) as T
     }

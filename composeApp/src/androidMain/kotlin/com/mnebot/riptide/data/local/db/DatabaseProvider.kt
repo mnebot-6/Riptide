@@ -13,15 +13,8 @@ object DatabaseProvider {
                 RiptideDatabase::class.java,
                 "riptide.db"
             )
-                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration(true)
                 .build().also { instance = it }
         }
-    }
-}
-
-private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
-    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE work_blocks ADD COLUMN icon TEXT NOT NULL DEFAULT 'work'")
     }
 }

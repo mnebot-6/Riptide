@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalTime
 data class WorkBlock(
     val id: String,
     val name: String,
-    val marineCategory: MarineCategory,
+    val marineCategories: List<MarineCategory>,
     val color: String,
     val icon: String,
     val recurrence: Recurrence,

@@ -2,6 +2,7 @@ package com.mnebot.riptide.data.local.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.mnebot.riptide.data.local.dao.BlockCategoryDao
 import com.mnebot.riptide.data.local.dao.BlockStreakDao
 import com.mnebot.riptide.data.local.dao.DaySummaryDao
 import com.mnebot.riptide.data.local.dao.DayTaskDao
@@ -14,6 +15,8 @@ import com.mnebot.riptide.data.local.entity.DayTaskEntity
 import com.mnebot.riptide.data.local.entity.EcosystemStateEntity
 import com.mnebot.riptide.data.local.entity.MarineCreatureEntity
 import com.mnebot.riptide.data.local.entity.WorkBlockEntity
+import com.mnebot.riptide.data.local.entity.BlockCategoryEntity
+
 
 @Database(
     entities = [
@@ -22,10 +25,10 @@ import com.mnebot.riptide.data.local.entity.WorkBlockEntity
         DaySummaryEntity::class,
         BlockStreakEntity::class,
         EcosystemStateEntity::class,
-        MarineCreatureEntity::class
+        MarineCreatureEntity::class,
+        BlockCategoryEntity::class
     ],
-    version = 3,
-    exportSchema = false
+    version = 5
 )
 abstract class RiptideDatabase : RoomDatabase() {
     abstract fun workBlockDao(): WorkBlockDao
@@ -34,4 +37,5 @@ abstract class RiptideDatabase : RoomDatabase() {
     abstract fun blockStreakDao(): BlockStreakDao
     abstract fun ecosystemStateDao(): EcosystemStateDao
     abstract fun marineCreatureDao(): MarineCreatureDao
+    abstract fun blockCategoryDao(): BlockCategoryDao
 }

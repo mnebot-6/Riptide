@@ -7,10 +7,8 @@ import androidx.room.PrimaryKey
 data class WorkBlockEntity(
     @PrimaryKey val id: String,
     val name: String,
-    val marineCategory: String,
     val color: String,
     val icon: String,
-    val recurrenceType: String,
-    val recurrenceSlots: String,
+    val recurrenceJson: String,
     val isActive: Boolean
 )

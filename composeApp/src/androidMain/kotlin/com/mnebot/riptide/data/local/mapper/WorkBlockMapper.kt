@@ -7,50 +7,48 @@ import com.mnebot.riptide.domain.model.WeeklySlot
 import com.mnebot.riptide.domain.model.WorkBlock
 import kotlinx.datetime.LocalTime
 
-fun WorkBlockEntity.toDomain(): WorkBlock = WorkBlock(
-    id = id,
-    name = name,
-    marineCategory = MarineCategory.valueOf(marineCategory),
-    color = color,
-    icon = icon,
-    recurrence = parseRecurrence(recurrenceType, recurrenceSlots),
-    isActive = isActive
-)
+fun WorkBlockEntity.toDomain(): WorkBlock {
+    return WorkBlock(
+        id = id,
+        name = name,
+        marineCategories = emptyList(), // se rellena desde BlockCategoryRepository
+        color = color,
+        icon = icon,
+        recurrence = parseRecurrence(recurrenceJson),
+        isActive = isActive
+    )
+}
 
-fun WorkBlock.toEntity(): WorkBlockEntity = WorkBlockEntity(
-    id = id,
-    name = name,
-    marineCategory = marineCategory.name,
-    color = color,
-    icon = icon,
-    recurrenceType = when (recurrence) {
-        is Recurrence.None -> "NONE"
-        is Recurrence.Weekly -> "WEEKLY"
-    },
-    recurrenceSlots = serializeSlots(recurrence),
-    isActive = isActive
-)
+fun WorkBlock.toEntity(): WorkBlockEntity {
+    return WorkBlockEntity(
+        id = id,
+        name = name,
+        color = color,
+        icon = icon,
+        recurrenceJson = serializeRecurrence(recurrence),
+        isActive = isActive
+    )
+}
 
-private fun parseRecurrence(type: String, slotsJson: String): Recurrence {
-    if (type == "NONE" || slotsJson.isBlank() || slotsJson == "[]") return Recurrence.None
+private fun serializeRecurrence(recurrence: Recurrence): String {
+    return when (recurrence) {
+        is Recurrence.None -> "none"
+        is Recurrence.Weekly -> recurrence.slots.joinToString("|") { slot ->
+            "${slot.dayOfWeek},${slot.startTime},${slot.endTime}"
+        }
+    }
+}
+
+fun parseRecurrence(json: String): Recurrence {
+    if (json == "none" || json.isBlank()) return Recurrence.None
     return try {
-        val slots = mutableListOf<WeeklySlot>()
-        val content = slotsJson.trim().removePrefix("[").removeSuffix("]")
-        val objects = splitJsonObjects(content)
-        for (obj in objects) {
-            val fields = obj.trim().removePrefix("{").removeSuffix("}")
-            val map = mutableMapOf<String, String>()
-            for (field in fields.split(",")) {
-                val colonIndex = field.indexOf(":")
-                if (colonIndex == -1) continue
-                val key = field.substring(0, colonIndex).trim().removeSurrounding("\"")
-                val value = field.substring(colonIndex + 1).trim().removeSurrounding("\"")
-                map[key] = value
-            }
-            val day = map["day"]?.toIntOrNull() ?: continue
-            val start = map["start"]?.let { if (it == "null") null else LocalTime.parse(it) }
-            val end = map["end"]?.let { if (it == "null") null else LocalTime.parse(it) }
-            slots.add(WeeklySlot(day, start, end))
+        val slots = json.split("|").mapNotNull { part ->
+            val segments = part.split(",")
+            if (segments.size < 3) return@mapNotNull null
+            val day = segments[0].trim().toIntOrNull() ?: return@mapNotNull null
+            val start = segments[1].trim().takeIf { it != "null" }?.let { parseTime(it) }
+            val end = segments[2].trim().takeIf { it != "null" }?.let { parseTime(it) }
+            WeeklySlot(dayOfWeek = day, startTime = start, endTime = end)
         }
         if (slots.isEmpty()) Recurrence.None else Recurrence.Weekly(slots)
     } catch (e: Exception) {
@@ -58,23 +56,12 @@ private fun parseRecurrence(type: String, slotsJson: String): Recurrence {
     }
 }
 
-private fun splitJsonObjects(content: String): List<String> {
-    val objects = mutableListOf<String>()
-    var depth = 0
-    var start = 0
-    for (i in content.indices) {
-        when (content[i]) {
-            '{' -> { if (depth == 0) start = i; depth++ }
-            '}' -> { depth--; if (depth == 0) objects.add(content.substring(start, i + 1)) }
-        }
+private fun parseTime(value: String): LocalTime? {
+    return try {
+        val parts = value.split(":")
+        if (parts.size < 2) return null
+        LocalTime(parts[0].toInt(), parts[1].toInt())
+    } catch (e: Exception) {
+        null
     }
-    return objects
-}
-
-private fun serializeSlots(recurrence: Recurrence): String {
-    if (recurrence !is Recurrence.Weekly) return "[]"
-    val slots = recurrence.slots.joinToString(",") { slot ->
-        "{\"day\":${slot.dayOfWeek},\"start\":\"${slot.startTime}\",\"end\":\"${slot.endTime}\"}"
-    }
-    return "[$slots]"
 }

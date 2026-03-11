@@ -1,73 +1,120 @@
 package com.mnebot.riptide.presentation.main
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.WorkBlock
+import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
-// Colores del tema marino
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
 private val OceanLight = Color(0xFF2E5F9E)
 private val CardBackground = Color(0x33FFFFFF)
-private val CardBorder = Color(0x55FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    onNavigateToCreateBlock: () -> Unit,
+    onNavigateToEditBlock: (String) -> Unit
+) {
     val uiState by viewModel.uiState.collectAsState()
     var showAquarium by remember { mutableStateOf(false) }
+    var showDrawer by remember { mutableStateOf(false) }
+    val drawerOffsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(showDrawer, uiState.selectedDate) {
+                detectDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            if (!showDrawer && drawerOffsetY.value > 0.3f) {
+                                drawerOffsetY.animateTo(1f, animationSpec = tween(250))
+                                showDrawer = true
+                            } else if (showDrawer && drawerOffsetY.value < 0.7f) {
+                                drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                                showDrawer = false
+                            } else {
+                                drawerOffsetY.animateTo(
+                                    if (showDrawer) 1f else 0f,
+                                    animationSpec = tween(250)
+                                )
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(
+                                if (showDrawer) 1f else 0f,
+                                animationSpec = tween(250)
+                            )
+                        }
+                    }
+                ) { _, dragAmount ->
+                    val isVertical = kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x)
+                    val isHorizontal = kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y)
+
+                    when {
+                        isVertical && !showDrawer && dragAmount.y > 0 -> {
+                            scope.launch {
+                                drawerOffsetY.snapTo(
+                                    (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
+                                )
+                            }
+                        }
+                        isVertical && showDrawer && dragAmount.y < 0 -> {
+                            scope.launch {
+                                drawerOffsetY.snapTo(
+                                    (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
+                                )
+                            }
+                        }
+                        isHorizontal && !showDrawer && dragAmount.x < -40 -> {
+                            scope.launch {
+                                viewModel.selectDate(uiState.selectedDate.plus(1, DateTimeUnit.DAY))
+                            }
+                        }
+                        isHorizontal && !showDrawer && dragAmount.x > 40 -> {
+                            scope.launch {
+                                viewModel.selectDate(uiState.selectedDate.minus(1, DateTimeUnit.DAY))
+                            }
+                        }
+                    }
+                }
+            }
+    ) {
         OceanBackground()
 
         when {
-            uiState.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = TextPrimary)
-                }
-            }
-            uiState.error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Error: ${uiState.error}", color = TextPrimary)
-                }
-            }
             showAquarium -> {
                 AquariumFullScreen(onClose = { showAquarium = false })
             }
@@ -75,8 +122,54 @@ fun MainScreen(viewModel: MainViewModel) {
                 MainContent(
                     blocks = uiState.blocks,
                     tasksByBlock = uiState.tasksByBlock,
+                    selectedDate = uiState.selectedDate,
+                    today = currentDate(),
+                    isLoading = uiState.isLoading,
+                    error = uiState.error,
+                    onDateSelected = { viewModel.selectDate(it) },
                     onTaskToggle = { viewModel.toggleTaskCompleted(it) },
                     onAquariumClick = { showAquarium = true }
+                )
+            }
+        }
+
+        if (showDrawer || drawerOffsetY.value > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x00000000).copy(alpha = 0.6f * drawerOffsetY.value))
+                    .clickable {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                    }
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        translationY = -size.height * (1f - drawerOffsetY.value)
+                    }
+            ) {
+                MainDrawer(
+                    blocks = uiState.blocks,
+                    onAddTask = { },
+                    onAddBlock = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onNavigateToCreateBlock()
+                    },
+                    onEditBlock = { blockId ->
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onNavigateToEditBlock(blockId)
+                    }
                 )
             }
         }
@@ -118,6 +211,11 @@ private fun AquariumFullScreen(onClose: () -> Unit) {
 private fun MainContent(
     blocks: List<WorkBlock>,
     tasksByBlock: Map<String, List<DayTask>>,
+    selectedDate: LocalDate,
+    today: LocalDate,
+    isLoading: Boolean,
+    error: String?,
+    onDateSelected: (LocalDate) -> Unit,
     onTaskToggle: (DayTask) -> Unit,
     onAquariumClick: () -> Unit
 ) {
@@ -126,24 +224,68 @@ private fun MainContent(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (blocksWithTasks.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
-            }
-        } else {
-            LazyColumn(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .padding(top = 40.dp)
+        ) {
+            WeekCalendar(
+                selectedDate = selectedDate,
+                today = today,
+                onDateSelected = onDateSelected,
+                onWeekChange = onDateSelected
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 48.dp, bottom = 96.dp)
-            ) {
-                items(blocksWithTasks) { block ->
-                    BlockSection(
-                        block = block,
-                        tasks = tasksByBlock[block.id] ?: emptyList(),
-                        onTaskToggle = onTaskToggle
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color(0x33FFFFFF))
+            )
+
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = TextPrimary)
+                    }
+                }
+                error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Error: $error", color = TextPrimary)
+                    }
+                }
+                blocksWithTasks.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        item { Spacer(modifier = Modifier.height(12.dp)) }
+                        items(blocksWithTasks) { block ->
+                            BlockSection(
+                                block = block,
+                                tasks = tasksByBlock[block.id] ?: emptyList(),
+                                onTaskToggle = onTaskToggle
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
                 }
             }
         }
@@ -173,7 +315,11 @@ private fun BlockSection(
         BlockHeader(block = block)
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
-            TaskCard(task = task, blockColor = parseColor(block.color), onToggle = { onTaskToggle(task) })
+            TaskCard(
+                task = task,
+                blockColor = parseColor(block.color),
+                onToggle = { onTaskToggle(task) }
+            )
             Spacer(modifier = Modifier.height(6.dp))
         }
     }
@@ -204,11 +350,7 @@ private fun BlockHeader(block: WorkBlock) {
             )
             val timeLabel = buildTimeLabel(block)
             if (timeLabel != null) {
-                Text(
-                    text = timeLabel,
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
+                Text(text = timeLabel, color = TextSecondary, fontSize = 12.sp)
             }
         }
     }

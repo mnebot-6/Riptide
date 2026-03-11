@@ -7,8 +7,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
+import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.presentation.main.MainViewModel
 import com.mnebot.riptide.presentation.main.MainViewModelFactory
+import com.mnebot.riptide.domain.MarineCategoryAssigner
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +27,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
-            seedDatabaseIfEmpty(database)
+            val assigner = MarineCategoryAssigner(
+                WorkBlockRepositoryImpl(database.workBlockDao()),
+                BlockCategoryRepositoryImpl(database.blockCategoryDao())
+            )
+            DataSeeder.seedIfEmpty(database, assigner)
             viewModel.reload()
         }
         setContent {
