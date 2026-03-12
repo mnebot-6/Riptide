@@ -11,8 +11,10 @@ import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
 import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
+import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.NightSummaryProcessor
 import com.mnebot.riptide.presentation.main.MainViewModel
@@ -45,23 +47,31 @@ class MainActivity : ComponentActivity() {
             )
             DataSeeder.seedIfEmpty(db, assigner)
 
+            val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
+            val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
+            val blockNames = blocks.associate { it.id to it.name }
+            val blockCategories = blocks.associate { block ->
+                block.id to blockCategoryRepo.getCategoriesForBlocks(listOf(block.id)).map { it.category }
+            }
+
             val blockStreakProcessor = BlockStreakProcessor(
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
                 blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
             )
+            val ecosystemProcessor = EcosystemProcessor(
+                EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            )
             val processor = NightSummaryProcessor(
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
                 daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
-                blockStreakProcessor = blockStreakProcessor
+                blockStreakProcessor = blockStreakProcessor,
+                ecosystemProcessor = ecosystemProcessor
             )
             val yesterday = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
                 .minus(1, DateTimeUnit.DAY)
 
-            val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
-            val blockNames = blocks.associate { it.id to it.name }
-
-            processor.processDay(yesterday, blockNames)
+            processor.processDay(yesterday, blockNames, blockCategories)
 
             val nightTime = scheduler.getNightSummaryTime().first()
             scheduler.scheduleWorker(nightTime)

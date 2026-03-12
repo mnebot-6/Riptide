@@ -2,6 +2,7 @@ package com.mnebot.riptide.domain
 
 import com.mnebot.riptide.generateUUID
 import com.mnebot.riptide.domain.model.DaySummary
+import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.TaskStatus
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
@@ -10,9 +11,14 @@ import kotlinx.datetime.LocalDate
 class NightSummaryProcessor(
     private val dayTaskRepository: DayTaskRepository,
     private val daySummaryRepository: DaySummaryRepository,
-    private val blockStreakProcessor: BlockStreakProcessor? = null
+    private val blockStreakProcessor: BlockStreakProcessor? = null,
+    private val ecosystemProcessor: EcosystemProcessor? = null
 ) {
-    suspend fun processDay(date: LocalDate, blockNames: Map<String, String> = emptyMap()) {
+    suspend fun processDay(
+        date: LocalDate,
+        blockNames: Map<String, String> = emptyMap(),
+        blockCategories: Map<String, List<MarineCategory>> = emptyMap()
+    ) {
         if (daySummaryRepository.getByDate(date) != null) return
 
         val tasks = dayTaskRepository.getByDate(date)
@@ -42,6 +48,15 @@ class NightSummaryProcessor(
                 feedbackMessage = message
             )
         )
+
+        // Bonus nocturno al ecosistema
+        val bestStreak = streaks.values.maxOrNull() ?: 0
+        val allCategories = tasks
+            .mapNotNull { it.blockId }
+            .flatMap { blockId -> blockCategories[blockId] ?: emptyList() }
+            .distinct()
+
+        ecosystemProcessor?.addNightBonus(score, bestStreak, allCategories)
     }
 
     private fun buildMessage(

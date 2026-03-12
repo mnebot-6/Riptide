@@ -2,6 +2,7 @@ package com.mnebot.riptide.presentation.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
@@ -9,6 +10,7 @@ import com.mnebot.riptide.domain.repository.BlockCategoryRepository
 import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
+import com.mnebot.riptide.domain.repository.EcosystemStateRepository
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
 import com.mnebot.riptide.domain.repository.WorkBlockRepository
 import com.mnebot.riptide.generateUUID
@@ -33,7 +35,9 @@ class MainViewModel(
     private val recurringTaskGenerator: RecurringTaskGenerator,
     private val marineCategoryAssigner: MarineCategoryAssigner,
     private val blockStreakRepository: BlockStreakRepository,
-    private val daySummaryRepository: DaySummaryRepository
+    private val daySummaryRepository: DaySummaryRepository,
+    private val ecosystemProcessor: EcosystemProcessor,
+    private val ecosystemStateRepository: EcosystemStateRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -59,6 +63,14 @@ class MainViewModel(
                 Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
             else null
             dayTaskRepository.update(task.copy(status = newStatus, completedAt = completedAt))
+
+            // XP en tiempo real al completar
+            if (newStatus == TaskStatus.COMPLETED) {
+                val block = uiState.value.blocks.find { it.id == task.blockId }
+                val categories = block?.marineCategories ?: emptyList()
+                ecosystemProcessor.addXpForTask(categories)
+            }
+
             loadDay(_uiState.value.selectedDate)
         }
     }
@@ -137,13 +149,18 @@ class MainViewModel(
                     block.id to (blockStreakRepository.getByBlockId(block.id)?.currentStreak ?: 0)
                 }
 
+                val ecosystemByCategory = MarineCategory.entries.mapNotNull { category ->
+                    ecosystemStateRepository.getByCategory(category)?.let { category to it }
+                }.toMap()
+
                 _uiState.update {
                     it.copy(
                         blocks = blocks,
                         tasksByBlock = tasksByBlock,
                         streaksByBlock = streaksByBlock,
                         isLoading = false,
-                        error = null
+                        error = null,
+                        ecosystemByCategory = ecosystemByCategory
                     )
                 }
             } catch (e: Exception) {

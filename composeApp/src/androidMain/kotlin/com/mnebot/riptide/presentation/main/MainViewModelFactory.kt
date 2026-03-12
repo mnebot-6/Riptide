@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.*
+import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.presentation.main.MainViewModel
@@ -38,7 +39,11 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
                 BlockCategoryRepositoryImpl(db.blockCategoryDao())
             ),
             blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
-            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao())
+            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
+            ecosystemProcessor = EcosystemProcessor(
+                EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            ),
+            ecosystemStateRepository = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
         ) as T
     }
 }
