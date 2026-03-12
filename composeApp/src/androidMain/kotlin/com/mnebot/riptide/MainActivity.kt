@@ -9,29 +9,27 @@ import androidx.lifecycle.lifecycleScope
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
+import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.presentation.main.MainViewModel
 import com.mnebot.riptide.presentation.main.MainViewModelFactory
-import com.mnebot.riptide.domain.MarineCategoryAssigner
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private val database by lazy {
-        DatabaseProvider.getDatabase(applicationContext)
-    }
 
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(database)
+        MainViewModelFactory(applicationContext)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
+            val db = DatabaseProvider.getDatabase(applicationContext)
             val assigner = MarineCategoryAssigner(
-                WorkBlockRepositoryImpl(database.workBlockDao()),
-                BlockCategoryRepositoryImpl(database.blockCategoryDao())
+                WorkBlockRepositoryImpl(db.workBlockDao()),
+                BlockCategoryRepositoryImpl(db.blockCategoryDao())
             )
-            DataSeeder.seedIfEmpty(database, assigner)
+            DataSeeder.seedIfEmpty(db, assigner)
             viewModel.reload()
         }
         setContent {

@@ -1,19 +1,21 @@
 package com.mnebot.riptide.data.local.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room.*
 import com.mnebot.riptide.data.local.entity.DayTaskEntity
 
 @Dao
 interface DayTaskDao {
-    @Query("SELECT * FROM day_tasks WHERE date = :date ORDER BY `order` ASC")
+    @Query("SELECT * FROM day_tasks WHERE date = :date ORDER BY time ASC, title ASC")
     suspend fun getByDate(date: String): List<DayTaskEntity>
 
-    @Query("SELECT * FROM day_tasks WHERE blockId = :blockId ORDER BY date DESC")
+    @Query("SELECT * FROM day_tasks WHERE blockId = :blockId")
     suspend fun getByBlock(blockId: String): List<DayTaskEntity>
+
+    @Query("SELECT * FROM day_tasks WHERE sourceTaskId = :sourceTaskId")
+    suspend fun getBySourceTask(sourceTaskId: String): List<DayTaskEntity>
+
+    @Query("SELECT * FROM day_tasks WHERE status = 'PENDING' AND date < :date")
+    suspend fun getPendingBefore(date: String): List<DayTaskEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(task: DayTaskEntity)
@@ -21,6 +23,12 @@ interface DayTaskDao {
     @Update
     suspend fun update(task: DayTaskEntity)
 
+    @Query("UPDATE day_tasks SET status = :status WHERE id = :id")
+    suspend fun updateStatus(id: String, status: String)
+
     @Query("DELETE FROM day_tasks WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId")
+    suspend fun deleteBySourceTask(sourceTaskId: String)
 }

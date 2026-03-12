@@ -50,11 +50,25 @@ Las categorías se **asignan automáticamente** y se redistribuyen al crear o el
 |---|---|
 | Multiplataforma | Kotlin Multiplatform (KMP) |
 | UI | Compose Multiplatform |
-| Persistencia | Room (offline-first, v5) |
+| Persistencia | Room 2.8.4 (offline-first, v6) |
+| Serialización | kotlinx-serialization-json 1.7.3 |
 | Arquitectura | MVVM |
-| Navegación | Navigation Compose 2.8.0-alpha10 |
+| Navegación | Navigation Compose (multiplatform) |
 | Backend (v3) | Ktor + PostgreSQL |
 | Auth (v3) | Google Sign-In |
+
+Versiones clave (`libs.versions.toml`):
+```toml
+kotlin                   = "2.3.10"
+agp                      = "8.12.3"
+composeMultiplatform     = "1.10.2"
+androidx-room            = "2.8.4"
+ksp                      = "2.3.0"
+kotlinxDatetime          = "0.7.1"
+androidx-lifecycle       = "2.9.6"
+androidx-navigation      = "2.9.2"
+kotlinx-serialization    = "1.7.3"
+```
 
 ---
 
@@ -63,84 +77,70 @@ Las categorías se **asignan automáticamente** y se redistribuyen al crear o el
 ```
 composeApp/src/
 ├── commonMain/kotlin/com/mnebot/riptide/
-│   ├── UuidGenerator.kt                  (expect fun generateUUID())
+│   ├── UuidGenerator.kt              (expect fun generateUUID())
+│   ├── Serializers.kt                (LocalTimeSerializer)
 │   ├── domain/
 │   │   ├── MarineCategoryAssigner.kt
-│   │   ├── model/                        (WorkBlock, DayTask, DaySummary,
-│   │   │                                  BlockStreak, EcosystemState,
-│   │   │                                  MarineCreature, BlockCategory,
-│   │   │                                  Recurrence, WeeklySlot, ...)
-│   │   └── repository/                   (interfaces)
+│   │   ├── RecurringTaskGenerator.kt
+│   │   ├── model/                    (WorkBlock, DayTask, DaySummary, BlockStreak,
+│   │   │                              EcosystemState, MarineCreature, BlockCategory,
+│   │   │                              MarineCategory, CreatureSpecies, Recurrence,
+│   │   │                              WeeklySlot, TaskStatus, TaskSchedule, RecurringTaskDef)
+│   │   └── repository/               (interfaces)
 │   └── presentation/
-│       ├── block/   (BlockFormScreen, BlockFormViewModel)
-│       └── main/    (MainScreen, MainViewModel, WeekCalendar,
-│                     MainDrawer, MainUiState, CurrentDate, ParseColor)
+│       ├── block/  BlockFormScreen, BlockFormViewModel
+│       ├── main/   MainScreen, MainViewModel, MainUiState, WeekCalendar,
+│       │           MainDrawer, CurrentDate(expect), ParseColor(expect)
+│       └── task/   TaskFormSheet, PostponeSheet, TaskFormViewModel
+│
 ├── androidMain/kotlin/com/mnebot/riptide/
-│   ├── App.kt
-│   ├── MainActivity.kt
-│   ├── DataSeeder.kt
-│   ├── UuidGenerator.android.kt
+│   ├── App.kt, MainActivity.kt, DataSeeder.kt
+│   ├── UuidGenerator.android.kt      (actual)
 │   ├── data/local/
-│   │   ├── entity/   (WorkBlockEntity, DayTaskEntity, DaySummaryEntity,
-│   │   │              BlockStreakEntity, EcosystemStateEntity,
-│   │   │              MarineCreatureEntity, BlockCategoryEntity)
-│   │   ├── dao/
-│   │   ├── db/       (RiptideDatabase v5, DatabaseProvider)
-│   │   └── mapper/
-│   ├── data/repository/
+│   │   ├── entity/                   (todas las entities Room)
+│   │   ├── dao/                      (todos los DAOs)
+│   │   ├── db/                       (RiptideDatabase v6, DatabaseProvider)
+│   │   └── mapper/                   (domain ↔ entity)
+│   ├── data/repository/              (implementaciones Room)
 │   └── presentation/
-│       ├── block/    (BlockFormViewModelFactory)
-│       ├── main/     (MainViewModelFactory, CurrentDate.android,
-│       │              ParseColor.android)
+│       ├── block/  BlockFormViewModelFactory
+│       ├── main/   MainViewModelFactory, CurrentDate.android, ParseColor.android
+│       ├── task/   TaskFormViewModelFactory
 │       └── Navigation.kt
+│
 └── iosMain/kotlin/com/mnebot/riptide/
     ├── MainViewController.kt
-    ├── UuidGenerator.ios.kt
-    └── presentation/main/
-        ├── CurrentDate.ios.kt
-        └── ParseColor.ios.kt
+    ├── UuidGenerator.ios.kt          (actual)
+    └── presentation/main/  CurrentDate.ios, ParseColor.ios
 ```
 
----
-
-## Versiones clave (libs.versions.toml)
-
-```toml
-kotlin                    = "2.3.10"
-agp                       = "8.12.3"
-composeMultiplatform      = "1.10.2"
-androidx-room             = "2.8.4"
-ksp                       = "2.3.0"
-kotlinxDatetime           = "0.7.1"
-androidx-lifecycle        = "2.9.6"
-androidx-navigation-compose = "2.8.0-alpha10"
-```
+Ver [`docs/architecture.md`](docs/architecture.md) para detalle completo.
 
 ---
 
 ## Roadmap
 
-**MVP** — 100% local con Room
-- [x] Calendario semanal navegable con swipe
-- [x] Gestión de bloques (crear / editar / eliminar)
-- [x] Tareas por bloque con checkbox persistente
-- [x] Drawer desde arriba con gestos unificados
-- [x] MarineCategoryAssigner automático
-- [x] Navigation Compose configurado
-- [ ] Añadir tareas desde el drawer (bottom sheet)
-- [ ] Indicadores de tareas por día en el calendario
-- [ ] Resumen nocturno
+| Fase | Estado |
+|------|--------|
+| MVP — Infraestructura y CRUD | ✅ Completado |
+| MVP — Tareas puntuales y recurrentes | ✅ Completado |
+| MVP — Editar / posponer / eliminar tareas | ✅ Completado |
+| MVP — Indicadores en calendario | ⬜ Pendiente |
+| MVP — Resumen nocturno | ⬜ Pendiente |
+| v2 — Rachas y mensajes contextuales | ⬜ Pendiente |
+| v2 — Ecosistema visual (Canvas/Lottie) | ⬜ Pendiente |
+| v3 — Backend + sincronización | ⬜ Pendiente |
 
-**v2**
-- Rachas por bloque con mensajes contextuales
-- Ecosistema visual (Canvas / Lottie)
-- Animaciones del estanque
+Ver [`docs/roadmap.md`](docs/roadmap.md) para detalle completo.
 
-**v3**
-- Backend Ktor + PostgreSQL
-- Perfiles de usuario
-- Visitar el estanque de un amigo (solo ver, nunca competir)
-- Google Sign-In
+---
+
+## Filosofía de diseño
+
+- La puntuación **nunca** se muestra al usuario
+- El abandono **pausa** el ecosistema, no lo destruye
+- Sin rankings, sin comparaciones, sin presión numérica
+- El feedback es siempre emocional y contextual
 
 ---
 

@@ -2,8 +2,10 @@ package com.mnebot.riptide.presentation.main
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,11 +25,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mnebot.riptide.domain.model.DayTask
-import com.mnebot.riptide.domain.model.WorkBlock
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.mnebot.riptide.domain.model.*
+import com.mnebot.riptide.presentation.task.TaskFormSheet
+import com.mnebot.riptide.presentation.task.PostponeSheet
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
@@ -38,6 +45,46 @@ private val CardBackground = Color(0x33FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 
+// Ordena bloques: primero los que tienen horario ese día dentro de su recurrencia, luego el resto
+private fun sortedBlocks(
+    blocks: List<WorkBlock>,
+    tasksByBlock: Map<String?, List<DayTask>>,
+    date: LocalDate
+): List<WorkBlock> {
+    val dayOfWeek = date.dayOfWeek.isoDayNumber
+    return blocks.sortedWith(compareBy(
+        { block ->
+            val recurrence = block.recurrence
+            if (recurrence is Recurrence.Weekly) {
+                val slot = recurrence.slots.firstOrNull { it.dayOfWeek == dayOfWeek }
+                if (slot?.startTime != null) slot.startTime.toSecondOfDay() else Int.MAX_VALUE
+            } else Int.MAX_VALUE
+        },
+        { it.name }
+    ))
+}
+
+// Ordena tareas: con hora primero (por hora), sin hora después (por id de inserción), completadas al final
+private fun sortedTasks(tasks: List<DayTask>): List<DayTask> {
+    fun taskSortKey(task: DayTask): Pair<Int, Int> {
+        val time = (task.schedule as? TaskSchedule.OneTime)?.time
+        return if (time != null) Pair(0, time.toSecondOfDay()) else Pair(1, 0)
+    }
+
+    val (completed, active) = tasks.partition { it.status == TaskStatus.COMPLETED }
+    return active.sortedWith(compareBy({ taskSortKey(it).first }, { taskSortKey(it).second })) +
+            completed.sortedWith(compareBy({ taskSortKey(it).first }, { taskSortKey(it).second }))
+}
+
+// Determina si mostrar horario en cabecera del bloque
+private fun shouldShowBlockTime(block: WorkBlock, date: LocalDate): Boolean {
+    val recurrence = block.recurrence
+    if (recurrence !is Recurrence.Weekly) return false
+    val dayOfWeek = date.dayOfWeek.isoDayNumber
+    val slot = recurrence.slots.firstOrNull { it.dayOfWeek == dayOfWeek } ?: return false
+    return slot.startTime != null && slot.endTime != null
+}
+
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
@@ -47,6 +94,10 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAquarium by remember { mutableStateOf(false) }
     var showDrawer by remember { mutableStateOf(false) }
+    var showTaskSheet by remember { mutableStateOf(false) }
+    var editingTask by remember { mutableStateOf<DayTask?>(null) }
+    var postponingTask by remember { mutableStateOf<DayTask?>(null) }
+    var contextMenuTask by remember { mutableStateOf<DayTask?>(null) }
     val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
@@ -82,7 +133,6 @@ fun MainScreen(
                 ) { _, dragAmount ->
                     val isVertical = kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x)
                     val isHorizontal = kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y)
-
                     when {
                         isVertical && !showDrawer && dragAmount.y > 0 -> {
                             scope.launch {
@@ -115,12 +165,11 @@ fun MainScreen(
         OceanBackground()
 
         when {
-            showAquarium -> {
-                AquariumFullScreen(onClose = { showAquarium = false })
-            }
+            showAquarium -> AquariumFullScreen(onClose = { showAquarium = false })
             else -> {
+                val sorted = sortedBlocks(uiState.blocks, uiState.tasksByBlock, uiState.selectedDate)
                 MainContent(
-                    blocks = uiState.blocks,
+                    blocks = sorted,
                     tasksByBlock = uiState.tasksByBlock,
                     selectedDate = uiState.selectedDate,
                     today = currentDate(),
@@ -128,16 +177,53 @@ fun MainScreen(
                     error = uiState.error,
                     onDateSelected = { viewModel.selectDate(it) },
                     onTaskToggle = { viewModel.toggleTaskCompleted(it) },
+                    onTaskLongPress = { contextMenuTask = it },
                     onAquariumClick = { showAquarium = true }
                 )
             }
         }
 
+        // Menú contextual
+        contextMenuTask?.let { task ->
+            AlertDialog(
+                onDismissRequest = { contextMenuTask = null },
+                containerColor = Color(0xFF1B3A6B),
+                title = {
+                    Text(
+                        task.title,
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ContextMenuItem("✏️ Editar") {
+                            editingTask = task
+                            contextMenuTask = null
+                        }
+                        if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
+                            ContextMenuItem("⏰ Posponer") {
+                                postponingTask = task
+                                contextMenuTask = null
+                            }
+                        }
+                        ContextMenuItem("🗑️ Eliminar", tint = Color(0xFFEA4335)) {
+                            viewModel.deleteTask(task)
+                            contextMenuTask = null
+                        }
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+
+        // Drawer
         if (showDrawer || drawerOffsetY.value > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0x00000000).copy(alpha = 0.6f * drawerOffsetY.value))
+                    .background(Color.Black.copy(alpha = 0.6f * drawerOffsetY.value))
                     .clickable {
                         scope.launch {
                             drawerOffsetY.animateTo(0f, animationSpec = tween(250))
@@ -145,7 +231,6 @@ fun MainScreen(
                         }
                     }
             )
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -155,7 +240,13 @@ fun MainScreen(
             ) {
                 MainDrawer(
                     blocks = uiState.blocks,
-                    onAddTask = { },
+                    onAddTask = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        showTaskSheet = true
+                    },
                     onAddBlock = {
                         scope.launch {
                             drawerOffsetY.animateTo(0f, animationSpec = tween(250))
@@ -173,7 +264,96 @@ fun MainScreen(
                 )
             }
         }
+
+        // Sheet nueva tarea
+        if (showTaskSheet) {
+            Dialog(
+                onDismissRequest = { showTaskSheet = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    TaskFormSheet(
+                        blocks = uiState.blocks,
+                        initialDate = uiState.selectedDate,
+                        onSaveOneTime = { title, blockId, date, time ->
+                            viewModel.addOneTimeTask(title, blockId, date, time)
+                            showTaskSheet = false
+                        },
+                        onSaveRecurring = { title, blockId, time, recurrence ->
+                            viewModel.addRecurringTask(title, blockId, time, recurrence)
+                            showTaskSheet = false
+                        },
+                        onDismiss = { showTaskSheet = false }
+                    )
+                }
+            }
+        }
+
+        // Sheet editar tarea
+        editingTask?.let { task ->
+            Dialog(
+                onDismissRequest = { editingTask = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    TaskFormSheet(
+                        blocks = uiState.blocks,
+                        initialDate = uiState.selectedDate,
+                        existingTask = task,
+                        onSaveOneTime = { title, blockId, date, time ->
+                            viewModel.updateOneTimeTask(task, title, blockId, date, time)
+                            editingTask = null
+                        },
+                        onSaveRecurring = { title, blockId, time, recurrence ->
+                            viewModel.addRecurringTask(title, blockId, time, recurrence)
+                            editingTask = null
+                        },
+                        onDelete = {
+                            viewModel.deleteTask(task)
+                            editingTask = null
+                        },
+                        onDismiss = { editingTask = null }
+                    )
+                }
+            }
+        }
+
+        // Sheet posponer
+        postponingTask?.let { task ->
+            Dialog(
+                onDismissRequest = { postponingTask = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    PostponeSheet(
+                        task = task,
+                        onPostpone = { postponedTo ->
+                            viewModel.postponeTask(task, postponedTo)
+                            postponingTask = null
+                        },
+                        onDismiss = { postponingTask = null }
+                    )
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun ContextMenuItem(
+    label: String,
+    tint: Color = TextPrimary,
+    onClick: () -> Unit
+) {
+    Text(
+        text = label,
+        color = tint,
+        fontSize = 15.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 10.dp)
+    )
 }
 
 @Composable
@@ -181,11 +361,7 @@ private fun OceanBackground() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(OceanDeep, OceanMid, OceanLight)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(OceanDeep, OceanMid, OceanLight)))
     )
 }
 
@@ -195,33 +371,28 @@ private fun AquariumFullScreen(onClose: () -> Unit) {
         Text("🐟 🪸 🦞 🐚", fontSize = 48.sp, color = TextPrimary)
         FloatingActionButton(
             onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             containerColor = CardBackground,
             contentColor = TextPrimary,
             elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) {
-            Text("✕", fontSize = 20.sp)
-        }
+        ) { Text("✕", fontSize = 20.sp) }
     }
 }
 
 @Composable
 private fun MainContent(
     blocks: List<WorkBlock>,
-    tasksByBlock: Map<String, List<DayTask>>,
+    tasksByBlock: Map<String?, List<DayTask>>,
     selectedDate: LocalDate,
     today: LocalDate,
     isLoading: Boolean,
     error: String?,
     onDateSelected: (LocalDate) -> Unit,
     onTaskToggle: (DayTask) -> Unit,
+    onTaskLongPress: (DayTask) -> Unit,
     onAquariumClick: () -> Unit
 ) {
-    val blocksWithTasks = blocks.filter { block ->
-        tasksByBlock[block.id]?.isNotEmpty() == true
-    }
+    val blocksWithTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -236,55 +407,34 @@ private fun MainContent(
                 onDateSelected = onDateSelected,
                 onWeekChange = onDateSelected
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0x33FFFFFF))
-            )
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0x33FFFFFF)))
 
             when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = TextPrimary)
-                    }
+                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator(color = TextPrimary)
                 }
-                error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Error: $error", color = TextPrimary)
-                    }
+                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("Error: $error", color = TextPrimary)
                 }
-                blocksWithTasks.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
-                    }
+                blocksWithTasks.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
                 }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        item { Spacer(modifier = Modifier.height(12.dp)) }
-                        items(blocksWithTasks) { block ->
-                            BlockSection(
-                                block = block,
-                                tasks = tasksByBlock[block.id] ?: emptyList(),
-                                onTaskToggle = onTaskToggle
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(12.dp)) }
+                    items(blocksWithTasks) { block ->
+                        val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
+                        BlockSection(
+                            block = block,
+                            tasks = tasks,
+                            selectedDate = selectedDate,
+                            onTaskToggle = onTaskToggle,
+                            onTaskLongPress = onTaskLongPress
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -292,16 +442,12 @@ private fun MainContent(
 
         FloatingActionButton(
             onClick = onAquariumClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             containerColor = CardBackground,
             contentColor = TextPrimary,
             shape = CircleShape,
             elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) {
-            Text("🐟", fontSize = 20.sp)
-        }
+        ) { Text("🐟", fontSize = 20.sp) }
     }
 }
 
@@ -309,16 +455,19 @@ private fun MainContent(
 private fun BlockSection(
     block: WorkBlock,
     tasks: List<DayTask>,
-    onTaskToggle: (DayTask) -> Unit
+    selectedDate: LocalDate,
+    onTaskToggle: (DayTask) -> Unit,
+    onTaskLongPress: (DayTask) -> Unit
 ) {
     Column {
-        BlockHeader(block = block)
+        BlockHeader(block = block, selectedDate = selectedDate)
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
             TaskCard(
                 task = task,
                 blockColor = parseColor(block.color),
-                onToggle = { onTaskToggle(task) }
+                onToggle = { onTaskToggle(task) },
+                onLongPress = { onTaskLongPress(task) }
             )
             Spacer(modifier = Modifier.height(6.dp))
         }
@@ -326,7 +475,7 @@ private fun BlockSection(
 }
 
 @Composable
-private fun BlockHeader(block: WorkBlock) {
+private fun BlockHeader(block: WorkBlock, selectedDate: LocalDate) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(bottom = 4.dp)
@@ -337,36 +486,41 @@ private fun BlockHeader(block: WorkBlock) {
                 .clip(CircleShape)
                 .background(parseColor(block.color).copy(alpha = 0.3f)),
             contentAlignment = Alignment.Center
-        ) {
-            Text(block.icon, fontSize = 18.sp)
-        }
+        ) { Text(block.icon, fontSize = 18.sp) }
         Spacer(modifier = Modifier.width(10.dp))
         Column {
-            Text(
-                text = block.name,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
-            val timeLabel = buildTimeLabel(block)
-            if (timeLabel != null) {
-                Text(text = timeLabel, color = TextSecondary, fontSize = 12.sp)
+            Text(block.name, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            if (shouldShowBlockTime(block, selectedDate)) {
+                val recurrence = block.recurrence as Recurrence.Weekly
+                val slot = recurrence.slots.first { it.dayOfWeek == selectedDate.dayOfWeek.isoDayNumber }
+                Text("${slot.startTime} - ${slot.endTime}", color = TextSecondary, fontSize = 12.sp)
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskCard(
     task: DayTask,
     blockColor: Color,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onLongPress: () -> Unit
 ) {
+    val isCompleted = task.status == TaskStatus.COMPLETED
+    val isExpired = task.status == TaskStatus.EXPIRED
+    val isPostponed = task.status == TaskStatus.POSTPONED
+    val taskTime = (task.schedule as? TaskSchedule.OneTime)?.time
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(CardBackground)
+            .combinedClickable(
+                onClick = {},
+                onLongClick = onLongPress
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -374,35 +528,49 @@ private fun TaskCard(
             modifier = Modifier
                 .size(4.dp, 32.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(blockColor)
+                .background(if (isExpired) Color(0x66FFFFFF) else blockColor)
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = task.title,
-            color = if (task.isCompleted) TextSecondary else TextPrimary,
-            fontSize = 14.sp,
-            fontWeight = if (task.isCompleted) FontWeight.Normal else FontWeight.Medium,
-            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-            modifier = Modifier.weight(1f)
-        )
-        Checkbox(
-            checked = task.isCompleted,
-            onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(
-                checkedColor = blockColor,
-                uncheckedColor = TextSecondary,
-                checkmarkColor = TextPrimary
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.title,
+                color = when {
+                    isCompleted || isExpired || isPostponed -> TextSecondary
+                    else -> TextPrimary
+                },
+                fontSize = 14.sp,
+                fontWeight = if (isCompleted || isExpired || isPostponed) FontWeight.Normal else FontWeight.Medium,
+                textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
             )
-        )
+            if (taskTime != null) {
+                Text(
+                    text = "${taskTime.hour.toString().padStart(2,'0')}:${taskTime.minute.toString().padStart(2,'0')}",
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+            }
+            if (isPostponed && task.postponedTo != null) {
+                Text(
+                    text = "→ ${task.postponedTo.date} ${task.postponedTo.time.hour.toString().padStart(2,'0')}:${task.postponedTo.time.minute.toString().padStart(2,'0')}",
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+            }
+        }
+        when {
+            isExpired -> Text("⌛", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+            isPostponed -> Text("⏰", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+            else -> Checkbox(
+                checked = isCompleted,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = blockColor,
+                    uncheckedColor = TextSecondary,
+                    checkmarkColor = TextPrimary
+                )
+            )
+        }
     }
-}
-
-private fun buildTimeLabel(block: WorkBlock): String? {
-    val recurrence = block.recurrence
-    if (recurrence !is com.mnebot.riptide.domain.model.Recurrence.Weekly) return null
-    val slot = recurrence.slots.firstOrNull() ?: return null
-    if (slot.startTime == null || slot.endTime == null) return null
-    return "${slot.startTime} - ${slot.endTime}"
 }
 
 expect fun parseColor(hex: String): Color

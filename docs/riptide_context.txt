@@ -8,6 +8,8 @@ CONCEPTO DE LA APP
 
 App de productividad con ecosistema marino que crece con la constancia. La puntuación existe internamente pero nunca se muestra como número. El feedback es siempre emocional: mensajes, crecimiento visual del estanque, sensación de progreso sin métricas explícitas. La constancia construye algo bonito. El abandono lo pausa. Nunca lo destruye.
 
+Inspirado en Forest, pero más profundo y personal — orientado a la sensación, no a los números.
+
 ---
 
 STACK TÉCNICO
@@ -17,9 +19,9 @@ STACK TÉCNICO
 - La estructura no tiene carpeta shared: todo vive en composeApp/src/
 - commonMain: lógica de negocio, modelos, repositorios, ViewModels, UI
 - androidMain / iosMain: implementaciones específicas de plataforma
-- Persistencia MVP: Room (local, offline-first), versión 5
+- Persistencia MVP: Room (local, offline-first), versión 6
 - IDs String (UUID) desde el primer día para facilitar sincronización futura
-- Capa repositorio que abstrae el origen de datos
+- Capa repositorio que abstrae el origen de datos (fácil migración a Ktor en v3)
 - Patrón MVVM
 
 VERSIONES CLAVE (libs.versions.toml):
@@ -30,7 +32,11 @@ VERSIONES CLAVE (libs.versions.toml):
 - ksp = "2.3.0"
 - kotlinxDatetime = "0.7.1"
 - androidx-lifecycle = "2.9.6"
-- androidx-navigation-compose = "2.8.0-alpha10"
+- androidx-navigation = "2.9.2"
+- kotlinx-serialization = "1.7.3"
+
+Plugins en build.gradle.kts:
+- kotlinMultiplatform, androidApplication, composeMultiplatform, composeCompiler, ksp, kotlinSerialization
 
 ---
 
@@ -38,249 +44,290 @@ ARQUITECTURA DE CARPETAS
 
 composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   UuidGenerator.kt              (expect fun generateUUID(): String)
+  Serializers.kt                (LocalTimeSerializer: KSerializer<LocalTime>, ISO string)
   domain/
     MarineCategoryAssigner.kt
-    model/                      (WorkBlock, DayTask, DaySummary, BlockStreak,
-                                  EcosystemState, MarineCreature, BlockCategory,
-                                  MarineCategory, CreatureSpecies, Recurrence, WeeklySlot)
-    repository/                 (WorkBlockRepository, DayTaskRepository,
-                                  DaySummaryRepository, EcosystemStateRepository,
-                                  MarineCreatureRepository, BlockCategoryRepository)
+    RecurringTaskGenerator.kt
+    model/
+      MarineCategory.kt         (enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC)
+      WorkBlock.kt              (+ Recurrence @Serializable sealed + WeeklySlot @Serializable)
+      TaskStatus.kt             (enum: PENDING, COMPLETED, EXPIRED, POSTPONED)
+      TaskSchedule.kt           (sealed: OneTime(date, time?) / Recurring(time, recurrence))
+      DayTask.kt                (blockId nullable, sourceTaskId para recurrentes)
+      RecurringTaskDef.kt       (blockId siempre requerido)
+      DaySummary.kt
+      BlockStreak.kt
+      EcosystemState.kt
+      MarineCreature.kt         (+ CreatureSpecies enum)
+      BlockCategory.kt
+    repository/
+      WorkBlockRepository.kt
+      DayTaskRepository.kt
+      RecurringTaskDefRepository.kt
+      BlockCategoryRepository.kt
+      DaySummaryRepository.kt
+      EcosystemStateRepository.kt
+      MarineCreatureRepository.kt
   presentation/
     block/
       BlockFormScreen.kt
-      BlockFormViewModel.kt
+      BlockFormViewModel.kt     (emite BlockFormResult.Saved / .Deleted)
     main/
       CurrentDate.kt            (expect)
       ParseColor.kt             (expect)
-      MainUiState.kt
+      MainUiState.kt            (selectedDate, blocks, tasksByBlock Map<String?, List<DayTask>>, isLoading, error)
       MainViewModel.kt
-      MainScreen.kt
+      MainScreen.kt             (drawer, menú contextual pulsación larga, sheets)
       WeekCalendar.kt
       MainDrawer.kt
+    task/
+      TaskFormSheet.kt          (crear y editar tareas, parámetros: existingTask?, onDelete?)
+      PostponeSheet.kt          (elegir nueva fecha/hora)
+      TaskFormViewModel.kt
 
 composeApp/src/androidMain/kotlin/com/mnebot/riptide/
-  App.kt
-  MainActivity.kt
-  DataSeeder.kt
-  UuidGenerator.android.kt     (actual)
+  App.kt                        (NavHost: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT)
+  MainActivity.kt               (inicializa DB, DataSeeder, arranca UI)
+  DataSeeder.kt                 (3 bloques + 5 tareas para hoy, solo si BD vacía)
+  UuidGenerator.android.kt      (actual: UUID.randomUUID().toString())
   data/local/
-    entity/                    (WorkBlockEntity, DayTaskEntity, DaySummaryEntity,
-                                  BlockStreakEntity, EcosystemStateEntity,
-                                  MarineCreatureEntity, BlockCategoryEntity)
-    dao/                       (WorkBlockDao, DayTaskDao, DaySummaryDao,
-                                  BlockStreakDao, EcosystemStateDao,
-                                  MarineCreatureDao, BlockCategoryDao)
-    db/                        (RiptideDatabase v5, DatabaseProvider — singleton,
-                                  fallbackToDestructiveMigration durante desarrollo)
-    mapper/                    (WorkBlockMapper, DayTaskMapper, DaySummaryMapper,
-                                  BlockStreakMapper, EcosystemStateMapper,
-                                  MarineCreatureMapper, BlockCategoryMapper)
-  data/repository/             (WorkBlockRepositoryImpl, DayTaskRepositoryImpl,
-                                  DaySummaryRepositoryImpl, EcosystemStateRepositoryImpl,
-                                  MarineCreatureRepositoryImpl, BlockCategoryRepositoryImpl)
+    entity/
+      WorkBlockEntity.kt
+      BlockCategoryEntity.kt    (PK compuesta (blockId, category), FK CASCADE)
+      DayTaskEntity.kt          (scheduleType, date?, time?, recurrence? JSON, status,
+                                  completedAt?, postponedTo?, sourceTaskId?, blockId? FK SET_NULL)
+      RecurringTaskDefEntity.kt (blockId FK CASCADE, recurrence JSON)
+      DaySummaryEntity.kt
+      BlockStreakEntity.kt
+      EcosystemStateEntity.kt
+      MarineCreatureEntity.kt
+    dao/                        (un DAO por entity, operaciones estándar)
+    db/
+      RiptideDatabase.kt        (versión 6, fallbackToDestructiveMigration en desarrollo)
+      DatabaseProvider.kt       (singleton lazy)
+    mapper/                     (domain ↔ entity; mappers de Recurrence usan tipo explícito)
+  data/repository/              (implementaciones Room de todas las interfaces)
   presentation/
     block/
       BlockFormViewModelFactory.kt
     main/
-      CurrentDate.android.kt   (actual)
-      ParseColor.android.kt    (actual)
-      MainViewModelFactory.kt
-    Navigation.kt
+      CurrentDate.android.kt    (actual)
+      ParseColor.android.kt     (actual: android.graphics.Color.parseColor)
+      MainViewModelFactory.kt   (recibe Context, construye MainViewModel con todos los repos)
+    task/
+      TaskFormViewModelFactory.kt
+    Navigation.kt               (conecta BlockFormResult con mainViewModel.reload())
 
 composeApp/src/iosMain/kotlin/com/mnebot/riptide/
   MainViewController.kt
-  UuidGenerator.ios.kt         (actual)
+  UuidGenerator.ios.kt          (actual: NSUUID().UUIDString())
   presentation/main/
-    CurrentDate.ios.kt         (actual)
-    ParseColor.ios.kt          (actual, parsea hex manualmente)
+    CurrentDate.ios.kt          (actual)
+    ParseColor.ios.kt           (actual: parsea hex manualmente)
 
 ---
 
-MODELOS DE DATOS (commonMain, Kotlin puro, sin Room)
+MODELOS DE DATOS (commonMain, Kotlin puro)
 
-WorkBlock: id (String), name (String), marineCategories (List<MarineCategory>),
-  color (String hex), icon (String emoji), recurrence (Recurrence), isActive (Boolean)
-  — marineCategories se asigna automáticamente por MarineCategoryAssigner, nunca visible al usuario
+WorkBlock: id(String), name(String), marineCategories(List<MarineCategory>),
+  color(String hex), icon(String emoji), recurrence(Recurrence), isActive(Boolean)
 
-BlockCategory: blockId (String), category (MarineCategory)
-  — tabla separada con PK compuesta (blockId, category) y FK CASCADE desde WorkBlock
+TaskStatus enum: PENDING, COMPLETED, EXPIRED, POSTPONED
 
-Recurrence sealed class:
-- None
-- Weekly(slots: List<WeeklySlot>)
+TaskSchedule sealed class:
+- OneTime(date: LocalDate, time: LocalTime?)
+- Recurring(time: LocalTime, recurrence: Recurrence)
 
-WeeklySlot: dayOfWeek (Int, 1=Lunes...7=Domingo), startTime (LocalTime?), endTime (LocalTime?)
+DayTask: id(String), blockId(String?), title(String), schedule(TaskSchedule),
+  status(TaskStatus), completedAt(LocalDateTime?), postponedTo(LocalDateTime?),
+  sourceTaskId(String?)
+  — blockId nullable (tareas puntuales pueden ir sin bloque)
+  — sourceTaskId apunta a RecurringTaskDef.id para instancias generadas
 
-MarineCategory enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC
+RecurringTaskDef: id(String), blockId(String), title(String), time(LocalTime),
+  recurrence(Recurrence), isActive(Boolean)
+  — las recurrentes siempre tienen bloque
 
-DayTask: id (String), blockId (String), date (LocalDate), title (String),
-  estimatedMinutes (Int?), isCompleted (Boolean), completedAt (LocalDateTime?), order (Int)
+Recurrence @Serializable sealed class: None | Weekly(slots: List<WeeklySlot>)
+WeeklySlot @Serializable: dayOfWeek(Int 1=Lunes), startTime(LocalTime?), endTime(LocalTime?)
+  — LocalTime serializado con LocalTimeSerializer (ISO string)
+  — @file:UseSerializers(LocalTimeSerializer::class) en WorkBlock.kt
 
-DaySummary: id (String), date (LocalDate), score (Float 0.0-1.0, NUNCA visible),
-  tasksTotal (Int), tasksCompleted (Int), streakDay (Int), feedbackMessage (String, sí visible)
+DaySummary: id, date, score(Float NUNCA visible), tasksTotal, tasksCompleted,
+  streakDay, feedbackMessage(String sí visible)
 
-BlockStreak: blockId (String), currentStreak (Int), lastActiveDate (LocalDate)
+BlockStreak: id, blockId, currentStreak, lastActiveDate
+EcosystemState: id, category(MarineCategory), totalExperience(NUNCA visible), currentLevel, lastUpdated
+MarineCreature: id, ecosystemId, species(CreatureSpecies), nickname?, unlockedAtLevel,
+  experience, creatureLevel, unlockedAt
+BlockCategory: blockId, category(MarineCategory) — asignación automática, nunca visible
 
-EcosystemState: id (String), category (MarineCategory), totalExperience (Int, NUNCA visible),
-  currentLevel (Int), lastUpdated (LocalDateTime)
-
-MarineCreature: id (String), ecosystemId (String), species (CreatureSpecies),
-  nickname (String?), unlockedAtLevel (Int), experience (Int), creatureLevel (Int),
-  unlockedAt (LocalDateTime)
-
-CreatureSpecies enum (vinculada a MarineCategory):
-- FISH: CLOWNFISH, ANGELFISH
-- FLORA: BRAIN_CORAL, ANEMONE
-- CRUSTACEAN: HERMIT_CRAB, LOBSTER
-- MOLLUSK: STARFISH, SEA_URCHIN
-- PELAGIC: MOON_JELLYFISH, MANTA_RAY
+MarineCategory enum: FISH 🐟, FLORA 🪸, CRUSTACEAN 🦞, MOLLUSK 🐚, PELAGIC 🦈
+CreatureSpecies: CLOWNFISH, ANGELFISH (FISH) | BRAIN_CORAL, ANEMONE (FLORA) |
+  HERMIT_CRAB, LOBSTER (CRUSTACEAN) | STARFISH, SEA_URCHIN (MOLLUSK) |
+  MOON_JELLYFISH, MANTA_RAY (PELAGIC)
 
 ---
 
 LÓGICA DE CATEGORÍAS MARINAS (MarineCategoryAssigner)
 
-Las categorías se asignan automáticamente al crear/eliminar bloques. El usuario nunca las ve.
-
-Distribución según número de bloques:
-- 1 bloque  → 5 categorías (todas)
-- 2 bloques → 3 + 3 (1 se repite)
-- 3 bloques → 2 + 2 + 2 (1 se repite)
-- 4 bloques → 2 + 1 + 1 + 1 (1 se repite)
-- 5 bloques → 1 cada uno (sin repeticiones)
-
-La experiencia acumulada en EcosystemState se mantiene intacta al redistribuir.
-
-Se llama desde: DataSeeder.seedIfEmpty(), MainViewModel (insert/update/deleteBlockAndReassign),
-BlockFormViewModel (saveBlock, deleteBlock).
+Redistribución automática al crear/editar/eliminar bloques. Nunca visible al usuario.
+1 bloque → 5 cat | 2 → 3+3 | 3 → 2+2+2 | 4 → 2+1+1+1 | 5+ → 1 cada uno
+La experiencia acumulada en EcosystemState se mantiene intacta.
+Se llama en: DataSeeder, MainViewModel (insert/update/deleteBlockAndReassign).
 
 ---
 
-INTERFACES DE REPOSITORIO (commonMain)
+LÓGICA RECURRENTES (RecurringTaskGenerator)
 
-WorkBlockRepository: getAll, getById, insert, update, delete
-DayTaskRepository: getByDate, getByBlock, insert, update, delete
-DaySummaryRepository: getByDate, insert
-EcosystemStateRepository: getByCategory, update
-MarineCreatureRepository: getByEcosystem, insert, update
-BlockCategoryRepository: getByBlockId, getByBlock, insertAll, deleteByBlockId, deleteAll
+generateUpTo(from: LocalDate, daysAhead: Int = 7): genera instancias DayTask para cada
+  RecurringTaskDef activo en los próximos N días si no existen ya.
+  Instancias generadas como TaskSchedule.OneTime con sourceTaskId = def.id
+Se llama en MainViewModel.init y al crear nueva tarea recurrente.
 
 ---
 
 MVVM
 
-MainUiState: selectedDate (LocalDate), blocks (List<WorkBlock>),
-  tasksByBlock (Map<String, List<DayTask>>), isLoading (Boolean), error (String?)
+MainUiState: selectedDate(LocalDate), blocks(List<WorkBlock>),
+  tasksByBlock(Map<String?, List<DayTask>>), isLoading(Boolean), error(String?)
+  — clave null = tareas sin bloque
 
-MainViewModel (commonMain): workBlockRepository, blockCategoryRepository, dayTaskRepository,
-  marineCategoryAssigner. Funciones: loadBlocksWithCategories, selectDate,
-  toggleTaskCompleted, reload, insertBlockAndReassign, updateBlockAndReassign,
-  deleteBlockAndReassign.
+MainViewModel constructor: workBlockRepository, blockCategoryRepository, dayTaskRepository,
+  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner
+Funciones:
+  selectDate, toggleTaskCompleted,
+  addOneTimeTask, addRecurringTask,
+  updateOneTimeTask(original, title, blockId?, date, time?),
+  deleteTask(task),
+  postponeTask(task, postponedTo: LocalDateTime) — marca POSTPONED + crea instancia PENDING,
+  insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign, reload
 
-BlockFormViewModel (commonMain): saveBlock (insert o update según getById), deleteBlock.
-  Emite BlockFormResult.Saved / BlockFormResult.Deleted.
+BlockFormViewModel: saveBlock (insert o update), deleteBlock.
+  Emite BlockFormResult.Saved / .Deleted.
 
-BlockFormViewModelFactory (androidMain): construye BlockFormViewModel con repositorios Room
-  obtenidos desde DatabaseProvider vía LocalContext.
+---
 
-MainViewModelFactory (androidMain): construye MainViewModel con repositorios Room.
+ORDENACIÓN PANTALLA PRINCIPAL
+
+Bloques: por hora de inicio de su slot ese día (bloques sin horario ese día al final).
+Tareas: 1) con hora (por hora asc), 2) sin hora (orden inserción), 3) completadas al final.
+  — El sub-orden dentro de completadas es igual: hora primero, sin hora después.
+Horas del bloque en cabecera: solo si tiene WeeklySlot con startTime+endTime ese día exacto.
 
 ---
 
 UI — PANTALLA PRINCIPAL
 
-Fondo gradiente oceánico: OceanDeep #0A1628 → OceanMid #1B3A6B → OceanLight #2E5F9E
+Fondo: OceanDeep #0A1628 → OceanMid #1B3A6B → OceanLight #2E5F9E
 Tarjetas frosted glass (blanco 20% opacidad)
 
-WeekCalendar: 7 días navegables, swipe horizontal para cambiar semana,
-  punto indicador en día actual, todas las DayCell con mismo ancho (weight(1f)),
-  feedback visual al swipe (alpha animation).
+Menú contextual por pulsación larga en TaskCard:
+  - Editar → abre TaskFormSheet precargado con datos de la tarea
+  - Posponer (solo si no COMPLETED/EXPIRED) → abre PostponeSheet
+  - Eliminar → llama mainViewModel.deleteTask directamente
 
-Separador semitransparente entre calendario y lista de tareas.
-Tareas tachadas al completarse, checkbox con color del bloque.
-FAB 🐟 para ver estanque (siempre visible, no corta scroll).
-Scroll de tareas con contentPadding bottom=80.dp
+TaskCard:
+  - Barra de color del bloque a la izquierda (4dp)
+  - Título con tachado si COMPLETED, color atenuado si COMPLETED/EXPIRED/POSTPONED
+  - Hora de la tarea (si existe) en texto pequeño bajo el título
+  - Fecha pospuesta (si POSTPONED) en texto pequeño
+  - Checkbox para PENDING/COMPLETED, ⌛ para EXPIRED, ⏰ para POSTPONED
 
-GESTOS unificados en Box exterior:
-- Vertical hacia abajo → abre drawer
-- Vertical hacia arriba → cierra drawer
-- Horizontal izquierda/derecha → cambia día (solo si drawer cerrado)
-Drawer se abre desde arriba con animación (Animatable drawerOffsetY).
-Overlay oscuro semitransparente al abrir drawer, toque fuera cierra.
+PostponeSheet:
+  - Campo fecha (YYYY-MM-DD)
+  - Campo hora (4 dígitos sin formato, validado al guardar)
+  - Al confirmar: tarea original → POSTPONED, nueva instancia PENDING en fecha/hora elegida
 
-DRAWER (MainDrawer): baja desde arriba, fondo OceanDeep/OceanMid ~85% opacidad.
-  Secciones: TAREAS (➕ Añadir tarea — pendiente), BLOQUES (lista + ➕ Añadir bloque).
-  Asa visual en la parte inferior.
-  Navega a BlockFormScreen al pulsar bloque o añadir bloque.
+TaskFormSheet:
+  - Toggle puntual/recurrente
+  - Puntual: fecha + hora opcional + bloque opcional
+  - Recurrente: hora obligatoria + selector días + bloque obligatorio
+  - Modo edición (existingTask != null): precarga campos + muestra botón "Eliminar tarea"
+
+Drawer (MainDrawer): baja desde arriba, gestos verticales.
+  Secciones: TAREAS (➕ Añadir tarea), BLOQUES (lista + ➕ Añadir bloque, editar bloque).
+WeekCalendar: 7 días navegables, swipe horizontal, indicador día actual.
+FAB 🐟: siempre visible, abre vista del estanque (pantalla placeholder por ahora).
 
 ---
 
-UI — FORMULARIO DE BLOQUES (BlockFormScreen)
+UI — BlockFormScreen
 
-Campos: Nombre, Icono (emoji), Color (paleta fija 12 colores), Horario.
+Nombre, Icono (emoji), Color (paleta 12 colores), Horario semanal.
 Paleta: #1A73E8, #E8711A, #34A853, #EA4335, #9C27B0, #00BCD4,
         #FF9800, #607D8B, #E91E63, #795548, #009688, #F5C842
-
-Horario: toggle "¿Tiene días y horario fijo?" → selector de días (círculos)
-  → toggle "Mismo horario para todos" → campos de hora.
-TimeTextField: escribe 4 dígitos (ej: 1430 → 14:30), teclado numérico,
-  estado interno en dígitos, display con ":", validación de rango 00:00–23:59.
+TimeTextField: estado interno en dígitos, display con ":", validación 00:00–23:59.
 Botón eliminar solo en modo edición (rojo semitransparente).
 
 ---
 
-NAVEGACIÓN (androidMain)
+NAVEGACIÓN
 
-App.kt: NavHost con startDestination ROUTE_MAIN.
-Navigation.kt: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT.
-Al guardar/eliminar bloque: BlockFormViewModel emite BlockFormResult
-  → Navigation llama mainViewModel.reload() y popBackStack().
+App.kt: NavHost startDestination ROUTE_MAIN
+Navigation.kt: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT
+BlockFormViewModel emite BlockFormResult → Navigation llama mainViewModel.reload() + popBackStack()
 
 ---
 
-DATASEED (androidMain)
+DATASEED
 
-DataSeeder.seedIfEmpty(db, assigner): rellena BD si está vacía.
 Bloques: 💼 Trabajo (#1A73E8, Lun-Vie 8-17h), 🏐 Voleibol (#E8711A, Mar/Jue 20-22h),
          💚 Salud (#34A853, None)
-5 tareas para hoy.
+5 tareas para hoy (mix de bloques, algunas con hora, algunas sin).
 
 ---
 
 LÓGICA DE PUNTUACIÓN INTERNA
 
-calculateDayScore = tasksCompleted / tasksTotal
-0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
-0.5 → "Buen empuje hoy."
-0.8 → "El estanque está vivo."
-1.0 → "Hoy el estanque brilló."
+score = tasksCompleted / tasksTotal — NUNCA visible al usuario.
+Mensajes emocionales (resumen nocturno):
+  0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
+  ~0.5 → "Buen empuje hoy."
+  ~0.8 → "El estanque está vivo."
+  1.0 → "Hoy el estanque brilló."
 
 ---
 
-LÓGICA DEL ECOSISTEMA (flexible, pendiente de definir en detalle)
+ESTADOS DE TAREA
 
-Criaturas individuales con especie, mote y nivel propio.
-Experiencia nueva: ExpNueva / nºCriaturas para cada criatura activa.
-Desbloqueo por progreso acumulado (niveles exactos por definir).
+PENDING: estado por defecto al crear.
+COMPLETED: da experiencia al ecosistema marino.
+EXPIRED: tareas PENDING con fecha anterior al resumen nocturno (no dan experiencia).
+POSTPONED: tarea original marcada como pospuesta; se crea nueva instancia PENDING en la nueva fecha.
+
+---
+
+SERIALIZACIÓN
+
+Recurrence y WeeklySlot: @Serializable.
+LocalTime: LocalTimeSerializer (ISO string) en Serializers.kt (commonMain).
+@file:UseSerializers(LocalTimeSerializer::class) en WorkBlock.kt.
+Mappers de Room usan Json.encodeToString<Recurrence>(...) con tipo explícito.
+Plugin kotlin.plugin.serialization en build.gradle.kts requerido.
 
 ---
 
 ROADMAP
 
-MVP (en curso):
-✅ Room local completo (v5)
+MVP completado:
+✅ Room local v6, modelos actualizados, serialización
 ✅ Calendario semanal navegable con swipe
-✅ Gestión de bloques (crear / editar / eliminar)
-✅ Tareas por bloque con checkbox persistente
+✅ Gestión de bloques (crear/editar/eliminar)
+✅ Tareas por bloque con checkbox + estados visuales
 ✅ Drawer desde arriba con gestos unificados
 ✅ MarineCategoryAssigner automático
 ✅ Navigation Compose
-⬜ Añadir tareas desde el drawer (bottom sheet: título, bloque, minutos)
-⬜ Indicadores de tareas por día en el calendario
-⬜ Resumen nocturno
+✅ TaskFormSheet — crear tareas puntuales y recurrentes
+✅ Editar, eliminar y posponer tareas (menú contextual por pulsación larga)
+✅ Ordenación correcta de bloques y tareas
 
-v2: rachas por bloque, mensajes contextuales, ecosistema visual (Canvas/Lottie), animaciones.
-v3: Ktor + PostgreSQL, perfiles, amigos, visitar estanque ajeno (solo ver), Google Sign-In.
+MVP pendiente:
+⬜ Indicadores de tareas por día en el calendario
+⬜ Resumen nocturno (expirar pendientes, calcular DaySummary, notificación)
+
+v2: rachas, mensajes contextuales, ecosistema visual (Canvas/Lottie)
+v3: Ktor+PostgreSQL, perfiles, amigos, Google Sign-In
 
 ---
 

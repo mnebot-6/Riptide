@@ -1,12 +1,12 @@
-# Estructura del proyecto Riptide
+# Estructura del proyecto — Riptide
 
 ## Visión general
 
-El proyecto usa **Kotlin Multiplatform con Compose Multiplatform**. Todo el código vive dentro de `composeApp/src/`, dividido en tres source sets principales:
+El proyecto usa **Kotlin Multiplatform con Compose Multiplatform**. Todo el código vive dentro de `composeApp/src/`, dividido en tres source sets:
 
-- `commonMain` — código compartido entre Android e iOS (lógica de negocio, modelos, contratos, UI, ViewModels)
-- `androidMain` — código exclusivo de Android (Room, implementaciones de repositorio, factory del ViewModel)
-- `iosMain` — código exclusivo de iOS (punto de entrada UIViewController)
+- `commonMain` — código compartido Android + iOS (modelos, repositorios, ViewModels, UI)
+- `androidMain` — exclusivo Android (Room, implementaciones, factories, navegación)
+- `iosMain` — exclusivo iOS (entrypoint UIViewController, actuals)
 
 ---
 
@@ -14,45 +14,72 @@ El proyecto usa **Kotlin Multiplatform con Compose Multiplatform**. Todo el cód
 
 Ruta base: `composeApp/src/commonMain/kotlin/com/mnebot/riptide/`
 
-### `App.kt`
-Punto de entrada de la UI compartida. Recibe el `MainViewModel` como parámetro y llama a `MainScreen`.
+| Archivo | Qué hace |
+|---|---|
+| `UuidGenerator.kt` | `expect fun generateUUID(): String` |
+| `Serializers.kt` | `LocalTimeSerializer` — serializa `LocalTime` como ISO string para Room |
 
 ### `domain/model/`
-Modelos de datos puros en Kotlin. Sin dependencias de Android ni de Room.
 
 | Archivo | Qué representa |
 |---|---|
-| `MarineCategory.kt` | Enum con las 5 categorías marinas (FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC) |
-| `WorkBlock.kt` | Bloque de tiempo recurrente. Contiene también `Recurrence` (sealed class) y `WeeklySlot` |
-| `DayTask.kt` | Tarea concreta asignada a un bloque en un día específico |
-| `DaySummary.kt` | Resumen del día: tareas completadas, score interno y mensaje de feedback |
-| `BlockStreak.kt` | Racha de días consecutivos activos de un bloque concreto |
-| `EcosystemState.kt` | Estado del ecosistema marino por categoría: experiencia total y nivel actual |
-| `MarineCreature.kt` | Criatura individual del estanque con especie, mote, experiencia y nivel propio. Contiene también `CreatureSpecies` |
+| `MarineCategory.kt` | Enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC |
+| `WorkBlock.kt` | Bloque de actividad. Contiene también `Recurrence` (sealed `@Serializable`) y `WeeklySlot` (`@Serializable`) |
+| `TaskStatus.kt` | Enum: PENDING, COMPLETED, EXPIRED, POSTPONED |
+| `TaskSchedule.kt` | Sealed class: `OneTime(date, time?)` / `Recurring(time, recurrence)` |
+| `DayTask.kt` | Instancia de tarea para un día. `blockId` nullable, `sourceTaskId` para recurrentes |
+| `RecurringTaskDef.kt` | Definición de tarea recurrente. Siempre tiene bloque |
+| `DaySummary.kt` | Resumen del día: score interno + mensaje emocional |
+| `BlockStreak.kt` | Racha de días consecutivos de un bloque |
+| `EcosystemState.kt` | Estado del ecosistema por categoría marina |
+| `MarineCreature.kt` | Criatura individual. Contiene también `CreatureSpecies` |
+| `BlockCategory.kt` | Relación bloque ↔ categoría marina (asignación automática) |
 
 ### `domain/repository/`
-Interfaces que definen el contrato de acceso a datos. Sin implementación.
 
 | Archivo | Operaciones |
 |---|---|
 | `WorkBlockRepository.kt` | getAll, getById, insert, update, delete |
-| `DayTaskRepository.kt` | getByDate, getByBlock, insert, update, delete |
+| `DayTaskRepository.kt` | getByDate, getByBlock, getById, insert, update, delete |
+| `RecurringTaskDefRepository.kt` | getAll, getActive, getById, insert, update, delete |
+| `BlockCategoryRepository.kt` | getByBlockId, insertAll, deleteByBlockId, deleteAll |
 | `DaySummaryRepository.kt` | getByDate, insert |
 | `EcosystemStateRepository.kt` | getByCategory, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, insert, update |
 
-### `usecase/`
-Reservada para use cases. Vacía por ahora.
+### `domain/`
+
+| Archivo | Qué hace |
+|---|---|
+| `MarineCategoryAssigner.kt` | Redistribuye categorías marinas automáticamente al cambiar bloques |
+| `RecurringTaskGenerator.kt` | Genera instancias `DayTask` a partir de `RecurringTaskDef` activos para los próximos N días |
 
 ### `presentation/main/`
 
 | Archivo | Qué hace |
 |---|---|
-| `CurrentDate.kt` | Declaración `expect` de la función que devuelve la fecha actual |
-| `ParseColor.kt` | Declaración `expect` de la función que convierte hex String a Color de Compose |
-| `MainUiState.kt` | Estado de la UI: fecha seleccionada, bloques, tareas por bloque, loading, error |
-| `MainViewModel.kt` | Carga datos de Room, expone `StateFlow<MainUiState>`, maneja eventos del usuario |
-| `MainScreen.kt` | Composable raíz. Fondo oceánico, tarjetas frosted glass, FAB para ver el estanque |
+| `CurrentDate.kt` | `expect fun currentDate(): LocalDate` |
+| `ParseColor.kt` | `expect fun parseColor(hex: String): Color` |
+| `MainUiState.kt` | Estado de UI: fecha, bloques, tareas por bloque, loading, error |
+| `MainViewModel.kt` | Carga datos, expone `StateFlow<MainUiState>`, maneja toda la lógica de tareas y bloques |
+| `MainScreen.kt` | Composable raíz. Gestiona drawer, menú contextual, sheets de tarea y posponer |
+| `WeekCalendar.kt` | Calendario semanal navegable con swipe |
+| `MainDrawer.kt` | Drawer desde arriba con lista de bloques y acceso a crear tarea/bloque |
+
+### `presentation/block/`
+
+| Archivo | Qué hace |
+|---|---|
+| `BlockFormScreen.kt` | Formulario crear/editar/eliminar bloque |
+| `BlockFormViewModel.kt` | Lógica del formulario. Emite `BlockFormResult.Saved` / `.Deleted` |
+
+### `presentation/task/`
+
+| Archivo | Qué hace |
+|---|---|
+| `TaskFormSheet.kt` | Bottom sheet crear/editar tareas puntuales y recurrentes. Soporta `existingTask` y `onDelete` |
+| `PostponeSheet.kt` | Bottom sheet para elegir nueva fecha/hora al posponer |
+| `TaskFormViewModel.kt` | Lógica del formulario de tarea |
 
 ---
 
@@ -60,71 +87,55 @@ Reservada para use cases. Vacía por ahora.
 
 Ruta base: `composeApp/src/androidMain/kotlin/com/mnebot/riptide/`
 
-### `MainActivity.kt`
-Punto de entrada de la app. Inicializa Room, llama al DataSeeder y arranca la UI con el ViewModel.
-
-### `DataSeeder.kt`
-Rellena la base de datos con datos de prueba si está vacía. Crea 3 bloques (💼 Trabajo, 🏐 Voleibol, 💚 Salud) y 5 tareas para el día actual. Solo se ejecuta una vez.
+| Archivo | Para qué sirve |
+|---|---|
+| `App.kt` | NavHost con las tres rutas de la app |
+| `MainActivity.kt` | Punto de entrada. Inicializa DB, llama DataSeeder y arranca UI |
+| `DataSeeder.kt` | Rellena BD si está vacía: 3 bloques (💼🏐💚) + 5 tareas para hoy |
+| `UuidGenerator.android.kt` | `actual fun generateUUID()` usando `UUID.randomUUID()` |
 
 ### `data/local/entity/`
 
-| Archivo | Tabla SQLite |
+| Archivo | Tabla |
 |---|---|
 | `WorkBlockEntity.kt` | `work_blocks` |
-| `DayTaskEntity.kt` | `day_tasks` |
+| `BlockCategoryEntity.kt` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
+| `DayTaskEntity.kt` | `day_tasks` — scheduleType, date?, time?, recurrence? JSON, status, completedAt?, postponedTo?, sourceTaskId?, blockId? FK SET_NULL |
+| `RecurringTaskDefEntity.kt` | `recurring_task_defs` — blockId FK CASCADE, recurrence JSON |
 | `DaySummaryEntity.kt` | `day_summaries` |
 | `BlockStreakEntity.kt` | `block_streaks` |
 | `EcosystemStateEntity.kt` | `ecosystem_states` |
 | `MarineCreatureEntity.kt` | `marine_creatures` |
 
-Fechas como String ISO. Enums como String. Recurrence.Weekly como JSON plano.
-
 ### `data/local/dao/`
 
-| Archivo | DAO para |
-|---|---|
-| `WorkBlockDao.kt` | `work_blocks` |
-| `DayTaskDao.kt` | `day_tasks` |
-| `DaySummaryDao.kt` | `day_summaries` |
-| `BlockStreakDao.kt` | `block_streaks` |
-| `EcosystemStateDao.kt` | `ecosystem_states` |
-| `MarineCreatureDao.kt` | `marine_creatures` |
+Un DAO por entity. Operaciones estándar con `@Query`, `@Insert`, `@Update`, `@Delete`.
 
 ### `data/local/db/`
 
 | Archivo | Para qué sirve |
 |---|---|
-| `RiptideDatabase.kt` | Clase principal de Room. Versión 3. Agrupa entities y DAOs. |
-| `DatabaseProvider.kt` | Singleton que construye RiptideDatabase. Usa fallbackToDestructiveMigration en desarrollo. |
+| `RiptideDatabase.kt` | Clase Room principal. Versión 6. `fallbackToDestructiveMigration(true)` en desarrollo |
+| `DatabaseProvider.kt` | Singleton que construye `RiptideDatabase` |
 
 ### `data/local/mapper/`
 
-| Archivo | Convierte |
-|---|---|
-| `WorkBlockMapper.kt` | `WorkBlock` ↔ `WorkBlockEntity` |
-| `DayTaskMapper.kt` | `DayTask` ↔ `DayTaskEntity` |
-| `DaySummaryMapper.kt` | `DaySummary` ↔ `DaySummaryEntity` |
-| `BlockStreakMapper.kt` | `BlockStreak` ↔ `BlockStreakEntity` |
-| `EcosystemStateMapper.kt` | `EcosystemState` ↔ `EcosystemStateEntity` |
-| `MarineCreatureMapper.kt` | `MarineCreature` ↔ `MarineCreatureEntity` |
+Un mapper por entidad. Convierte dominio ↔ entity. Los mappers de `DayTask` y `RecurringTaskDef` usan `Json.encodeToString<Recurrence>(...)` con tipo explícito.
 
 ### `data/repository/`
 
-| Archivo | Implementa |
-|---|---|
-| `WorkBlockRepositoryImpl.kt` | `WorkBlockRepository` |
-| `DayTaskRepositoryImpl.kt` | `DayTaskRepository` |
-| `DaySummaryRepositoryImpl.kt` | `DaySummaryRepository` |
-| `EcosystemStateRepositoryImpl.kt` | `EcosystemStateRepository` |
-| `MarineCreatureRepositoryImpl.kt` | `MarineCreatureRepository` |
+Implementaciones de Room de todas las interfaces de repositorio de commonMain.
 
-### `presentation/main/`
+### `presentation/`
 
 | Archivo | Para qué sirve |
 |---|---|
-| `CurrentDate.android.kt` | Implementación `actual` de `currentDate()` para Android |
-| `ParseColor.android.kt` | Implementación `actual` de `parseColor()` usando android.graphics.Color |
-| `MainViewModelFactory.kt` | Construye el `MainViewModel` con las dependencias Room |
+| `Navigation.kt` | Define rutas y composable de navegación. Conecta `BlockFormResult` con `mainViewModel.reload()` |
+| `main/MainViewModelFactory.kt` | Construye `MainViewModel` con todos los repositorios + generator + assigner |
+| `main/CurrentDate.android.kt` | `actual fun currentDate()` |
+| `main/ParseColor.android.kt` | `actual fun parseColor(hex)` usando `android.graphics.Color.parseColor` |
+| `block/BlockFormViewModelFactory.kt` | Construye `BlockFormViewModel` |
+| `task/TaskFormViewModelFactory.kt` | Construye `TaskFormViewModel` |
 
 ---
 
@@ -134,48 +145,50 @@ Ruta base: `composeApp/src/iosMain/kotlin/com/mnebot/riptide/`
 
 | Archivo | Para qué sirve |
 |---|---|
-| `MainViewController.kt` | Punto de entrada iOS. Recibe repositorios y construye el ViewModel |
-| `presentation/main/CurrentDate.ios.kt` | Implementación `actual` de `currentDate()` para iOS |
-| `presentation/main/ParseColor.ios.kt` | Implementación `actual` de `parseColor()` parseando hex manualmente |
+| `MainViewController.kt` | Punto de entrada iOS |
+| `UuidGenerator.ios.kt` | `actual fun generateUUID()` usando `NSUUID` |
+| `presentation/main/CurrentDate.ios.kt` | `actual fun currentDate()` |
+| `presentation/main/ParseColor.ios.kt` | `actual fun parseColor(hex)` parseando hex manualmente |
 
 ---
 
 ## Diagrama de capas
 
 ```
-commonMain                          androidMain
-─────────────────────────────────────────────────────
-App.kt + MainScreen.kt
+commonMain                              androidMain
+────────────────────────────────────────────────────────────
+App.kt (NavHost)
 
-presentation/main/                  presentation/main/
-  MainViewModel                       MainViewModelFactory
-  MainUiState                         CurrentDate.android.kt
-  CurrentDate (expect)                ParseColor.android.kt
+presentation/task/                      presentation/task/
+  TaskFormSheet, PostponeSheet            TaskFormViewModelFactory
+  TaskFormViewModel
+
+presentation/block/                     presentation/block/
+  BlockFormScreen                         BlockFormViewModelFactory
+  BlockFormViewModel
+
+presentation/main/                      presentation/main/
+  MainScreen, WeekCalendar                MainViewModelFactory
+  MainDrawer, MainViewModel               CurrentDate.android.kt
+  MainUiState                             ParseColor.android.kt
+  CurrentDate (expect)
   ParseColor (expect)
 
-domain/model/                       data/local/entity/
-  WorkBlock, DayTask...    ←──→       WorkBlockEntity...
-  (Kotlin puro)            mapper     (Room / SQLite)
+domain/model/                           data/local/entity/
+  WorkBlock, DayTask,         ←──→        WorkBlockEntity,
+  RecurringTaskDef...         mapper      DayTaskEntity...
+  (Kotlin puro)                           (Room / SQLite)
 
-domain/repository/                  data/local/dao/
-  WorkBlockRepository      ←──       WorkBlockDao...
-  (interfaz)               impl      (Room queries)
+domain/repository/                      data/local/dao/
+  interfaces               ←── impl ──   DAOs (Room queries)
 
-usecase/                            data/local/db/
-  (pendiente)                         RiptideDatabase
-                                      DatabaseProvider
+domain/                                 data/local/db/
+  MarineCategoryAssigner                  RiptideDatabase v6
+  RecurringTaskGenerator                  DatabaseProvider
 
-                                    data/repository/
-                                      WorkBlockRepositoryImpl...
+                                        data/repository/
+                                          implementaciones Room
 
-                                    DataSeeder.kt
+                                        DataSeeder.kt
+                                        MainActivity.kt
 ```
-
----
-
-## Docs
-
-| Archivo | Contenido |
-|---|---|
-| `riptide_context.txt` | Contexto completo del proyecto para usar con IA |
-| `project_structure.md` | Este archivo |

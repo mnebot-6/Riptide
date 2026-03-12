@@ -2,14 +2,7 @@ package com.mnebot.riptide.presentation.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -28,7 +21,6 @@ private val OceanDeep = Color(0xD90A1628)
 private val OceanMid = Color(0xD91B3A6B)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
-private val CardBackground = Color(0x33FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
 private val DividerColor = Color(0x33FFFFFF)
 
@@ -42,34 +34,23 @@ fun MainDrawer(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(OceanDeep, OceanMid)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(OceanDeep, OceanMid)))
             .statusBarsPadding()
             .padding(vertical = 24.dp)
     ) {
-        // Cabecera
         Row(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("🌊", fontSize = 28.sp)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Riptide",
-                color = TextPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Riptide", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(color = DividerColor)
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Sección tareas
         SectionTitle("TAREAS")
         Spacer(modifier = Modifier.height(8.dp))
         DrawerItem(icon = "➕", label = "Añadir tarea", onClick = onAddTask)
@@ -78,15 +59,11 @@ fun MainDrawer(
         HorizontalDivider(color = DividerColor)
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Sección bloques
         SectionTitle("BLOQUES")
         Spacer(modifier = Modifier.height(8.dp))
 
         blocks.forEach { block ->
-            DrawerBlockItem(
-                block = block,
-                onClick = { onEditBlock(block.id) }
-            )
+            DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -94,12 +71,11 @@ fun MainDrawer(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Asa visual para indicar que se puede cerrar deslizando hacia arriba
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            horizontalArrangement = Arrangement.Center
         ) {
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier
                     .width(40.dp)
                     .height(4.dp)
@@ -125,11 +101,7 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun DrawerItem(
-    icon: String,
-    label: String,
-    onClick: () -> Unit
-) {
+private fun DrawerItem(icon: String, label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,10 +116,7 @@ private fun DrawerItem(
 }
 
 @Composable
-private fun DrawerBlockItem(
-    block: WorkBlock,
-    onClick: () -> Unit
-) {
+private fun DrawerBlockItem(block: WorkBlock, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -157,12 +126,7 @@ private fun DrawerBlockItem(
     ) {
         Text(block.icon, fontSize = 18.sp)
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = block.name,
-            color = TextPrimary,
-            fontSize = 15.sp,
-            modifier = Modifier.weight(1f)
-        )
+        Text(text = block.name, color = TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text("›", color = TextSecondary, fontSize = 20.sp)
     }
 }
