@@ -180,6 +180,7 @@ fun MainScreen(
                     onDateSelected = { viewModel.selectDate(it) },
                     onTaskToggle = { viewModel.toggleTaskCompleted(it) },
                     onTaskLongPress = { contextMenuTask = it },
+                    streaksByBlock = uiState.streaksByBlock,
                     onAquariumClick = { showAquarium = true }
                 )
             }
@@ -432,7 +433,8 @@ private fun MainContent(
     onDateSelected: (LocalDate) -> Unit,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
-    onAquariumClick: () -> Unit
+    onAquariumClick: () -> Unit,
+    streaksByBlock: Map<String, Int>,
 ) {
     val blocksWithTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
 
@@ -498,10 +500,12 @@ private fun MainContent(
                     }
                     items(blocksWithTasks) { block ->
                         val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
+                        val streak = streaksByBlock[block.id] ?: 0
                         BlockSection(
                             block = block,
                             tasks = tasks,
                             selectedDate = selectedDate,
+                            streak = streak,
                             onTaskToggle = onTaskToggle,
                             onTaskLongPress = onTaskLongPress
                         )
@@ -527,11 +531,12 @@ private fun BlockSection(
     block: WorkBlock,
     tasks: List<DayTask>,
     selectedDate: LocalDate,
+    streak: Int,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit
 ) {
     Column {
-        BlockHeader(block = block, selectedDate = selectedDate)
+        BlockHeader(block = block, selectedDate = selectedDate, streak = streak)
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
             TaskCard(
@@ -546,7 +551,7 @@ private fun BlockSection(
 }
 
 @Composable
-private fun BlockHeader(block: WorkBlock, selectedDate: LocalDate) {
+private fun BlockHeader(block: WorkBlock, selectedDate: LocalDate, streak: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(bottom = 4.dp)
@@ -563,9 +568,16 @@ private fun BlockHeader(block: WorkBlock, selectedDate: LocalDate) {
             Text(block.name, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             if (shouldShowBlockTime(block, selectedDate)) {
                 val recurrence = block.recurrence as Recurrence.Weekly
-                val slot =
-                    recurrence.slots.first { it.dayOfWeek == selectedDate.dayOfWeek.isoDayNumber }
+                val slot = recurrence.slots.first { it.dayOfWeek == selectedDate.dayOfWeek.isoDayNumber }
                 Text("${slot.startTime} - ${slot.endTime}", color = TextSecondary, fontSize = 12.sp)
+            }
+            if (streak >= 2) {
+                Text(
+                    text = "🔥 $streak días",
+                    color = Color(0xFFFFB347),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }

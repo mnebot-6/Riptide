@@ -9,6 +9,7 @@ data class MainUiState(
     val selectedDate: LocalDate,
     val blocks: List<WorkBlock> = emptyList(),
     val tasksByBlock: Map<String?, List<DayTask>> = emptyMap(),
+    val streaksByBlock: Map<String, Int> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null
 )

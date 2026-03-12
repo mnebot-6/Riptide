@@ -8,9 +8,11 @@ import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
+import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
+import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.NightSummaryProcessor
 import com.mnebot.riptide.presentation.main.MainViewModel
@@ -21,6 +23,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
 
@@ -42,17 +45,20 @@ class MainActivity : ComponentActivity() {
             )
             DataSeeder.seedIfEmpty(db, assigner)
 
-            // Procesar ayer si no se procesó
+            val blockStreakProcessor = BlockStreakProcessor(
+                dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
+                blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
+            )
             val processor = NightSummaryProcessor(
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
-                daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao())
+                daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
+                blockStreakProcessor = blockStreakProcessor
             )
-            val yesterday = kotlin.time.Clock.System.now()
+            val yesterday = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
                 .minus(1, DateTimeUnit.DAY)
             processor.processDay(yesterday)
 
-            // Planificar WorkManager con la hora guardada
             val nightTime = scheduler.getNightSummaryTime().first()
             scheduler.scheduleWorker(nightTime)
 

@@ -6,6 +6,7 @@ import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.domain.repository.BlockCategoryRepository
+import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
 import com.mnebot.riptide.domain.repository.WorkBlockRepository
@@ -27,7 +28,8 @@ class MainViewModel(
     private val dayTaskRepository: DayTaskRepository,
     private val recurringTaskDefRepository: RecurringTaskDefRepository,
     private val recurringTaskGenerator: RecurringTaskGenerator,
-    private val marineCategoryAssigner: MarineCategoryAssigner
+    private val marineCategoryAssigner: MarineCategoryAssigner,
+    private val blockStreakRepository: BlockStreakRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -126,10 +128,16 @@ class MainViewModel(
                 val blocks = loadBlocksWithCategories()
                 val tasks = dayTaskRepository.getByDate(date)
                 val tasksByBlock: Map<String?, List<DayTask>> = tasks.groupBy { it.blockId }
+
+                val streaksByBlock = blocks.associate { block ->
+                    block.id to (blockStreakRepository.getByBlockId(block.id)?.currentStreak ?: 0)
+                }
+
                 _uiState.update {
                     it.copy(
                         blocks = blocks,
                         tasksByBlock = tasksByBlock,
+                        streaksByBlock = streaksByBlock,
                         isLoading = false,
                         error = null
                     )

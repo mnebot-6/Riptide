@@ -68,10 +68,10 @@
 
 ## v2 — En curso
 
-### Rachas (`BlockStreak`)
+### ✅ Rachas (`BlockStreak`)
 - Calcular y persistir racha de días consecutivos por bloque
 - Actualizar al completar tareas en el resumen nocturno
-- Mensajes contextuales al completar: *"Llevas una semana sólida en el trabajo 🌊"*
+- Badge `🔥 N días` en cabecera del bloque (solo si racha ≥ 2)
 
 ### Mensajes contextuales
 - Mensajes enriquecidos con contexto de rachas y progreso del ecosistema

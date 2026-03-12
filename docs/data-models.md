@@ -163,12 +163,22 @@ Mensajes según score:
 
 ```kotlin
 data class BlockStreak(
-    val id: String,
     val blockId: String,
     val currentStreak: Int,
     val lastActiveDate: LocalDate
 )
 ```
+
+Sin campo `id` — `blockId` es la clave primaria natural de esta tabla.
+
+Lógica de actualización (en `BlockStreakProcessor`):
+- Al menos 1 tarea COMPLETED en el bloque ese día → día activo
+- Sin tareas ese día → día neutral, no toca la racha
+- Tareas pero ninguna COMPLETED → rompe la racha (`currentStreak = 0`)
+- Día activo consecutivo al `lastActiveDate` → incrementa racha
+- Día activo no consecutivo → reinicia racha a 1
+
+UI: se muestra `🔥 N días` en `BlockHeader` solo si `currentStreak >= 2`.
 
 ---
 
@@ -227,7 +237,7 @@ Entities principales y su tabla:
 | `DayTaskEntity` | `day_tasks` — `scheduleType`, `date?`, `time?`, `recurrence?` (JSON), `status`, `completedAt?`, `postponedTo?`, `sourceTaskId?`, `blockId?` FK SET_NULL |
 | `RecurringTaskDefEntity` | `recurring_task_defs` — `blockId` FK CASCADE, `recurrence` JSON |
 | `DaySummaryEntity` | `day_summaries` |
-| `BlockStreakEntity` | `block_streaks` |
+| `BlockStreakEntity` | `block_streaks` — PK `blockId` |
 | `EcosystemStateEntity` | `ecosystem_states` |
 | `MarineCreatureEntity` | `marine_creatures` |
 

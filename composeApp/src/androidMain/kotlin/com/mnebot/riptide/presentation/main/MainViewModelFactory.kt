@@ -25,12 +25,19 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
 
         @Suppress("UNCHECKED_CAST")
         return MainViewModel(
-            workBlockRepository,
-            blockCategoryRepository,
-            dayTaskRepository,
-            recurringTaskDefRepository,
-            recurringTaskGenerator,
-            marineCategoryAssigner
+            workBlockRepository = WorkBlockRepositoryImpl(db.workBlockDao()),
+            blockCategoryRepository = BlockCategoryRepositoryImpl(db.blockCategoryDao()),
+            dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
+            recurringTaskDefRepository = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao()),
+            recurringTaskGenerator = RecurringTaskGenerator(
+                RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao()),
+                DayTaskRepositoryImpl(db.dayTaskDao())
+            ),
+            marineCategoryAssigner = MarineCategoryAssigner(
+                WorkBlockRepositoryImpl(db.workBlockDao()),
+                BlockCategoryRepositoryImpl(db.blockCategoryDao())
+            ),
+            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
         ) as T
     }
 }

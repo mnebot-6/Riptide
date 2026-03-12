@@ -41,4 +41,7 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
 
     override suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate) =
         dao.deleteBySourceTaskFromDate(sourceTaskId, fromDate.toString())
+
+    override suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask> =
+        dao.getByDateAndBlock(date.toString(), blockId).map { it.toDomain() }
 }

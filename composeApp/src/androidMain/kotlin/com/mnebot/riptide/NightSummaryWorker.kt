@@ -7,13 +7,16 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.NightSummaryProcessor
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.util.concurrent.TimeUnit
+import kotlin.time.Clock
 
 class NightSummaryWorker(
     private val context: Context,
@@ -22,11 +25,16 @@ class NightSummaryWorker(
 
     override suspend fun doWork(): Result {
         val db = DatabaseProvider.getDatabase(context)
+        val blockStreakProcessor = BlockStreakProcessor(
+            dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
+            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
+        )
         val processor = NightSummaryProcessor(
             dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
-            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao())
+            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
+            blockStreakProcessor = blockStreakProcessor
         )
-        val today = kotlin.time.Clock.System.now()
+        val today = Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
         processor.processDay(today)
         return Result.success()

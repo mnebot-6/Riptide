@@ -34,4 +34,7 @@ interface DayTaskDao {
 
     @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId AND (status = 'PENDING' OR status = 'POSTPONED') AND date >= :fromDate")
     suspend fun deleteBySourceTaskFromDate(sourceTaskId: String, fromDate: String)
+
+    @Query("SELECT * FROM day_tasks WHERE date = :date AND blockId = :blockId")
+    suspend fun getByDateAndBlock(date: String, blockId: String): List<DayTaskEntity>
 }

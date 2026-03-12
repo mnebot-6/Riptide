@@ -51,6 +51,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   domain/
     MarineCategoryAssigner.kt
     RecurringTaskGenerator.kt
+    BlockStreakProcessor.kt     (calcula y persiste rachas por bloque)
     NightSummaryProcessor.kt    (expira PENDING, calcula score, guarda DaySummary)
     model/
       MarineCategory.kt         (enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC)
@@ -69,7 +70,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       DayTaskRepository.kt
       RecurringTaskDefRepository.kt
       BlockCategoryRepository.kt
-      DaySummaryRepository.kt
+      BlockStreakRepository.kt
       EcosystemStateRepository.kt
       MarineCreatureRepository.kt
       UserPreferencesRepository.kt  (getNightSummaryTime: Flow<LocalTime>, setNightSummaryTime)
@@ -165,7 +166,10 @@ WeeklySlot @Serializable: dayOfWeek(Int 1=Lunes), startTime(LocalTime?), endTime
 DaySummary: id, date, score(Float NUNCA visible), tasksTotal, tasksCompleted,
   streakDay, feedbackMessage(String sí visible)
 
-BlockStreak: id, blockId, currentStreak, lastActiveDate
+BlockStreak: blockId(PK), currentStreak, lastActiveDate
+  — sin campo id, blockId es PK natural
+  — día neutro (sin tareas) no toca la racha
+  — badge 🔥 N días en BlockHeader si currentStreak >= 2
 EcosystemState: id, category(MarineCategory), totalExperience(NUNCA visible), currentLevel, lastUpdated
 MarineCreature: id, ecosystemId, species(CreatureSpecies), nickname?, unlockedAtLevel,
   experience, creatureLevel, unlockedAt
@@ -199,11 +203,13 @@ Se llama en MainViewModel.init y al crear nueva tarea recurrente.
 MVVM
 
 MainUiState: selectedDate(LocalDate), blocks(List<WorkBlock>),
-  tasksByBlock(Map<String?, List<DayTask>>), isLoading(Boolean), error(String?)
+  tasksByBlock(Map<String?, List<DayTask>>),
+  streaksByBlock(Map<String, Int>),
+  isLoading(Boolean), error(String?)
   — clave null = tareas sin bloque
 
 MainViewModel constructor: workBlockRepository, blockCategoryRepository, dayTaskRepository,
-  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner
+  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner, blockStreakRepository
 Funciones:
   selectDate, toggleTaskCompleted,
   addOneTimeTask, addRecurringTask,
@@ -374,9 +380,10 @@ MVP completado:
 ✅ Ordenación correcta de bloques y tareas
 ✅ Indicadores de progreso por día en el calendario (barra animada)
 ✅ Resumen nocturno (NightSummaryProcessor + WorkManager + DataStore + hora configurable)
+✅ Rachas por bloque (BlockStreak) — badge 🔥 en BlockHeader, lógica en NightSummaryProcessor
 
 v2 en curso:
-⬜ Rachas por bloque (BlockStreak)
+⬜ Mensajes contextuales enriquecidos
 ⬜ Mensajes contextuales enriquecidos
 ⬜ Ecosistema visual (Canvas/Lottie)
 
