@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.presentation.block.BlockFormResult
 import com.mnebot.riptide.presentation.block.BlockFormScreen
@@ -15,6 +16,7 @@ import com.mnebot.riptide.presentation.block.BlockFormViewModel
 import com.mnebot.riptide.presentation.block.BlockFormViewModelFactory
 import com.mnebot.riptide.presentation.main.MainScreen
 import com.mnebot.riptide.presentation.main.MainViewModel
+import androidx.compose.runtime.collectAsState
 
 const val ROUTE_MAIN = "main"
 const val ROUTE_BLOCK_CREATE = "block/create"
@@ -22,11 +24,13 @@ const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
 
 fun NavGraphBuilder.mainGraph(
     mainViewModel: MainViewModel,
+    nightSummaryScheduler: NightSummaryScheduler,
     navController: NavController
 ) {
     composable(ROUTE_MAIN) {
         MainScreen(
             viewModel = mainViewModel,
+            nightSummaryScheduler = nightSummaryScheduler,
             onNavigateToCreateBlock = { navController.navigate(ROUTE_BLOCK_CREATE) },
             onNavigateToEditBlock = { blockId ->
                 navController.navigate("block/edit/$blockId")
@@ -57,7 +61,7 @@ fun NavGraphBuilder.mainGraph(
 
     composable(ROUTE_BLOCK_EDIT) { backStackEntry ->
         val blockId = backStackEntry.arguments?.getString("blockId") ?: return@composable
-        val block = mainViewModel.uiState.value.blocks.firstOrNull { it.id == blockId }
+        val block = mainViewModel.uiState.collectAsState().value.blocks.firstOrNull { it.id == blockId }
 
         val context = LocalContext.current
         val database = DatabaseProvider.getDatabase(context)

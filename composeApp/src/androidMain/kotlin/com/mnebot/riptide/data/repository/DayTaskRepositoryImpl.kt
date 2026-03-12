@@ -35,4 +35,10 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
 
     override suspend fun deleteBySourceTask(sourceTaskId: String) =
         dao.deleteBySourceTask(sourceTaskId)
+
+    override suspend fun deleteBySourceId(sourceTaskId: String) =
+        dao.deleteBySourceTask(sourceTaskId)
+
+    override suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate) =
+        dao.deleteBySourceTaskFromDate(sourceTaskId, fromDate.toString())
 }

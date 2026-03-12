@@ -34,6 +34,8 @@ VERSIONES CLAVE (libs.versions.toml):
 - androidx-lifecycle = "2.9.6"
 - androidx-navigation = "2.9.2"
 - kotlinx-serialization = "1.7.3"
+- androidx-datastore = "1.1.7"
+- androidx-work = "2.10.1"
 
 Plugins en build.gradle.kts:
 - kotlinMultiplatform, androidApplication, composeMultiplatform, composeCompiler, ksp, kotlinSerialization
@@ -45,9 +47,11 @@ ARQUITECTURA DE CARPETAS
 composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   UuidGenerator.kt              (expect fun generateUUID(): String)
   Serializers.kt                (LocalTimeSerializer: KSerializer<LocalTime>, ISO string)
+  NightSummaryScheduler.kt      (interfaz: getNightSummaryTime, setNightSummaryTime, scheduleWorker)
   domain/
     MarineCategoryAssigner.kt
     RecurringTaskGenerator.kt
+    NightSummaryProcessor.kt    (expira PENDING, calcula score, guarda DaySummary)
     model/
       MarineCategory.kt         (enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC)
       WorkBlock.kt              (+ Recurrence @Serializable sealed + WeeklySlot @Serializable)
@@ -68,6 +72,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       DaySummaryRepository.kt
       EcosystemStateRepository.kt
       MarineCreatureRepository.kt
+      UserPreferencesRepository.kt  (getNightSummaryTime: Flow<LocalTime>, setNightSummaryTime)
   presentation/
     block/
       BlockFormScreen.kt
@@ -78,8 +83,8 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       MainUiState.kt            (selectedDate, blocks, tasksByBlock Map<String?, List<DayTask>>, isLoading, error)
       MainViewModel.kt
       MainScreen.kt             (drawer, menú contextual pulsación larga, sheets)
-      WeekCalendar.kt
-      MainDrawer.kt
+      WeekCalendar.kt           (barra de progreso animada por día)
+      MainDrawer.kt             (sección AJUSTES con hora resumen nocturno)
     task/
       TaskFormSheet.kt          (crear y editar tareas, parámetros: existingTask?, onDelete?)
       PostponeSheet.kt          (elegir nueva fecha/hora)
@@ -87,8 +92,10 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
 
 composeApp/src/androidMain/kotlin/com/mnebot/riptide/
   App.kt                        (NavHost: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT)
-  MainActivity.kt               (inicializa DB, DataSeeder, arranca UI)
+  MainActivity.kt               (inicializa DB, DataSeeder, NightSummaryProcessor fallback, WorkManager, arranca UI)
   DataSeeder.kt                 (3 bloques + 5 tareas para hoy, solo si BD vacía)
+  NightSummaryWorker.kt         (CoroutineWorker WorkManager, se planifica a hora configurada)
+  NightSummarySchedulerImpl.android.kt  (implementa NightSummaryScheduler con DataStore + WorkManager)
   UuidGenerator.android.kt      (actual: UUID.randomUUID().toString())
   data/local/
     entity/
@@ -107,6 +114,7 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       DatabaseProvider.kt       (singleton lazy)
     mapper/                     (domain ↔ entity; mappers de Recurrence usan tipo explícito)
   data/repository/              (implementaciones Room de todas las interfaces)
+    UserPreferencesRepositoryImpl.kt  (DataStore Preferences, clave hora+minuto, default 23:30)
   presentation/
     block/
       BlockFormViewModelFactory.kt
@@ -116,10 +124,11 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       MainViewModelFactory.kt   (recibe Context, construye MainViewModel con todos los repos)
     task/
       TaskFormViewModelFactory.kt
-    Navigation.kt               (conecta BlockFormResult con mainViewModel.reload())
+    Navigation.kt               (conecta BlockFormResult con mainViewModel.reload(), pasa NightSummaryScheduler)
 
 composeApp/src/iosMain/kotlin/com/mnebot/riptide/
   MainViewController.kt
+  NightSummarySchedulerImpl.ios.kt  (stub: devuelve flowOf(LocalTime(23,30)), no hace nada)
   UuidGenerator.ios.kt          (actual: NSUUID().UUIDString())
   presentation/main/
     CurrentDate.ios.kt          (actual)
@@ -200,6 +209,9 @@ Funciones:
   addOneTimeTask, addRecurringTask,
   updateOneTimeTask(original, title, blockId?, date, time?),
   deleteTask(task),
+  deleteRecurringTaskInstance(task) — borra solo esta ocurrencia,
+  deleteRecurringTaskFromDate(task) — desactiva def + borra PENDING/POSTPONED desde esta fecha,
+  deleteRecurringTaskAll(task) — desactiva def + borra todas las instancias,
   postponeTask(task, postponedTo: LocalDateTime) — marca POSTPONED + crea instancia PENDING,
   insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign, reload
 
@@ -213,6 +225,7 @@ ORDENACIÓN PANTALLA PRINCIPAL
 Bloques: por hora de inicio de su slot ese día (bloques sin horario ese día al final).
 Tareas: 1) con hora (por hora asc), 2) sin hora (orden inserción), 3) completadas al final.
   — El sub-orden dentro de completadas es igual: hora primero, sin hora después.
+Tareas sin bloque: sección propia "Sin bloque" (📋) antes de los bloques con asignación.
 Horas del bloque en cabecera: solo si tiene WeeklySlot con startTime+endTime ese día exacto.
 
 ---
@@ -222,10 +235,17 @@ UI — PANTALLA PRINCIPAL
 Fondo: OceanDeep #0A1628 → OceanMid #1B3A6B → OceanLight #2E5F9E
 Tarjetas frosted glass (blanco 20% opacidad)
 
+WeekCalendar: barra de progreso animada (28dp × 3dp) bajo cada día.
+  — Invisible si no hay tareas. Fondo semitransparente + fill animado (completadas).
+  — Día actual usa TodayIndicator (#7EC8E3) en inicial y barra.
+
 Menú contextual por pulsación larga en TaskCard:
   - Editar → abre TaskFormSheet precargado con datos de la tarea
   - Posponer (solo si no COMPLETED/EXPIRED) → abre PostponeSheet
-  - Eliminar → llama mainViewModel.deleteTask directamente
+  - Eliminar → si sourceTaskId != null, diálogo con 3 opciones:
+      · Solo esta ocurrencia
+      · Esta y las futuras
+      · Todas las ocurrencias
 
 TaskCard:
   - Barra de color del bloque a la izquierda (4dp)
@@ -246,7 +266,8 @@ TaskFormSheet:
   - Modo edición (existingTask != null): precarga campos + muestra botón "Eliminar tarea"
 
 Drawer (MainDrawer): baja desde arriba, gestos verticales.
-  Secciones: TAREAS (➕ Añadir tarea), BLOQUES (lista + ➕ Añadir bloque, editar bloque).
+  Secciones: TAREAS (➕ Añadir tarea), BLOQUES (lista + ➕ Añadir bloque, editar bloque),
+             AJUSTES (🌙 hora del resumen nocturno con DrawerTimeTextField).
 WeekCalendar: 7 días navegables, swipe horizontal, indicador día actual.
 FAB 🐟: siempre visible, abre vista del estanque (pantalla placeholder por ahora).
 
@@ -264,9 +285,36 @@ Botón eliminar solo en modo edición (rojo semitransparente).
 
 NAVEGACIÓN
 
-App.kt: NavHost startDestination ROUTE_MAIN
+App.kt: NavHost startDestination ROUTE_MAIN, recibe NightSummaryScheduler como parámetro
 Navigation.kt: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT
+  — mainGraph recibe NightSummaryScheduler y lo pasa a MainScreen
 BlockFormViewModel emite BlockFormResult → Navigation llama mainViewModel.reload() + popBackStack()
+
+---
+
+RESUMEN NOCTURNO
+
+NightSummaryProcessor (commonMain):
+  processDay(date): si no existe DaySummary → expira PENDING → calcula score → genera mensaje → guarda DaySummary
+
+NightSummaryWorker (androidMain, WorkManager):
+  - CoroutineWorker que llama NightSummaryProcessor.processDay(today)
+  - Se planifica como OneTimeWorkRequest con delay hasta la hora configurada
+  - ExistingWorkPolicy.REPLACE para reemplazar al cambiar la hora
+
+NightSummaryScheduler (commonMain, interfaz):
+  - getNightSummaryTime(): Flow<LocalTime>
+  - setNightSummaryTime(time: LocalTime)
+  - scheduleWorker(time: LocalTime)
+  Implementaciones: androidMain (DataStore + WorkManager), iosMain (stub vacío)
+
+Flujo al arrancar la app (MainActivity.onCreate):
+  1. Procesa ayer con NightSummaryProcessor (fallback si el worker no ejecutó)
+  2. Planifica WorkManager con la hora guardada en DataStore
+
+Flujo al cambiar hora en drawer:
+  1. setNightSummaryTime → persiste en DataStore
+  2. scheduleWorker → reemplaza tarea WorkManager
 
 ---
 
@@ -283,8 +331,9 @@ LÓGICA DE PUNTUACIÓN INTERNA
 score = tasksCompleted / tasksTotal — NUNCA visible al usuario.
 Mensajes emocionales (resumen nocturno):
   0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
-  ~0.5 → "Buen empuje hoy."
-  ~0.8 → "El estanque está vivo."
+  <0.4 → "Algo se movió hoy. Eso cuenta."
+  <0.7 → "Buen empuje hoy."
+  <1.0 → "El estanque está vivo."
   1.0 → "Hoy el estanque brilló."
 
 ---
@@ -315,18 +364,22 @@ MVP completado:
 ✅ Calendario semanal navegable con swipe
 ✅ Gestión de bloques (crear/editar/eliminar)
 ✅ Tareas por bloque con checkbox + estados visuales
+✅ Tareas sin bloque visibles en sección propia
 ✅ Drawer desde arriba con gestos unificados
 ✅ MarineCategoryAssigner automático
 ✅ Navigation Compose
 ✅ TaskFormSheet — crear tareas puntuales y recurrentes
 ✅ Editar, eliminar y posponer tareas (menú contextual por pulsación larga)
+✅ Eliminación granular de tareas recurrentes (esta / futuras / todas)
 ✅ Ordenación correcta de bloques y tareas
+✅ Indicadores de progreso por día en el calendario (barra animada)
+✅ Resumen nocturno (NightSummaryProcessor + WorkManager + DataStore + hora configurable)
 
-MVP pendiente:
-⬜ Indicadores de tareas por día en el calendario
-⬜ Resumen nocturno (expirar pendientes, calcular DaySummary, notificación)
+v2 en curso:
+⬜ Rachas por bloque (BlockStreak)
+⬜ Mensajes contextuales enriquecidos
+⬜ Ecosistema visual (Canvas/Lottie)
 
-v2: rachas, mensajes contextuales, ecosistema visual (Canvas/Lottie)
 v3: Ktor+PostgreSQL, perfiles, amigos, Google Sign-In
 
 ---

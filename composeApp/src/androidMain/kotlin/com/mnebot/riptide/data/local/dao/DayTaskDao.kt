@@ -31,4 +31,7 @@ interface DayTaskDao {
 
     @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId")
     suspend fun deleteBySourceTask(sourceTaskId: String)
+
+    @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId AND (status = 'PENDING' OR status = 'POSTPONED') AND date >= :fromDate")
+    suspend fun deleteBySourceTaskFromDate(sourceTaskId: String, fromDate: String)
 }

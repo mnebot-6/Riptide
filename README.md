@@ -20,7 +20,7 @@ Inspirado en **Forest**, pero más profundo y personal — orientado a la sensac
 
 **Durante el día** simplemente marcas tareas como completadas. Sin valoraciones, sin números visibles, sin presión.
 
-**Por la noche** recibes un resumen emocional:
+**Por la noche** recibes un resumen emocional a la hora que tú configures:
 - 0% completado → *"Las corrientes cambian. Mañana el mar sigue ahí."*
 - ~50% → *"Buen empuje hoy."*
 - ~80% → *"El estanque está vivo."*
@@ -54,6 +54,8 @@ Las categorías se **asignan automáticamente** y se redistribuyen al crear o el
 | Serialización | kotlinx-serialization-json 1.7.3 |
 | Arquitectura | MVVM |
 | Navegación | Navigation Compose (multiplatform) |
+| Preferencias | DataStore Preferences 1.1.7 |
+| Background | WorkManager 2.10.1 |
 | Backend (v3) | Ktor + PostgreSQL |
 | Auth (v3) | Google Sign-In |
 
@@ -68,6 +70,8 @@ kotlinxDatetime          = "0.7.1"
 androidx-lifecycle       = "2.9.6"
 androidx-navigation      = "2.9.2"
 kotlinx-serialization    = "1.7.3"
+androidx-datastore       = "1.1.7"
+androidx-work            = "2.10.1"
 ```
 
 ---
@@ -79,9 +83,11 @@ composeApp/src/
 ├── commonMain/kotlin/com/mnebot/riptide/
 │   ├── UuidGenerator.kt              (expect fun generateUUID())
 │   ├── Serializers.kt                (LocalTimeSerializer)
+│   ├── NightSummaryScheduler.kt      (interfaz + implementaciones por plataforma)
 │   ├── domain/
 │   │   ├── MarineCategoryAssigner.kt
 │   │   ├── RecurringTaskGenerator.kt
+│   │   ├── NightSummaryProcessor.kt
 │   │   ├── model/                    (WorkBlock, DayTask, DaySummary, BlockStreak,
 │   │   │                              EcosystemState, MarineCreature, BlockCategory,
 │   │   │                              MarineCategory, CreatureSpecies, Recurrence,
@@ -95,13 +101,15 @@ composeApp/src/
 │
 ├── androidMain/kotlin/com/mnebot/riptide/
 │   ├── App.kt, MainActivity.kt, DataSeeder.kt
+│   ├── NightSummaryWorker.kt         (WorkManager)
+│   ├── NightSummarySchedulerImpl.android.kt
 │   ├── UuidGenerator.android.kt      (actual)
 │   ├── data/local/
 │   │   ├── entity/                   (todas las entities Room)
 │   │   ├── dao/                      (todos los DAOs)
 │   │   ├── db/                       (RiptideDatabase v6, DatabaseProvider)
 │   │   └── mapper/                   (domain ↔ entity)
-│   ├── data/repository/              (implementaciones Room)
+│   ├── data/repository/              (implementaciones Room + UserPreferencesRepositoryImpl)
 │   └── presentation/
 │       ├── block/  BlockFormViewModelFactory
 │       ├── main/   MainViewModelFactory, CurrentDate.android, ParseColor.android
@@ -110,6 +118,7 @@ composeApp/src/
 │
 └── iosMain/kotlin/com/mnebot/riptide/
     ├── MainViewController.kt
+    ├── NightSummarySchedulerImpl.ios.kt
     ├── UuidGenerator.ios.kt          (actual)
     └── presentation/main/  CurrentDate.ios, ParseColor.ios
 ```
@@ -125,8 +134,8 @@ Ver [`docs/architecture.md`](docs/architecture.md) para detalle completo.
 | MVP — Infraestructura y CRUD | ✅ Completado |
 | MVP — Tareas puntuales y recurrentes | ✅ Completado |
 | MVP — Editar / posponer / eliminar tareas | ✅ Completado |
-| MVP — Indicadores en calendario | ⬜ Pendiente |
-| MVP — Resumen nocturno | ⬜ Pendiente |
+| MVP — Indicadores de progreso en calendario | ✅ Completado |
+| MVP — Resumen nocturno con WorkManager | ✅ Completado |
 | v2 — Rachas y mensajes contextuales | ⬜ Pendiente |
 | v2 — Ecosistema visual (Canvas/Lottie) | ⬜ Pendiente |
 | v3 — Backend + sincronización | ⬜ Pendiente |

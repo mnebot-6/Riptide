@@ -8,7 +8,10 @@ import com.mnebot.riptide.presentation.mainGraph
 import com.mnebot.riptide.presentation.main.MainViewModel
 
 @Composable
-fun App(viewModel: MainViewModel) {
+fun App(
+    viewModel: MainViewModel,
+    nightSummaryScheduler: NightSummaryScheduler
+) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -16,6 +19,7 @@ fun App(viewModel: MainViewModel) {
     ) {
         mainGraph(
             mainViewModel = viewModel,
+            nightSummaryScheduler = nightSummaryScheduler,
             navController = navController
         )
     }

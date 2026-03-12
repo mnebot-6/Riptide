@@ -14,4 +14,6 @@ interface DayTaskRepository {
     suspend fun updateStatus(id: String, status: TaskStatus)
     suspend fun delete(id: String)
     suspend fun deleteBySourceTask(sourceTaskId: String)          // al borrar una recurrente
+    suspend fun deleteBySourceId(sourceTaskId: String)
+    suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate)
 }

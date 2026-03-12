@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlinSerialization)  // añade esta línea
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -15,7 +15,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -25,13 +25,15 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.ktx)
+            implementation(libs.androidx.datastore.preferences)
+            implementation(libs.androidx.work.runtime.ktx)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -83,4 +85,3 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
     add("kspAndroid", libs.androidx.room.compiler)
 }
-

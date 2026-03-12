@@ -1,3 +1,4 @@
+// WeekCalendar.kt
 package com.mnebot.riptide.presentation.main
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -13,9 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,17 +39,23 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import com.mnebot.riptide.domain.model.DayTask
+import com.mnebot.riptide.domain.model.TaskStatus
 
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val CardBackground = Color(0x33FFFFFF)
 private val SelectedDay = Color(0x55FFFFFF)
 private val TodayIndicator = Color(0xFF7EC8E3)
+private val BarBackground = Color(0x33FFFFFF)
+private val BarCompleted = Color(0xFF7EC8E3)
+private val BarPending = Color(0x55FFFFFF)
 
 @Composable
 fun WeekCalendar(
     selectedDate: LocalDate,
     today: LocalDate,
+    tasksByDate: Map<LocalDate, List<DayTask>>,
     onDateSelected: (LocalDate) -> Unit,
     onWeekChange: (LocalDate) -> Unit
 ) {
@@ -98,10 +103,16 @@ fun WeekCalendar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         days.forEach { date ->
+            val tasksForDay = tasksByDate[date] ?: emptyList()
+            val total = tasksForDay.size
+            val completed = tasksForDay.count { it.status == TaskStatus.COMPLETED }
+
             DayCell(
                 date = date,
                 isSelected = date == selectedDate,
                 isToday = date == today,
+                taskTotal = total,
+                taskCompleted = completed,
                 onSelected = { onDateSelected(date) },
                 modifier = Modifier.weight(1f)
             )
@@ -114,6 +125,8 @@ private fun DayCell(
     date: LocalDate,
     isSelected: Boolean,
     isToday: Boolean,
+    taskTotal: Int,
+    taskCompleted: Int,
     onSelected: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -127,7 +140,7 @@ private fun DayCell(
     ) {
         Text(
             text = dayInitial(date.dayOfWeek),
-            color = TextSecondary,
+            color = if (isToday) TodayIndicator else TextSecondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )
@@ -139,12 +152,45 @@ private fun DayCell(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
         Spacer(modifier = Modifier.height(6.dp))
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .clip(CircleShape)
-                .background(if (isToday) TodayIndicator else Color.Transparent)
+        DayProgressBar(
+            total = taskTotal,
+            completed = taskCompleted,
+            isToday = isToday
         )
+    }
+}
+
+@Composable
+private fun DayProgressBar(
+    total: Int,
+    completed: Int,
+    isToday: Boolean
+) {
+    val barWidth = 28.dp
+    val barHeight = 3.dp
+
+    Box(
+        modifier = Modifier
+            .width(barWidth)
+            .height(barHeight)
+            .clip(RoundedCornerShape(2.dp))
+            .background(if (total > 0) BarPending else Color.Transparent)
+    ) {
+        if (total > 0) {
+            val fraction = completed.toFloat() / total.toFloat()
+            val animatedFraction by animateFloatAsState(
+                targetValue = fraction,
+                animationSpec = tween(durationMillis = 300),
+                label = "progressBar_${completed}_${total}"
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedFraction)
+                    .height(barHeight)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (isToday) TodayIndicator else BarCompleted)
+            )
+        }
     }
 }
 

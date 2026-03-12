@@ -196,6 +196,36 @@ class MainViewModel(
         }
     }
 
+    fun deleteRecurringTaskInstance(task: DayTask) {
+        viewModelScope.launch {
+            dayTaskRepository.delete(task.id)
+            loadDay(_uiState.value.selectedDate)
+        }
+    }
+
+    fun deleteRecurringTaskFromDate(task: DayTask) {
+        viewModelScope.launch {
+            val sourceId = task.sourceTaskId ?: return@launch
+            val date = (task.schedule as? TaskSchedule.OneTime)?.date ?: return@launch
+            // Desactivar la definición para que no genere más instancias
+            val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            recurringTaskDefRepository.update(def.copy(isActive = false))
+            // Borrar todas las instancias pendientes desde esta fecha inclusive
+            dayTaskRepository.deleteBySourceIdFromDate(sourceId, date)
+            loadDay(_uiState.value.selectedDate)
+        }
+    }
+
+    fun deleteRecurringTaskAll(task: DayTask) {
+        viewModelScope.launch {
+            val sourceId = task.sourceTaskId ?: return@launch
+            val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            recurringTaskDefRepository.update(def.copy(isActive = false))
+            dayTaskRepository.deleteBySourceId(sourceId)
+            loadDay(_uiState.value.selectedDate)
+        }
+    }
+
     fun reload() {
         loadDay(_uiState.value.selectedDate)
     }
