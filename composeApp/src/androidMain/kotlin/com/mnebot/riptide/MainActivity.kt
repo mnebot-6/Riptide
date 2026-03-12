@@ -57,7 +57,11 @@ class MainActivity : ComponentActivity() {
             val yesterday = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
                 .minus(1, DateTimeUnit.DAY)
-            processor.processDay(yesterday)
+
+            val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
+            val blockNames = blocks.associate { it.id to it.name }
+
+            processor.processDay(yesterday, blockNames)
 
             val nightTime = scheduler.getNightSummaryTime().first()
             scheduler.scheduleWorker(nightTime)

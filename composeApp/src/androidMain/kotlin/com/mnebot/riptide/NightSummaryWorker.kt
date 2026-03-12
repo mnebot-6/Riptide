@@ -10,8 +10,10 @@ import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.NightSummaryProcessor
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -36,7 +38,9 @@ class NightSummaryWorker(
         )
         val today = Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
-        processor.processDay(today)
+        val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
+        val blockNames = blocks.associate { it.id to it.name }
+        processor.processDay(today, blockNames)
         return Result.success()
     }
 

@@ -73,9 +73,10 @@
 - Actualizar al completar tareas en el resumen nocturno
 - Badge `🔥 N días` en cabecera del bloque (solo si racha ≥ 2)
 
-### Mensajes contextuales
-- Mensajes enriquecidos con contexto de rachas y progreso del ecosistema
-- Feedback emocional al completar cada tarea (no solo en el resumen nocturno)
+### ✅ Mensajes contextuales
+- `buildMessage` en `NightSummaryProcessor` — combina score, progreso y racha del mejor bloque
+- Diálogo al arrancar la app si hay resumen de ayer no visto (`pendingSummary` en `MainUiState`)
+- `dismissSummary()` en `MainViewModel` para cerrar el diálogo
 
 ### Ecosistema visual
 - Lógica de experiencia y niveles (`EcosystemState`, `MarineCreature`)

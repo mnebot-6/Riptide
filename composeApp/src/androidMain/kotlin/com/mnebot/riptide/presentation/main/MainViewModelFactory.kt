@@ -37,7 +37,8 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
                 WorkBlockRepositoryImpl(db.workBlockDao()),
                 BlockCategoryRepositoryImpl(db.blockCategoryDao())
             ),
-            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
+            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
+            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao())
         ) as T
     }
 }

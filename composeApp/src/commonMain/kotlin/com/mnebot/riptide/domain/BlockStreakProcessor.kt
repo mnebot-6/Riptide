@@ -13,14 +13,13 @@ class BlockStreakProcessor(
     private val dayTaskRepository: DayTaskRepository,
     private val blockStreakRepository: BlockStreakRepository
 ) {
-    suspend fun processDay(date: LocalDate, blockIds: List<String>) {
+    suspend fun processDay(date: LocalDate, blockIds: List<String>): Map<String, Int> {
         val yesterday = date.minus(1, DateTimeUnit.DAY)
+        val result = mutableMapOf<String, Int>()
 
         for (blockId in blockIds) {
             val tasksToday = dayTaskRepository.getByDateAndBlock(date, blockId)
-
-            // Día neutral: sin tareas → no toca la racha
-            if (tasksToday.isEmpty()) continue
+            if (tasksToday.isEmpty()) continue  // día neutral
 
             val hadActivity = tasksToday.any { it.status == TaskStatus.COMPLETED }
             val existing = blockStreakRepository.getByBlockId(blockId)
@@ -28,26 +27,20 @@ class BlockStreakProcessor(
             if (hadActivity) {
                 val isConsecutive = existing?.lastActiveDate == yesterday
                 val newStreak = if (isConsecutive) (existing!!.currentStreak + 1) else 1
-
                 if (existing == null) {
-                    blockStreakRepository.insert(
-                        BlockStreak(
-                            blockId = blockId,
-                            currentStreak = newStreak,
-                            lastActiveDate = date
-                        )
-                    )
+                    blockStreakRepository.insert(BlockStreak(blockId, newStreak, date))
                 } else {
-                    blockStreakRepository.update(
-                        existing.copy(currentStreak = newStreak, lastActiveDate = date)
-                    )
+                    blockStreakRepository.update(existing.copy(currentStreak = newStreak, lastActiveDate = date))
                 }
-
+                result[blockId] = newStreak
             } else {
                 if (existing != null && existing.lastActiveDate != date) {
                     blockStreakRepository.update(existing.copy(currentStreak = 0))
                 }
+                result[blockId] = 0
             }
         }
+
+        return result
     }
 }

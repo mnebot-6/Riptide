@@ -205,21 +205,25 @@ MVVM
 MainUiState: selectedDate(LocalDate), blocks(List<WorkBlock>),
   tasksByBlock(Map<String?, List<DayTask>>),
   streaksByBlock(Map<String, Int>),
+  pendingSummary(DaySummary?),
   isLoading(Boolean), error(String?)
   — clave null = tareas sin bloque
 
 MainViewModel constructor: workBlockRepository, blockCategoryRepository, dayTaskRepository,
-  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner, blockStreakRepository
+  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner,
+  blockStreakRepository, daySummaryRepository
 Funciones:
   selectDate, toggleTaskCompleted,
   addOneTimeTask, addRecurringTask,
   updateOneTimeTask(original, title, blockId?, date, time?),
   deleteTask(task),
-  deleteRecurringTaskInstance(task) — borra solo esta ocurrencia,
-  deleteRecurringTaskFromDate(task) — desactiva def + borra PENDING/POSTPONED desde esta fecha,
-  deleteRecurringTaskAll(task) — desactiva def + borra todas las instancias,
-  postponeTask(task, postponedTo: LocalDateTime) — marca POSTPONED + crea instancia PENDING,
-  insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign, reload
+  deleteRecurringTaskInstance(task),
+  deleteRecurringTaskFromDate(task),
+  deleteRecurringTaskAll(task),
+  postponeTask(task, postponedTo: LocalDateTime),
+  insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign,
+  dismissSummary() — limpia pendingSummary del estado,
+  reload() — recarga el día y comprueba resumen pendiente
 
 BlockFormViewModel: saveBlock (insert o update), deleteBlock.
   Emite BlockFormResult.Saved / .Deleted.
@@ -301,10 +305,12 @@ BlockFormViewModel emite BlockFormResult → Navigation llama mainViewModel.relo
 RESUMEN NOCTURNO
 
 NightSummaryProcessor (commonMain):
-  processDay(date): si no existe DaySummary → expira PENDING → calcula score → genera mensaje → guarda DaySummary
+  processDay(date, blockNames): si no existe DaySummary → expira PENDING → calcula score
+    → llama blockStreakProcessor.processDay (devuelve Map<String,Int>) → buildMessage → guarda DaySummary
+  buildMessage: score base + progreso "X de Y tareas" + racha del bloque top (≥3) con nombre
 
 NightSummaryWorker (androidMain, WorkManager):
-  - CoroutineWorker que llama NightSummaryProcessor.processDay(today)
+  - CoroutineWorker que llama NightSummaryProcessor.processDay(today, blockNames)
   - Se planifica como OneTimeWorkRequest con delay hasta la hora configurada
   - ExistingWorkPolicy.REPLACE para reemplazar al cambiar la hora
 
@@ -317,10 +323,9 @@ NightSummaryScheduler (commonMain, interfaz):
 Flujo al arrancar la app (MainActivity.onCreate):
   1. Procesa ayer con NightSummaryProcessor (fallback si el worker no ejecutó)
   2. Planifica WorkManager con la hora guardada en DataStore
+  3. viewModel.reload() → checkPendingSummary() → pendingSummary en uiState si existe resumen de ayer
 
-Flujo al cambiar hora en drawer:
-  1. setNightSummaryTime → persiste en DataStore
-  2. scheduleWorker → reemplaza tarea WorkManager
+UI: diálogo AlertDialog en MainScreen si pendingSummary != null, se cierra con dismissSummary()
 
 ---
 
@@ -380,10 +385,10 @@ MVP completado:
 ✅ Ordenación correcta de bloques y tareas
 ✅ Indicadores de progreso por día en el calendario (barra animada)
 ✅ Resumen nocturno (NightSummaryProcessor + WorkManager + DataStore + hora configurable)
-✅ Rachas por bloque (BlockStreak) — badge 🔥 en BlockHeader, lógica en NightSummaryProcessor
+✅ Mensajes contextuales (buildMessage con rachas + progreso + nombre de bloque, diálogo al arrancar)
 
 v2 en curso:
-⬜ Mensajes contextuales enriquecidos
+⬜ Ecosistema visual (Canvas/Lottie)
 ⬜ Mensajes contextuales enriquecidos
 ⬜ Ecosistema visual (Canvas/Lottie)
 

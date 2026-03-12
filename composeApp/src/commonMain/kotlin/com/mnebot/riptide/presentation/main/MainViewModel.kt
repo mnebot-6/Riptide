@@ -7,6 +7,7 @@ import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.domain.repository.BlockCategoryRepository
 import com.mnebot.riptide.domain.repository.BlockStreakRepository
+import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
 import com.mnebot.riptide.domain.repository.WorkBlockRepository
@@ -16,9 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -29,7 +32,8 @@ class MainViewModel(
     private val recurringTaskDefRepository: RecurringTaskDefRepository,
     private val recurringTaskGenerator: RecurringTaskGenerator,
     private val marineCategoryAssigner: MarineCategoryAssigner,
-    private val blockStreakRepository: BlockStreakRepository
+    private val blockStreakRepository: BlockStreakRepository,
+    private val daySummaryRepository: DaySummaryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -160,6 +164,18 @@ class MainViewModel(
         }
     }
 
+    private suspend fun checkPendingSummary() {
+        val yesterday = currentDate().minus(1, DateTimeUnit.DAY)
+        val summary = daySummaryRepository.getByDate(yesterday)
+        if (summary != null) {
+            _uiState.update { it.copy(pendingSummary = summary) }
+        }
+    }
+
+    fun dismissSummary() {
+        _uiState.update { it.copy(pendingSummary = null) }
+    }
+
     fun deleteTask(task: DayTask) {
         viewModelScope.launch {
             dayTaskRepository.delete(task.id)
@@ -235,6 +251,9 @@ class MainViewModel(
     }
 
     fun reload() {
-        loadDay(_uiState.value.selectedDate)
+        viewModelScope.launch {
+            loadDay(_uiState.value.selectedDate)
+            checkPendingSummary()
+        }
     }
 }

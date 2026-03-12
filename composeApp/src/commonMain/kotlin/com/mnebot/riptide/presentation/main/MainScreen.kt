@@ -257,6 +257,41 @@ fun MainScreen(
             )
         }
 
+        // Resumen nocturno
+        uiState.pendingSummary?.let { summary ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSummary() },
+                containerColor = Color(0xFF1B3A6B),
+                title = {
+                    Text(
+                        "Resumen de ayer",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            summary.feedbackMessage,
+                            color = TextPrimary,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            "${summary.tasksCompleted} de ${summary.tasksTotal} tareas completadas",
+                            color = TextSecondary,
+                            fontSize = 13.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissSummary() }) {
+                        Text("Cerrar", color = Color(0xFF7EC8E3))
+                    }
+                }
+            )
+        }
+
         // Drawer
         if (showDrawer || drawerOffsetY.value > 0f) {
             Box(

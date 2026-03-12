@@ -7,6 +7,7 @@ import com.mnebot.riptide.data.repository.*
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
 object DataSeeder {
