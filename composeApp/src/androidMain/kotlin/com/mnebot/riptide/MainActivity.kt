@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                 WorkBlockRepositoryImpl(db.workBlockDao()),
                 BlockCategoryRepositoryImpl(db.blockCategoryDao())
             )
-            DataSeeder.seedIfEmpty(db, assigner, applicationContext)
+            DataSeeder.seedIfEmpty(db, assigner)
 
             val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
             val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
