@@ -6,13 +6,16 @@ import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.TaskStatus
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
+import com.mnebot.riptide.domain.repository.UserPreferencesRepository
+import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import kotlinx.datetime.LocalDate
 
 class NightSummaryProcessor(
     private val dayTaskRepository: DayTaskRepository,
     private val daySummaryRepository: DaySummaryRepository,
     private val blockStreakProcessor: BlockStreakProcessor? = null,
-    private val ecosystemProcessor: EcosystemProcessor? = null
+    private val ecosystemProcessor: EcosystemProcessor? = null,
+    private val userPreferencesRepository: UserPreferencesRepository? = null,
 ) {
     suspend fun processDay(
         date: LocalDate,
@@ -49,14 +52,19 @@ class NightSummaryProcessor(
             )
         )
 
-        // Bonus nocturno al ecosistema
         val bestStreak = streaks.values.maxOrNull() ?: 0
         val allCategories = tasks
             .mapNotNull { it.blockId }
             .flatMap { blockId -> blockCategories[blockId] ?: emptyList() }
             .distinct()
 
-        ecosystemProcessor?.addNightBonus(score, bestStreak, allCategories)
+        val newUnlocks: List<CreatureSpec> =
+            ecosystemProcessor?.addNightBonus(score, bestStreak, allCategories) ?: emptyList()
+
+        if (newUnlocks.isNotEmpty() && userPreferencesRepository != null) {
+            val existing = userPreferencesRepository.getPendingUnlocks()
+            userPreferencesRepository.setPendingUnlocks(existing + newUnlocks.map { it.emoji })
+        }
     }
 
     private fun buildMessage(
@@ -74,7 +82,6 @@ class NightSummaryProcessor(
             else -> "Hoy el estanque brilló."
         }
 
-        // Bloque con racha más alta (mínimo 3 para mencionarlo)
         val topEntry = streaks.entries
             .filter { it.value >= 3 }
             .maxByOrNull { it.value }

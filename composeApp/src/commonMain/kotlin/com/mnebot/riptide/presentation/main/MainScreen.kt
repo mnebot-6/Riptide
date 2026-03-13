@@ -29,6 +29,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.domain.model.*
+import com.mnebot.riptide.presentation.aquarium.AquariumBackground
+import com.mnebot.riptide.presentation.aquarium.AquariumCreatures
 import com.mnebot.riptide.presentation.task.PostponeSheet
 import com.mnebot.riptide.presentation.task.TaskFormSheet
 import kotlinx.coroutines.launch
@@ -164,10 +166,28 @@ fun MainScreen(
                 }
             }
     ) {
-        OceanBackground()
+        // Capa 1 — fondo siempre visible
+        AquariumBackground()
+
+        // Capa 2 — criaturas siempre visibles (si nivel >= 2)
+        AquariumCreatures(
+            ecosystemByCategory = uiState.ecosystemByCategory
+        )
 
         when {
-            showAquarium -> AquariumFullScreen(onClose = { showAquarium = false })
+            showAquarium -> {
+                AquariumBackground()  // ya está en el fondo, aquí solo el botón cerrar
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                    FloatingActionButton(
+                        onClick = { showAquarium = false },
+                        modifier = Modifier.padding(24.dp),
+                        containerColor = CardBackground,
+                        contentColor = TextPrimary,
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(0.dp)
+                    ) { Text("✕", fontSize = 20.sp) }
+                }
+            }
             else -> {
                 val sorted = sortedBlocks(uiState.blocks, uiState.tasksByBlock, uiState.selectedDate)
                 MainContent(
@@ -287,6 +307,59 @@ fun MainScreen(
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSummary() }) {
                         Text("Cerrar", color = Color(0xFF7EC8E3))
+                    }
+                }
+            )
+        }
+
+        val currentUnlock = uiState.pendingUnlocks.firstOrNull()
+        if (currentUnlock != null && uiState.pendingSummary == null) {
+            var nickname by remember(currentUnlock) { mutableStateOf("") }
+
+            AlertDialog(
+                onDismissRequest = {},
+                containerColor = Color(0xFF1B3A6B),
+                title = {
+                    Text(
+                        "¡Algo nuevo en el estanque!",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(currentUnlock.emoji, fontSize = 48.sp)
+                        Text(
+                            "Un nuevo habitante ha llegado al estanque.\n¿Cómo quieres llamarle?",
+                            color = TextSecondary,
+                            fontSize = 14.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        OutlinedTextField(
+                            value = nickname,
+                            onValueChange = { nickname = it },
+                            placeholder = { Text("Nombre...", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedBorderColor = Color(0xFF7EC8E3),
+                                unfocusedBorderColor = TextSecondary
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { viewModel.confirmUnlock(currentUnlock, nickname) },
+                        enabled = nickname.isNotBlank()
+                    ) {
+                        Text("Bienvenido al estanque 🌊", color = Color(0xFF7EC8E3))
                     }
                 }
             )
@@ -432,29 +505,6 @@ private fun ContextMenuItem(
             .clickable { onClick() }
             .padding(vertical = 10.dp)
     )
-}
-
-@Composable
-private fun OceanBackground() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(OceanDeep, OceanMid, OceanLight)))
-    )
-}
-
-@Composable
-private fun AquariumFullScreen(onClose: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("🐟 🪸 🦞 🐚", fontSize = 48.sp, color = TextPrimary)
-        FloatingActionButton(
-            onClick = onClose,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = CardBackground,
-            contentColor = TextPrimary,
-            elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) { Text("✕", fontSize = 20.sp) }
-    }
 }
 
 @Composable

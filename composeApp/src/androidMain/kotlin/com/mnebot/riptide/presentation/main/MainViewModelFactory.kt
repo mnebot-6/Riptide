@@ -43,7 +43,9 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
             ecosystemProcessor = EcosystemProcessor(
                 EcosystemStateRepositoryImpl(db.ecosystemStateDao())
             ),
-            ecosystemStateRepository = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            ecosystemStateRepository = EcosystemStateRepositoryImpl(db.ecosystemStateDao()),
+            userPreferencesRepository = UserPreferencesRepositoryImpl(context),
+            marineCreatureRepository = MarineCreatureRepositoryImpl(db.marineCreatureDao()),
         ) as T
     }
 }

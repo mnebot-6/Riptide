@@ -66,26 +66,84 @@
 
 ---
 
-## v2 — En curso
+## ✅ v2 completada
 
-### ✅ Rachas (`BlockStreak`)
-- Calcular y persistir racha de días consecutivos por bloque
-- Actualizar al completar tareas en el resumen nocturno
-- Badge `🔥 N días` en cabecera del bloque (solo si racha ≥ 2)
+### Rachas (`BlockStreak`)
+- `BlockStreakProcessor` — calcula y persiste racha de días consecutivos por bloque
+- `processDay` devuelve `Map<String, Int>` (blockId → newStreak) para uso en `NightSummaryProcessor`
+- Badge `🔥 N días` en `BlockHeader` (solo si racha ≥ 2, color #FFB347)
+- Día sin tareas = neutral, no toca la racha
 
-### ✅ Mensajes contextuales
-- `buildMessage` en `NightSummaryProcessor` — combina score, progreso y racha del mejor bloque
+### Mensajes contextuales
+- `buildMessage` en `NightSummaryProcessor` — combina score, progreso y racha del bloque top (≥ 3 días)
 - Diálogo al arrancar la app si hay resumen de ayer no visto (`pendingSummary` en `MainUiState`)
 - `dismissSummary()` en `MainViewModel` para cerrar el diálogo
 
-### Ecosistema visual
-- Lógica de experiencia y niveles (`EcosystemState`, `MarineCreature`)
-- Vista del estanque con Canvas
-- Animaciones al completar tareas
+### Lógica de experiencia y niveles
+- `EcosystemLevelCalculator` — curva exponencial suave (+50 XP por nivel desde nivel 2)
+- `EcosystemProcessor` — `addXpForTask` y `addNightBonus`, XP dividida entre categorías del bloque
+- 10 XP por tarea completada (tiempo real); bonus nocturno según score + bestStreak
+- `EcosystemProcessor` devuelve `List<CreatureSpec>` con las criaturas recién desbloqueadas
+
+### Ecosistema visual — AquariumBackground
+- `AquariumBackground` — fondo oceánico con plantas animadas y burbujas, siempre visible detrás de la UI
+- Plantas con oscilación suave (`swayAngle` con `Animatable`)
+- Burbujas con trayectoria vertical + oscilación horizontal (`sin()`)
+- Reemplaza el `OceanBackground` estático anterior
+
+### Ecosistema visual — AquariumCreature
+- `CreatureSpec` — modelo ligero con emoji, especie, categoría, unlockLevel, swimDuration, wobbleAmplitude
+- `allCreatures` — 10 criaturas (2 por categoría marina), se desbloquean en niveles 2 y 5
+- `AquariumCreatures` — composable que dibuja criaturas desbloqueadas sobre el fondo con `drawWithContent`
+- Criaturas móviles nadan de lado a lado con oscilación vertical (`sin()`), espejadas según dirección
+- Criaturas fijas (FLORA, MOLLUSK) ancladas en zona inferior
+- `expect fun DrawScope.drawEmoji(...)` — expect/actual para renderizado de emojis en Canvas
+  - androidMain: `nativeCanvas.drawText` con `android.graphics.Paint`
+  - iosMain: pendiente arreglar (stub)
+- Criaturas visibles siempre en el fondo detrás de las tareas; pantalla completa al pulsar FAB 🐟
+
+### Desbloqueo de criaturas
+- Al completar tarea o procesar resumen nocturno → detección automática de nivel cruzado
+- `pendingUnlocks: List<CreatureSpec>` en `MainUiState`
+- Persistencia en DataStore (`UserPreferencesRepository`) para sobrevivir entre sesiones (caso worker nocturno)
+- Diálogo de desbloqueo: emoji animado + mensaje + campo de nombre obligatorio
+- Orden de diálogos al arrancar: primero resumen nocturno, luego desbloqueos en cola
+- `confirmUnlock(spec, nickname)` en `MainViewModel` — guarda `MarineCreature` con nickname
+- `dismissUnlock()` — descarta sin guardar nombre (avanza al siguiente en cola)
 
 ---
 
-## v3
+## v3 — Revisión y pulido
+
+Antes de pasar al backend, una versión dedicada a estabilizar lo construido:
+
+### Calidad y robustez
+- Arreglar `AquariumCreature.ios.kt` — implementación real con UIKit/CoreGraphics
+- Revisar y unificar gestos (drawer, swipe de días, scroll de lista)
+- Validar flujo completo de tareas recurrentes (generación, edición, eliminación)
+- Revisar comportamiento del resumen nocturno en edge cases (app cerrada, sin tareas, cambio de hora)
+- Limpiar `DataSeeder` para producción (sin XP sembrada, sin unlocks pregrabados)
+
+### UX y feedback
+- Animación de entrada de criatura al desbloquearse (entra nadando desde el borde)
+- Revisar y pulir mensajes del resumen nocturno
+- Feedback visual al completar tarea (animación sutil en la card o en el ecosistema)
+- Revisar accesibilidad básica (tamaños de texto, contraste)
+
+### Inputs y formularios
+- Revisar `TaskFormSheet` — validaciones, UX del selector de días recurrentes
+- Revisar `BlockFormScreen` — validaciones de nombre vacío, emoji vacío
+- Revisar `PostponeSheet` — validación de fecha pasada
+
+### Técnico
+- Migrar de `fallbackToDestructiveMigration` a migraciones reales de Room
+- Revisar memory leaks potenciales en ViewModels y coroutines
+- Añadir logs de error estructurados
+- Preparar firma de la app para distribución
+
+---
+
+## v4 — Backend y social
 
 - Backend Ktor + PostgreSQL
 - Sincronización offline-first (IDs UUID ya preparados)

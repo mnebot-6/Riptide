@@ -1,0 +1,28 @@
+package com.mnebot.riptide.presentation.aquarium
+
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.unit.sp
+
+actual fun DrawScope.drawEmoji(
+    emoji: String,
+    x: Float,
+    y: Float,
+    sizeSp: Float,
+    mirrored: Boolean
+) {
+    drawIntoCanvas { canvas ->
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            textSize = sizeSp.sp.toPx()
+        }
+        val native = canvas.nativeCanvas
+        native.save()
+        if (mirrored) {
+            native.scale(-1f, 1f, x, y)
+        }
+        native.drawText(emoji, x, y, paint)
+        native.restore()
+    }
+}

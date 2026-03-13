@@ -26,11 +26,13 @@ Inspirado en **Forest**, pero más profundo y personal — orientado a la sensac
 - ~80% → *"El estanque está vivo."*
 - 100% → *"Hoy el estanque brilló."*
 
+Si llevas varios días seguidos activo en un bloque, el mensaje lo reconoce: *"Trabajo lleva 5 días seguidos 🔥"*
+
 ---
 
 ## El ecosistema marino
 
-Cada bloque tiene asignada automáticamente una **categoría marina**. La constancia en cada bloque hace crecer esa parte del ecosistema de forma independiente.
+Cada bloque tiene asignada automáticamente una **categoría marina**. La constancia hace crecer esa parte del ecosistema de forma independiente y silenciosa.
 
 | Categoría | Ejemplo de bloque |
 |---|---|
@@ -41,6 +43,8 @@ Cada bloque tiene asignada automáticamente una **categoría marina**. La consta
 | 🦈 Pelágicos | Proyectos creativos |
 
 Las categorías se **asignan automáticamente** y se redistribuyen al crear o eliminar bloques. El usuario nunca las configura.
+
+Al alcanzar ciertos niveles de constancia, nuevos habitantes aparecen en el estanque. Tú les pones el nombre.
 
 ---
 
@@ -56,8 +60,8 @@ Las categorías se **asignan automáticamente** y se redistribuyen al crear o el
 | Navegación | Navigation Compose (multiplatform) |
 | Preferencias | DataStore Preferences 1.1.7 |
 | Background | WorkManager 2.10.1 |
-| Backend (v3) | Ktor + PostgreSQL |
-| Auth (v3) | Google Sign-In |
+| Backend (v4) | Ktor + PostgreSQL |
+| Auth (v4) | Google Sign-In |
 
 Versiones clave (`libs.versions.toml`):
 ```toml
@@ -81,49 +85,57 @@ androidx-work            = "2.10.1"
 ```
 composeApp/src/
 ├── commonMain/kotlin/com/mnebot/riptide/
-│   ├── UuidGenerator.kt              (expect fun generateUUID())
-│   ├── Serializers.kt                (LocalTimeSerializer)
-│   ├── NightSummaryScheduler.kt      (interfaz + implementaciones por plataforma)
+│   ├── UuidGenerator.kt
+│   ├── Serializers.kt
+│   ├── NightSummaryScheduler.kt
 │   ├── domain/
 │   │   ├── MarineCategoryAssigner.kt
 │   │   ├── RecurringTaskGenerator.kt
+│   │   ├── BlockStreakProcessor.kt
 │   │   ├── NightSummaryProcessor.kt
-│   │   ├── model/                    (WorkBlock, DayTask, DaySummary, BlockStreak,
-│   │   │                              EcosystemState, MarineCreature, BlockCategory,
-│   │   │                              MarineCategory, CreatureSpecies, Recurrence,
-│   │   │                              WeeklySlot, TaskStatus, TaskSchedule, RecurringTaskDef)
-│   │   └── repository/               (interfaces)
+│   │   ├── EcosystemProcessor.kt
+│   │   ├── EcosystemLevelCalculator.kt
+│   │   ├── model/
+│   │   │   WorkBlock, DayTask, RecurringTaskDef, DaySummary,
+│   │   │   BlockStreak, EcosystemState, MarineCreature,
+│   │   │   BlockCategory, MarineCategory, CreatureSpecies,
+│   │   │   Recurrence, WeeklySlot, TaskStatus, TaskSchedule
+│   │   └── repository/  (interfaces)
 │   └── presentation/
-│       ├── block/  BlockFormScreen, BlockFormViewModel
-│       ├── main/   MainScreen, MainViewModel, MainUiState, WeekCalendar,
-│       │           MainDrawer, CurrentDate(expect), ParseColor(expect)
-│       └── task/   TaskFormSheet, PostponeSheet, TaskFormViewModel
+│       ├── aquarium/
+│       │   AquariumBackground, AquariumCreature (+ expect drawEmoji)
+│       ├── block/   BlockFormScreen, BlockFormViewModel
+│       ├── main/    MainScreen, MainViewModel, MainUiState,
+│       │            WeekCalendar, MainDrawer,
+│       │            CurrentDate(expect), ParseColor(expect)
+│       └── task/    TaskFormSheet, PostponeSheet, TaskFormViewModel
 │
 ├── androidMain/kotlin/com/mnebot/riptide/
 │   ├── App.kt, MainActivity.kt, DataSeeder.kt
-│   ├── NightSummaryWorker.kt         (WorkManager)
+│   ├── NightSummaryWorker.kt
 │   ├── NightSummarySchedulerImpl.android.kt
-│   ├── UuidGenerator.android.kt      (actual)
+│   ├── UuidGenerator.android.kt
 │   ├── data/local/
-│   │   ├── entity/                   (todas las entities Room)
-│   │   ├── dao/                      (todos los DAOs)
-│   │   ├── db/                       (RiptideDatabase v6, DatabaseProvider)
-│   │   └── mapper/                   (domain ↔ entity)
-│   ├── data/repository/              (implementaciones Room + UserPreferencesRepositoryImpl)
+│   │   ├── entity/   (todas las entities Room)
+│   │   ├── dao/      (todos los DAOs)
+│   │   ├── db/       RiptideDatabase v6, DatabaseProvider
+│   │   └── mapper/   (domain ↔ entity)
+│   ├── data/repository/
+│   │   (todas las implementaciones Room + UserPreferencesRepositoryImpl)
 │   └── presentation/
-│       ├── block/  BlockFormViewModelFactory
-│       ├── main/   MainViewModelFactory, CurrentDate.android, ParseColor.android
-│       ├── task/   TaskFormViewModelFactory
+│       ├── aquarium/  AquariumCreature.android.kt (actual drawEmoji)
+│       ├── block/     BlockFormViewModelFactory
+│       ├── main/      MainViewModelFactory, CurrentDate.android, ParseColor.android
+│       ├── task/      TaskFormViewModelFactory
 │       └── Navigation.kt
 │
 └── iosMain/kotlin/com/mnebot/riptide/
     ├── MainViewController.kt
     ├── NightSummarySchedulerImpl.ios.kt
-    ├── UuidGenerator.ios.kt          (actual)
+    ├── UuidGenerator.ios.kt
+    ├── presentation/aquarium/  AquariumCreature.ios.kt (pendiente arreglar)
     └── presentation/main/  CurrentDate.ios, ParseColor.ios
 ```
-
-Ver [`docs/architecture.md`](docs/architecture.md) para detalle completo.
 
 ---
 
@@ -136,9 +148,11 @@ Ver [`docs/architecture.md`](docs/architecture.md) para detalle completo.
 | MVP — Editar / posponer / eliminar tareas | ✅ Completado |
 | MVP — Indicadores de progreso en calendario | ✅ Completado |
 | MVP — Resumen nocturno con WorkManager | ✅ Completado |
-| v2 — Rachas y mensajes contextuales | ⬜ Pendiente |
-| v2 — Ecosistema visual (Canvas/Lottie) | ⬜ Pendiente |
-| v3 — Backend + sincronización | ⬜ Pendiente |
+| v2 — Rachas y mensajes contextuales | ✅ Completado |
+| v2 — Ecosistema visual con Canvas | ✅ Completado |
+| v2 — Desbloqueo de criaturas con nombre | ✅ Completado |
+| v3 — Revisión, pulido y estabilización | 🔄 Siguiente |
+| v4 — Backend + sincronización + social | ⬜ Pendiente |
 
 Ver [`docs/roadmap.md`](docs/roadmap.md) para detalle completo.
 

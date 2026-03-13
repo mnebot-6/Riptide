@@ -50,8 +50,8 @@ enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 | Estado | Descripción |
 |--------|-------------|
 | PENDING | Estado por defecto al crear |
-| COMPLETED | Da experiencia al ecosistema marino |
-| EXPIRED | Pendiente al hacer el resumen nocturno; no da experiencia |
+| COMPLETED | Da XP al ecosistema marino (tiempo real) |
+| EXPIRED | Pendiente al hacer el resumen nocturno; no da XP |
 | POSTPONED | Tarea pospuesta; se crea nueva instancia PENDING en la fecha elegida |
 
 ---
@@ -144,17 +144,11 @@ data class DaySummary(
 )
 ```
 
-Lógica de puntuación interna:
-```kotlin
-fun calculateDayScore(tasks: List<DayTask>): Float =
-    if (tasks.isEmpty()) 0f
-    else tasks.count { it.status == TaskStatus.COMPLETED }.toFloat() / tasks.size
-```
-
-Mensajes según score:
+Mensajes según score (con prefijo de progreso si score parcial y sufijo de racha si top ≥ 3 días):
 - `0.0` → "Las corrientes cambian. Mañana el mar sigue ahí."
-- `~0.5` → "Buen empuje hoy."
-- `~0.8` → "El estanque está vivo."
+- `< 0.4` → "Algo se movió hoy. Eso cuenta."
+- `< 0.7` → "Buen empuje hoy."
+- `< 1.0` → "El estanque está vivo."
 - `1.0` → "Hoy el estanque brilló."
 
 ---
@@ -163,22 +157,18 @@ Mensajes según score:
 
 ```kotlin
 data class BlockStreak(
-    val blockId: String,
+    val blockId: String,        // PK natural, sin campo id separado
     val currentStreak: Int,
     val lastActiveDate: LocalDate
 )
 ```
 
-Sin campo `id` — `blockId` es la clave primaria natural de esta tabla.
-
 Lógica de actualización (en `BlockStreakProcessor`):
-- Al menos 1 tarea COMPLETED en el bloque ese día → día activo
+- Al menos 1 tarea COMPLETED en el bloque ese día → día activo → incrementa racha si consecutivo
 - Sin tareas ese día → día neutral, no toca la racha
 - Tareas pero ninguna COMPLETED → rompe la racha (`currentStreak = 0`)
-- Día activo consecutivo al `lastActiveDate` → incrementa racha
-- Día activo no consecutivo → reinicia racha a 1
 
-UI: se muestra `🔥 N días` en `BlockHeader` solo si `currentStreak >= 2`.
+UI: `🔥 N días` en `BlockHeader` solo si `currentStreak >= 2` (color #FFB347).
 
 ---
 
@@ -194,6 +184,21 @@ data class EcosystemState(
 )
 ```
 
+Un registro por categoría marina (5 en total). Curva de niveles:
+
+| Nivel | XP total requerida |
+|---|---|
+| 1 | 0 |
+| 2 | 100 |
+| 3 | 250 |
+| 4 | 450 |
+| 5 | 700 |
+| N | nivel anterior + (N-1)*50 |
+
+Fuentes de XP:
+- Completar tarea (tiempo real): 10 XP divididas entre las categorías del bloque
+- Bonus nocturno: `score≥1.0→+50` | `score≥0.7→+25` | `score≥0.4→+10` + `bestStreak*5`, dividido entre categorías
+
 ---
 
 ## MarineCreature / CreatureSpecies
@@ -201,40 +206,68 @@ data class EcosystemState(
 ```kotlin
 data class MarineCreature(
     val id: String,
-    val ecosystemId: String,
+    val ecosystemId: String,        // id del EcosystemState de su categoría
     val species: CreatureSpecies,
-    val nickname: String?,
+    val nickname: String?,          // nombre dado por el usuario al desbloquear
     val unlockedAtLevel: Int,
     val experience: Int,
     val creatureLevel: Int,
     val unlockedAt: LocalDateTime
 )
 
-enum class CreatureSpecies {
-    // FISH
-    CLOWNFISH, ANGELFISH,
-    // FLORA
-    BRAIN_CORAL, ANEMONE,
-    // CRUSTACEAN
-    HERMIT_CRAB, LOBSTER,
-    // MOLLUSK
-    STARFISH, SEA_URCHIN,
-    // PELAGIC
-    MOON_JELLYFISH, MANTA_RAY
+enum class CreatureSpecies(val category: MarineCategory, val displayName: String) {
+    CLOWNFISH(FISH, "Pez payaso"),
+    ANGELFISH(FISH, "Pez ángel"),
+    BRAIN_CORAL(FLORA, "Coral cerebro"),
+    ANEMONE(FLORA, "Anémona"),
+    HERMIT_CRAB(CRUSTACEAN, "Cangrejo ermitaño"),
+    LOBSTER(CRUSTACEAN, "Langosta"),
+    STARFISH(MOLLUSK, "Estrella de mar"),
+    SEA_URCHIN(MOLLUSK, "Erizo de mar"),
+    MOON_JELLYFISH(PELAGIC, "Medusa luna"),
+    MANTA_RAY(PELAGIC, "Raya manta")
 }
 ```
 
 ---
 
-## Room — androidMain (v6)
+## CreatureSpec (presentation/aquarium)
 
-Entities principales y su tabla:
+Modelo ligero usado en la capa de presentación para el renderizado y detección de desbloqueos:
+
+```kotlin
+data class CreatureSpec(
+    val emoji: String,
+    val species: CreatureSpecies,
+    val category: MarineCategory,
+    val unlockLevel: Int,
+    val swimDuration: Int,      // ms del ciclo de natación; 0 = criatura fija
+    val wobbleAmplitude: Float  // amplitud de oscilación vertical (fracción de pantalla)
+)
+```
+
+| Emoji | Especie | Categoría | Nivel desbloqueo |
+|---|---|---|---|
+| 🐟 | CLOWNFISH | FISH | 2 |
+| 🪸 | BRAIN_CORAL | FLORA | 2 |
+| 🦞 | LOBSTER | CRUSTACEAN | 2 |
+| 🐚 | SEA_URCHIN | MOLLUSK | 2 |
+| 🦈 | MANTA_RAY | PELAGIC | 2 |
+| 🐠 | ANGELFISH | FISH | 5 |
+| 🌿 | ANEMONE | FLORA | 5 |
+| 🦀 | HERMIT_CRAB | CRUSTACEAN | 5 |
+| ⭐ | STARFISH | MOLLUSK | 5 |
+| 🪼 | MOON_JELLYFISH | PELAGIC | 5 |
+
+---
+
+## Room — androidMain (v6)
 
 | Entity | Tabla |
 |--------|-------|
 | `WorkBlockEntity` | `work_blocks` |
 | `BlockCategoryEntity` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity` | `day_tasks` — `scheduleType`, `date?`, `time?`, `recurrence?` (JSON), `status`, `completedAt?`, `postponedTo?`, `sourceTaskId?`, `blockId?` FK SET_NULL |
+| `DayTaskEntity` | `day_tasks` — `scheduleType`, `date?`, `time?`, `recurrence?` JSON, `status`, `completedAt?`, `postponedTo?`, `sourceTaskId?`, `blockId?` FK SET_NULL |
 | `RecurringTaskDefEntity` | `recurring_task_defs` — `blockId` FK CASCADE, `recurrence` JSON |
 | `DaySummaryEntity` | `day_summaries` |
 | `BlockStreakEntity` | `block_streaks` — PK `blockId` |

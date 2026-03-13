@@ -1,0 +1,124 @@
+package com.mnebot.riptide.presentation.aquarium
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.draw.drawWithContent
+import com.mnebot.riptide.domain.model.CreatureSpecies
+import com.mnebot.riptide.domain.model.EcosystemState
+import com.mnebot.riptide.domain.model.MarineCategory
+import kotlin.math.sin
+
+val emojiToSpecies = mapOf(
+    "🐟" to CreatureSpecies.CLOWNFISH,
+    "🐠" to CreatureSpecies.ANGELFISH,
+    "🪸" to CreatureSpecies.BRAIN_CORAL,
+    "🌿" to CreatureSpecies.ANEMONE,
+    "🦞" to CreatureSpecies.LOBSTER,
+    "🦀" to CreatureSpecies.HERMIT_CRAB,
+    "🐚" to CreatureSpecies.SEA_URCHIN,
+    "⭐" to CreatureSpecies.STARFISH,
+    "🦈" to CreatureSpecies.MANTA_RAY,
+    "🪼" to CreatureSpecies.MOON_JELLYFISH,
+)
+
+data class CreatureSpec(
+    val emoji: String,
+    val species: CreatureSpecies,
+    val category: MarineCategory,
+    val unlockLevel: Int,
+    val swimDuration: Int,
+    val wobbleAmplitude: Float
+)
+
+val allCreatures = listOf(
+    CreatureSpec("🐟", CreatureSpecies.CLOWNFISH,   MarineCategory.FISH,        2, 7000,  0.06f),
+    CreatureSpec("🪸", CreatureSpecies.BRAIN_CORAL, MarineCategory.FLORA,        2, 0,     0.00f),
+    CreatureSpec("🦞", CreatureSpecies.LOBSTER,     MarineCategory.CRUSTACEAN,  2, 9000,  0.03f),
+    CreatureSpec("🐚", CreatureSpecies.SEA_URCHIN,  MarineCategory.MOLLUSK,      2, 0,     0.00f),
+    CreatureSpec("🦈", CreatureSpecies.MANTA_RAY,   MarineCategory.PELAGIC,     2, 5000,  0.08f),
+    CreatureSpec("🐠", CreatureSpecies.ANGELFISH,   MarineCategory.FISH,        5, 6000,  0.07f),
+    CreatureSpec("🌿", CreatureSpecies.ANEMONE,     MarineCategory.FLORA,        5, 0,     0.00f),
+    CreatureSpec("🦀", CreatureSpecies.HERMIT_CRAB, MarineCategory.CRUSTACEAN,  5, 8000,  0.04f),
+    CreatureSpec("⭐", CreatureSpecies.STARFISH,    MarineCategory.MOLLUSK,      5, 0,     0.00f),
+    CreatureSpec("🪼", CreatureSpecies.MOON_JELLYFISH, MarineCategory.PELAGIC,  5, 11000, 0.10f),
+)
+
+fun initialX(index: Int): Float = ((index * 137 + 50) % 80 + 10) / 100f
+fun initialY(index: Int): Float = ((index * 97 + 30) % 60 + 20) / 100f
+fun phaseOffset(index: Int): Float = (index * 0.618f) % 1f
+
+expect fun DrawScope.drawEmoji(
+    emoji: String,
+    x: Float,
+    y: Float,
+    sizeSp: Float,
+    mirrored: Boolean
+)
+
+@Composable
+fun AquariumCreatures(
+    ecosystemByCategory: Map<MarineCategory, EcosystemState>,
+    modifier: Modifier = Modifier
+) {
+    val unlockedCreatures = remember(ecosystemByCategory) {
+        allCreatures.filter { spec ->
+            val level = ecosystemByCategory[spec.category]?.currentLevel ?: 1
+            level >= spec.unlockLevel
+        }
+    }
+
+    if (unlockedCreatures.isEmpty()) return
+
+    val infiniteTransition = rememberInfiniteTransition(label = "creatures")
+    val timeMs by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "creatureTime"
+    )
+
+    Layout(
+        content = {},
+        modifier = modifier
+            .fillMaxSize()
+            .drawWithContent {
+                drawContent()
+                unlockedCreatures.forEachIndexed { index, spec ->
+                    val w = size.width
+                    val h = size.height
+
+                    if (spec.swimDuration == 0) {
+                        // Fija en el fondo
+                        val x = w * initialX(index)
+                        val y = h * (0.80f + initialY(index) * 0.15f)
+                        drawEmoji(spec.emoji, x, y, 28f, mirrored = false)
+                    } else {
+                        val phase = phaseOffset(index)
+                        val swimProgress = (timeMs + phase) % 1f
+                        val goingRight = swimProgress < 0.5f
+
+                        val x = if (goingRight) {
+                            w * (swimProgress * 2f) * 0.9f + w * 0.05f
+                        } else {
+                            w * ((1f - swimProgress) * 2f) * 0.9f + w * 0.05f
+                        }
+
+                        val baseY = h * initialY(index)
+                        val wobble = sin(timeMs * 6.28f * 3f + phase * 6.28f) * h * spec.wobbleAmplitude
+                        val y = baseY + wobble
+
+                        drawEmoji(spec.emoji, x, y, 28f, mirrored = !goingRight)
+                    }
+                }
+            }
+    ) { _, constraints ->
+        layout(constraints.maxWidth, constraints.maxHeight) {}
+    }
+}

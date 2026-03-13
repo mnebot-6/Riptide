@@ -26,6 +26,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 
 class MainActivity : ComponentActivity() {
 
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
                 WorkBlockRepositoryImpl(db.workBlockDao()),
                 BlockCategoryRepositoryImpl(db.blockCategoryDao())
             )
-            DataSeeder.seedIfEmpty(db, assigner)
+            DataSeeder.seedIfEmpty(db, assigner, applicationContext)
 
             val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
             val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()
@@ -61,12 +62,16 @@ class MainActivity : ComponentActivity() {
             val ecosystemProcessor = EcosystemProcessor(
                 EcosystemStateRepositoryImpl(db.ecosystemStateDao())
             )
+            val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
+
             val processor = NightSummaryProcessor(
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
                 daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
                 blockStreakProcessor = blockStreakProcessor,
-                ecosystemProcessor = ecosystemProcessor
+                ecosystemProcessor = ecosystemProcessor,
+                userPreferencesRepository = userPreferencesRepository,
             )
+
             val yesterday = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
                 .minus(1, DateTimeUnit.DAY)

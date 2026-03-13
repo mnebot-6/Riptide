@@ -11,9 +11,13 @@ import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.EcosystemStateRepository
+import com.mnebot.riptide.domain.repository.MarineCreatureRepository
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
+import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import com.mnebot.riptide.domain.repository.WorkBlockRepository
 import com.mnebot.riptide.generateUUID
+import com.mnebot.riptide.presentation.aquarium.CreatureSpec
+import com.mnebot.riptide.presentation.aquarium.allCreatures
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +27,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -37,7 +42,9 @@ class MainViewModel(
     private val blockStreakRepository: BlockStreakRepository,
     private val daySummaryRepository: DaySummaryRepository,
     private val ecosystemProcessor: EcosystemProcessor,
-    private val ecosystemStateRepository: EcosystemStateRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val ecosystemStateRepository: EcosystemStateRepository,
+    private val marineCreatureRepository: MarineCreatureRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -64,11 +71,13 @@ class MainViewModel(
             else null
             dayTaskRepository.update(task.copy(status = newStatus, completedAt = completedAt))
 
-            // XP en tiempo real al completar
             if (newStatus == TaskStatus.COMPLETED) {
                 val block = uiState.value.blocks.find { it.id == task.blockId }
                 val categories = block?.marineCategories ?: emptyList()
-                ecosystemProcessor.addXpForTask(categories)
+                val newUnlocks = ecosystemProcessor.addXpForTask(categories)
+                if (newUnlocks.isNotEmpty()) {
+                    _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks + newUnlocks) }
+                }
             }
 
             loadDay(_uiState.value.selectedDate)
@@ -267,10 +276,47 @@ class MainViewModel(
         }
     }
 
+    private suspend fun checkPendingUnlocks() {
+        val emojis = userPreferencesRepository.getPendingUnlocks()
+        if (emojis.isEmpty()) return
+        val specs = emojis.mapNotNull { emoji -> allCreatures.find { it.emoji == emoji } }
+        if (specs.isNotEmpty()) {
+            _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks + specs) }
+            userPreferencesRepository.setPendingUnlocks(emptyList())
+        }
+    }
+
+    fun confirmUnlock(spec: CreatureSpec, nickname: String) {
+        viewModelScope.launch {
+            val ecosystemState = _uiState.value.ecosystemByCategory[spec.category]
+            if (ecosystemState != null) {
+                marineCreatureRepository.insert(
+                    MarineCreature(
+                        id = generateUUID(),
+                        ecosystemId = ecosystemState.id,
+                        species = spec.species,  // directo, sin búsqueda
+                        nickname = nickname.trim(),
+                        unlockedAtLevel = spec.unlockLevel,
+                        experience = 0,
+                        creatureLevel = 1,
+                        unlockedAt = Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                    )
+                )
+            }
+            _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks.drop(1)) }
+        }
+    }
+
+    fun dismissUnlock() {
+        _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks.drop(1)) }
+    }
+
     fun reload() {
         viewModelScope.launch {
             loadDay(_uiState.value.selectedDate)
             checkPendingSummary()
+            checkPendingUnlocks()
         }
     }
 }

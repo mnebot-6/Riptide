@@ -22,6 +22,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
+import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 
 class NightSummaryWorker(
     private val context: Context,
@@ -44,12 +45,16 @@ class NightSummaryWorker(
         val ecosystemProcessor = EcosystemProcessor(
             EcosystemStateRepositoryImpl(db.ecosystemStateDao())
         )
+        val userPreferencesRepository = UserPreferencesRepositoryImpl(context)
+
         val processor = NightSummaryProcessor(
             dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
             daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
             blockStreakProcessor = blockStreakProcessor,
-            ecosystemProcessor = ecosystemProcessor
+            ecosystemProcessor = ecosystemProcessor,
+            userPreferencesRepository = userPreferencesRepository,
         )
+
         val today = Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
 
