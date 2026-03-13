@@ -176,7 +176,6 @@ fun MainScreen(
 
         when {
             showAquarium -> {
-                AquariumBackground()  // ya está en el fondo, aquí solo el botón cerrar
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
                     FloatingActionButton(
                         onClick = { showAquarium = false },

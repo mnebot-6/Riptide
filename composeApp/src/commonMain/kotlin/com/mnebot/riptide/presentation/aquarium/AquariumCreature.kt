@@ -93,12 +93,13 @@ fun AquariumCreatures(
                 unlockedCreatures.forEachIndexed { index, spec ->
                     val w = size.width
                     val h = size.height
+                    val iconSize = 28f * (1 + spec.unlockLevel / 15)
 
                     if (spec.swimDuration == 0) {
                         // Fija en el fondo
                         val x = w * initialX(index)
                         val y = h * (0.80f + initialY(index) * 0.15f)
-                        drawEmoji(spec.emoji, x, y, 28f, mirrored = false)
+                        drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
                     } else {
                         val phase = phaseOffset(index)
                         val swimProgress = (timeMs + phase) % 1f
@@ -114,7 +115,7 @@ fun AquariumCreatures(
                         val wobble = sin(timeMs * 6.28f * 3f + phase * 6.28f) * h * spec.wobbleAmplitude
                         val y = baseY + wobble
 
-                        drawEmoji(spec.emoji, x, y, 28f, mirrored = !goingRight)
+                        drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight)
                     }
                 }
             }
