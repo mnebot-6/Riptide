@@ -77,15 +77,22 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       EcosystemStateRepository.kt   (getByCategory, insert, update)
       MarineCreatureRepository.kt
       UserPreferencesRepository.kt  (getNightSummaryTime: Flow<LocalTime>, setNightSummaryTime,
-                                     getPendingUnlocks: List<String>, setPendingUnlocks)
+                                     getPendingUnlocks: List<String>, setPendingUnlocks,
+                                     hasCompletedOnboarding: Flow<Boolean>, setOnboardingCompleted)
   presentation/
     aquarium/
       AquariumBackground.kt     (Canvas: fondo degradado + plantas animadas + burbujas; siempre visible)
       AquariumCreature.kt       (CreatureSpec, allCreatures, AquariumCreatures composable,
                                  expect fun DrawScope.drawEmoji(...))
     block/
-      BlockFormScreen.kt
+      BlockFormScreen.kt        (usa TimeInputField compact=true para horas de slots)
       BlockFormViewModel.kt     (emite BlockFormResult.Saved / .Deleted)
+    components/
+      TimeInputField.kt         (input hora estandarizado: overlay visual + BasicTextField invisible;
+                                 params: value, onValueChange, nullable, compact, showPickerIcon)
+      DateInputField.kt         (input fecha estandarizado: overlay visual + BasicTextField invisible;
+                                 dígitos rellenan desde la derecha sobre base de fecha de hoy)
+      InputFieldDialogs.kt      (expect: TimePickerDialogWrapper, DatePickerDialogWrapper)
     main/
       CurrentDate.kt            (expect)
       ParseColor.kt             (expect)
@@ -93,17 +100,18 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       MainViewModel.kt
       MainScreen.kt             (capas: AquariumBackground → AquariumCreatures → contenido → diálogos)
       WeekCalendar.kt           (barra de progreso animada por día)
-      MainDrawer.kt             (sección AJUSTES con hora resumen nocturno)
+      MainDrawer.kt             (AJUSTES con TimeInputField compact + showPickerIcon=true)
     task/
-      TaskFormSheet.kt          (crear y editar tareas, parámetros: existingTask?, onDelete?)
-      PostponeSheet.kt          (elegir nueva fecha/hora)
+      TaskFormSheet.kt          (usa DateInputField + TimeInputField)
+      PostponeSheet.kt          (usa DateInputField + TimeInputField)
       TaskFormViewModel.kt
 
 composeApp/src/androidMain/kotlin/com/mnebot/riptide/
   App.kt                        (NavHost: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT)
   MainActivity.kt               (inicializa DB, DataSeeder, NightSummaryProcessor fallback, WorkManager)
-  DataSeeder.kt                 (3 bloques + 5 tareas + XP ecosistema para pruebas, solo si BD vacía)
-  NightSummaryWorker.kt         (CoroutineWorker WorkManager, construye processor y llama processDay)
+  DataSeeder.kt                 (firma: seedIfEmpty(db, assigner); 3 bloques genéricos + 4 tareas para hoy;
+                                 sin XP sembrada; solo si BD vacía)
+  NightSummaryWorker.kt         (CoroutineWorker WorkManager; construye processor y llama processDay)
   NightSummarySchedulerImpl.android.kt  (implementa NightSummaryScheduler con DataStore + WorkManager)
   UuidGenerator.android.kt      (actual: UUID.randomUUID().toString())
   data/local/
@@ -124,7 +132,8 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       DatabaseProvider.kt       (singleton lazy)
     mapper/                     (domain ↔ entity; mappers de Recurrence usan tipo explícito)
   data/repository/
-    UserPreferencesRepositoryImpl.kt  (DataStore Preferences: hora+minuto + pending unlocks con separador |)
+    UserPreferencesRepositoryImpl.kt  (DataStore Preferences: hora+minuto, pending unlocks con "|",
+                                       hasCompletedOnboarding boolean)
     EcosystemStateRepositoryImpl.kt   (getByCategory, insert, update)
     MarineCreatureRepositoryImpl.kt   (getByEcosystem, insert, update)
   presentation/
@@ -132,6 +141,10 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       AquariumCreature.android.kt  (actual fun DrawScope.drawEmoji — nativeCanvas.drawText)
     block/
       BlockFormViewModelFactory.kt
+    components/
+      InputFieldDialogs.android.kt  (actual TimePickerDialogWrapper + actual DatePickerDialogWrapper;
+                                     Dialog propio con estética marina: fondo OceanMid + MaterialTheme
+                                     override con Accent #7EC8E3; TimePicker M3 + DatePicker M3)
     main/
       CurrentDate.android.kt    (actual)
       ParseColor.android.kt     (actual: android.graphics.Color.parseColor)
@@ -146,6 +159,8 @@ composeApp/src/iosMain/kotlin/com/mnebot/riptide/
   UuidGenerator.ios.kt          (actual: NSUUID().UUIDString())
   presentation/aquarium/
     AquariumCreature.ios.kt     (actual fun DrawScope.drawEmoji — pendiente arreglar en v3)
+  presentation/components/
+    InputFieldDialogs.ios.kt    (actual stubs: llaman onDismiss() — pendiente en v3)
   presentation/main/
     CurrentDate.ios.kt          (actual)
     ParseColor.ios.kt           (actual: parsea hex manualmente)
@@ -209,16 +224,16 @@ CreatureSpec (presentation/aquarium — modelo ligero para renderizado):
   swimDuration(Int ms, 0=fija), wobbleAmplitude(Float)
 
 allCreatures (10 criaturas, 2 por categoría):
-  🐟 CLOWNFISH  FISH        nivel 2   swim 7000ms
-  🪸 BRAIN_CORAL FLORA      nivel 2   fija
-  🦞 LOBSTER    CRUSTACEAN  nivel 2   swim 9000ms
-  🐚 SEA_URCHIN MOLLUSK     nivel 2   fija
-  🦈 MANTA_RAY  PELAGIC     nivel 2   swim 5000ms
-  🐠 ANGELFISH  FISH        nivel 5   swim 6000ms
-  🌿 ANEMONE    FLORA       nivel 5   fija
-  🦀 HERMIT_CRAB CRUSTACEAN nivel 5   swim 8000ms
-  ⭐ STARFISH   MOLLUSK     nivel 5   fija
-  🪼 MOON_JELLYFISH PELAGIC nivel 5   swim 11000ms
+  🐟 CLOWNFISH       FISH        nivel 2   swim 7000ms
+  🪸 BRAIN_CORAL     FLORA       nivel 2   fija
+  🦞 LOBSTER         CRUSTACEAN  nivel 2   swim 9000ms
+  🐚 SEA_URCHIN      MOLLUSK     nivel 2   fija
+  🦈 MANTA_RAY       PELAGIC     nivel 2   swim 5000ms
+  🐠 ANGELFISH       FISH        nivel 5   swim 6000ms
+  🌿 ANEMONE         FLORA       nivel 5   fija
+  🦀 HERMIT_CRAB     CRUSTACEAN  nivel 5   swim 8000ms
+  ⭐ STARFISH        MOLLUSK     nivel 5   fija
+  🪼 MOON_JELLYFISH  PELAGIC     nivel 5   swim 11000ms
 
 ---
 
@@ -236,14 +251,28 @@ LÓGICA RECURRENTES (RecurringTaskGenerator)
 generateUpTo(from: LocalDate, daysAhead: Int = 7): genera instancias DayTask para cada
   RecurringTaskDef activo en los próximos N días si no existen ya.
   Instancias generadas como TaskSchedule.OneTime con sourceTaskId = def.id
-Se llama en MainViewModel.init y al crear nueva tarea recurrente.
+Se llama en MainViewModel.init y al crear/actualizar tarea recurrente.
+
+Edición de tareas recurrentes (MainScreen + MainViewModel):
+  — Al editar tarea con sourceTaskId != null: diálogo previo "¿Qué quieres editar?"
+      · "Solo esta ocurrencia" → updateOneTimeTask (solo esa instancia)
+      · "Esta y todas las futuras" → updateRecurringTask (actualiza def + regenera)
+  — updateRecurringTask(sourceId, title, blockId, time, recurrence):
+      actualiza RecurringTaskDef, borra instancias PENDING futuras, llama generateUpTo
 
 ---
 
 LÓGICA DE EXPERIENCIA Y NIVELES
 
 EcosystemLevelCalculator (commonMain, object):
-  xpForLevel(n): nivel 1=0, nivel 2=100, nivel 3=250, nivel 4=450, nivel 5=700... (+50 XP por nivel)
+  xpForLevel(n):
+    nivel 1 = 0 XP
+    nivel 2 = 1 XP    ← garantiza primer desbloqueo con 1 sola tarea completada
+    nivel 3 = 21 XP   (+20)
+    nivel 4 = 61 XP   (+40)
+    nivel 5 = 126 XP  (+65)
+    nivel 6 = 226 XP  (+100)
+    nivel 7 = 376 XP  (+150) ... cada costo ×1.5 del anterior
   levelForXp(xp): nivel actual para un total de XP dado
   xpInCurrentLevel(xp): XP acumulada dentro del nivel actual
   xpForNextLevel(level): XP necesaria para completar el nivel actual
@@ -253,17 +282,15 @@ EcosystemLevelCalculator (commonMain, object):
   XP_PER_TASK = 10
 
 EcosystemProcessor (commonMain):
-  addXpForTask(categories): List<CreatureSpec>   — 10 XP divididas entre categorías; devuelve desbloqueadas
-  addNightBonus(score, bestStreak, categories): List<CreatureSpec>   — bonus dividido; devuelve desbloqueadas
+  addXpForTask(categories): List<CreatureSpec>
+  addNightBonus(score, bestStreak, categories): List<CreatureSpec>
   — si el EcosystemState no existe para esa categoría, lo crea
-  — actualiza currentLevel automáticamente con EcosystemLevelCalculator
-  — detecta criaturas desbloqueadas comparando oldLevel vs newLevel contra allCreatures[].unlockLevel
+  — actualiza currentLevel con EcosystemLevelCalculator
+  — detecta criaturas desbloqueadas comparando oldLevel vs newLevel
 
 Flujo XP:
-  Al completar tarea (tiempo real) → toggleTaskCompleted → ecosystemProcessor.addXpForTask
-    → si hay nuevas → añade a pendingUnlocks en UiState
-  Al procesar resumen nocturno → NightSummaryProcessor.processDay → ecosystemProcessor.addNightBonus
-    → si hay nuevas → persiste emojis en DataStore via UserPreferencesRepository
+  Al completar tarea → toggleTaskCompleted → addXpForTask → si hay nuevas → pendingUnlocks en UiState
+  Al resumen nocturno → NightSummaryProcessor.processDay → addNightBonus → si hay nuevas → DataStore
 
 ---
 
@@ -287,10 +314,9 @@ AquariumBackground (commonMain/presentation/aquarium/):
   — Fondo degradado: OceanDeep #0A1628 → OceanMid #1B3A6B → OceanLight #2E5F9E
   — Plantas: oscilación suave con swayAngle infinito (tween 3000ms Reverse)
   — Burbujas: trayectoria vertical + oscilación horizontal sin()
-  — Reemplaza el OceanBackground estático
 
 AquariumCreatures (commonMain/presentation/aquarium/):
-  — Composable con drawWithContent encima del fondo, debajo del contenido de tareas
+  — drawWithContent encima del fondo, debajo del contenido de tareas
   — Filtra allCreatures por unlockLevel <= currentLevel de su categoría
   — Criaturas móviles: nadan de lado a lado con wobble vertical sin(), espejadas según dirección
   — Criaturas fijas (swimDuration==0): posición fija en zona inferior
@@ -301,7 +327,36 @@ AquariumCreatures (commonMain/presentation/aquarium/):
 Capas del Box raíz en MainScreen:
   AquariumBackground → AquariumCreatures → MainContent o AquariumFullScreen → diálogos/drawer/sheets
 
-AquariumFullScreen: pantalla completa al pulsar FAB 🐟 (oculta la UI de tareas)
+---
+
+COMPONENTES DE INPUT ESTANDARIZADOS (commonMain/presentation/components/)
+
+TimeInputField:
+  Parámetros: value: LocalTime?, onValueChange, nullable, compact, showPickerIcon
+  — BasicTextField invisible captura solo dígitos (máx 4)
+  — Overlay Text formateado como HH:mm: cursor nunca cruza el ":"
+  — Dígitos se rellenan con "--" por la izquierda al escribir
+  — Icono 🕐 abre TimePickerDialogWrapper (expect/actual) si showPickerIcon=true
+  — compact=true: campo más pequeño (para BlockFormScreen y MainDrawer)
+
+DateInputField:
+  Parámetros: value: LocalDate?, onValueChange, nullable
+  — BasicTextField invisible captura solo dígitos (máx 8)
+  — Overlay Text formateado como YYYY-MM-DD: cursor nunca cruza los "-"
+  — Dígitos del usuario reemplazan los de la fecha de hoy por la derecha:
+      escribir "14" → YYYY-MM-14 | escribir "70601" → 2027-06-01
+  — Icono 📅 abre DatePickerDialogWrapper (expect/actual)
+
+InputFieldDialogs (expect/actual):
+  — TimePickerDialogWrapper(initial, onConfirm, onDismiss)
+  — DatePickerDialogWrapper(initial, onConfirm, onDismiss)
+  — androidMain: Dialog propio con estética marina
+      fondo OceanMid + MaterialTheme override (primary=Accent #7EC8E3, onPrimary=OceanDeep)
+      TimePicker M3 dentro del Dialog custom
+      DatePicker M3 con DatePickerDefaults.colors marino
+  — iosMain: stubs vacíos (llaman onDismiss — pendiente en v3)
+
+Usados en: TaskFormSheet, PostponeSheet, BlockFormScreen, MainDrawer
 
 ---
 
@@ -310,177 +365,77 @@ MVVM
 MainUiState:
   selectedDate: LocalDate
   blocks: List<WorkBlock>
-  tasksByBlock: Map<String?, List<DayTask>>   — clave null = tareas sin bloque
-  streaksByBlock: Map<String, Int>             — blockId → currentStreak
+  tasksByBlock: Map<String?, List<DayTask>>
+  streaksByBlock: Map<String, Int>
   ecosystemByCategory: Map<MarineCategory, EcosystemState>
-  pendingSummary: DaySummary?                  — resumen de ayer, mostrar al arrancar
-  pendingUnlocks: List<CreatureSpec>           — cola de criaturas a nombrar
+  pendingSummary: DaySummary?
+  pendingUnlocks: List<CreatureSpec>
   isLoading: Boolean
   error: String?
 
-MainViewModel constructor:
-  workBlockRepository, blockCategoryRepository, dayTaskRepository,
-  recurringTaskDefRepository, recurringTaskGenerator, marineCategoryAssigner,
-  blockStreakRepository, daySummaryRepository, ecosystemProcessor,
-  ecosystemStateRepository, userPreferencesRepository, marineCreatureRepository
-
 MainViewModel funciones:
-  selectDate(date)
-  toggleTaskCompleted(task) — cambia estado + addXpForTask + detecta unlocks
-  addOneTimeTask(title, blockId?, date, time?)
-  addRecurringTask(title, blockId, time, recurrence)
-  updateOneTimeTask(original, title, blockId?, date, time?)
-  deleteTask(task)
-  deleteRecurringTaskInstance(task)
-  deleteRecurringTaskFromDate(task)
-  deleteRecurringTaskAll(task)
-  postponeTask(task, postponedTo: LocalDateTime)
-  insertBlockAndReassign(block)
-  updateBlockAndReassign(block)
-  deleteBlockAndReassign(blockId)
-  dismissSummary() — limpia pendingSummary
-  confirmUnlock(spec, nickname) — guarda MarineCreature + drop(1) pendingUnlocks
-  dismissUnlock() — drop(1) pendingUnlocks sin guardar
-  reload() — recarga día + checkPendingSummary() + checkPendingUnlocks()
+  selectDate, toggleTaskCompleted, addOneTimeTask, addRecurringTask,
+  updateOneTimeTask, updateRecurringTask(sourceId, title, blockId, time, recurrence),
+  deleteTask, deleteRecurringTaskInstance, deleteRecurringTaskFromDate, deleteRecurringTaskAll,
+  postponeTask, insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign,
+  dismissSummary, confirmUnlock, dismissUnlock, reload
 
 ---
 
 ORDENACIÓN PANTALLA PRINCIPAL
 
 Bloques: por hora de inicio de su slot ese día (bloques sin horario ese día al final).
-Tareas: 1) con hora (por hora asc), 2) sin hora (orden inserción), 3) completadas al final.
-Tareas sin bloque: sección propia "Sin bloque" (📋) antes de los bloques con asignación.
-Horas del bloque en cabecera: solo si tiene WeeklySlot con startTime+endTime ese día exacto.
+Tareas: 1) con hora (asc), 2) sin hora (orden inserción), 3) completadas al final.
+Tareas sin bloque: sección propia "Sin bloque" (📋) antes de los bloques.
 
 ---
 
 UI — PANTALLA PRINCIPAL
 
-Fondo: AquariumBackground siempre visible (reemplaza gradiente estático)
-Tarjetas frosted glass (blanco 20% opacidad)
-Colores privados en MainScreen.kt: OceanDeep, OceanMid, OceanLight, CardBackground,
-  TextPrimary (blanco), TextSecondary (blanco 70%)
-
-WeekCalendar: barra de progreso animada (28dp × 3dp) bajo cada día.
-  — Invisible si no hay tareas. Fondo semitransparente + fill animado (completadas).
-  — Día actual usa TodayIndicator (#7EC8E3) en inicial y barra.
-
-BlockHeader: nombre + icono + hora del slot (si existe ese día)
-  — Badge 🔥 N días (color #FFB347, 11sp) si streak >= 2
-
-Menú contextual por pulsación larga en TaskCard:
-  - Editar → abre TaskFormSheet precargado con datos de la tarea
-  - Posponer (solo si no COMPLETED/EXPIRED) → abre PostponeSheet
-  - Eliminar → si sourceTaskId != null, diálogo con 3 opciones:
-      · Solo esta ocurrencia
-      · Esta y las futuras
-      · Todas las ocurrencias
-
-TaskCard:
-  - Barra de color del bloque a la izquierda (4dp)
-  - Título con tachado si COMPLETED, color atenuado si COMPLETED/EXPIRED/POSTPONED
-  - Hora de la tarea (si existe) en texto pequeño bajo el título
-  - Fecha pospuesta (si POSTPONED) en texto pequeño
-  - Checkbox para PENDING/COMPLETED, ⌛ para EXPIRED, ⏰ para POSTPONED
-
-Diálogo resumen nocturno (MainScreen):
-  - Aparece al arrancar si pendingSummary != null
-  - Muestra feedbackMessage + "X de Y tareas completadas"
-  - Botón "Cerrar" → dismissSummary()
-
-Diálogo desbloqueo criatura (MainScreen):
-  - Aparece después del resumen nocturno (si pendingUnlocks no vacío)
-  - Muestra emoji (48sp) + mensaje + OutlinedTextField para nombre
-  - Botón "Bienvenido al estanque 🌊" (disabled si nombre vacío) → confirmUnlock()
-  - No se puede cerrar sin poner nombre (onDismissRequest vacío)
-
-PostponeSheet:
-  - Campo fecha (YYYY-MM-DD)
-  - Campo hora (4 dígitos sin formato, validado al guardar)
-  - Al confirmar: tarea original → POSTPONED, nueva instancia PENDING en fecha/hora elegida
-
-TaskFormSheet:
-  - Toggle puntual/recurrente
-  - Puntual: fecha + hora opcional + bloque opcional
-  - Recurrente: hora obligatoria + selector días + bloque obligatorio
-  - Modo edición (existingTask != null): precarga campos + muestra botón "Eliminar tarea"
-
-Drawer (MainDrawer): baja desde arriba, gestos verticales.
-  Secciones: TAREAS (➕ Añadir tarea), BLOQUES (lista + ➕ Añadir bloque, editar bloque),
-             AJUSTES (🌙 hora del resumen nocturno con DrawerTimeTextField).
-FAB 🐟: siempre visible, abre AquariumScreen en pantalla completa.
-
----
-
-UI — BlockFormScreen
-
-Nombre, Icono (emoji), Color (paleta 12 colores), Horario semanal.
-Paleta: #1A73E8, #E8711A, #34A853, #EA4335, #9C27B0, #00BCD4,
-        #FF9800, #607D8B, #E91E63, #795548, #009688, #F5C842
-TimeTextField: estado interno en dígitos, display con ":", validación 00:00–23:59.
-Botón eliminar solo en modo edición (rojo semitransparente).
-
----
-
-NAVEGACIÓN
-
-App.kt: NavHost startDestination ROUTE_MAIN, recibe NightSummaryScheduler como parámetro
-Navigation.kt: ROUTE_MAIN, ROUTE_BLOCK_CREATE, ROUTE_BLOCK_EDIT
-  — mainGraph recibe NightSummaryScheduler y lo pasa a MainScreen
-BlockFormViewModel emite BlockFormResult → Navigation llama mainViewModel.reload() + popBackStack()
+Tarjetas frosted glass (blanco 20% opacidad) sobre AquariumBackground.
+Colores: OceanDeep #0A1628, OceanMid #1B3A6B, OceanLight #2E5F9E, Accent #7EC8E3.
+WeekCalendar: barra progreso animada, TodayIndicator #7EC8E3.
+BlockHeader: nombre + icono + horas slot + badge 🔥 si streak >= 2 (#FFB347).
+Menú contextual pulsación larga: Editar (con diálogo scope si recurrente), Posponer, Eliminar.
+Drawer: baja desde arriba; secciones TAREAS, BLOQUES, AJUSTES (hora resumen con TimeInputField).
+FAB 🐟: abre AquariumFullScreen.
+Diálogo resumen nocturno: feedbackMessage + "X de Y tareas". Botón "Cerrar".
+Diálogo unlock: emoji + mensaje + nombre obligatorio. No se puede cerrar sin nombre.
 
 ---
 
 RESUMEN NOCTURNO
 
-NightSummaryProcessor (commonMain):
-  processDay(date, blockNames, blockCategories):
-    1. Si ya existe DaySummary para esa fecha → return (idempotente)
-    2. Expira tareas PENDING → EXPIRED
-    3. Calcula score = completadas / total
-    4. Llama blockStreakProcessor.processDay(date, blockIds) → Map<String, Int>
-    5. Llama ecosystemProcessor.addNightBonus(score, bestStreak, allCategories) → List<CreatureSpec>
-    6. Si hay nuevos unlocks → persiste emojis en DataStore via userPreferencesRepository
-    7. buildMessage(score, total, completed, streaks, blockNames)
-    8. Guarda DaySummary
+NightSummaryProcessor.processDay (idempotente):
+  1. Si ya existe DaySummary → return
+  2. Expira PENDING → EXPIRED
+  3. score = completadas / total
+  4. blockStreakProcessor.processDay → Map<String, Int>
+  5. ecosystemProcessor.addNightBonus → List<CreatureSpec>
+  6. Persiste nuevos unlocks en DataStore
+  7. buildMessage → guarda DaySummary
 
-  buildMessage: score base + prefijo "X de Y tareas" (si parcial) +
-    sufijo " [NombreBloque] lleva N días seguidos 🔥" (si racha top >= 3)
+Mensajes base:
+  0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
+  <0.4 → "Algo se movió hoy. Eso cuenta."
+  <0.7 → "Buen empuje hoy."
+  <1.0 → "El estanque está vivo."
+  1.0  → "Hoy el estanque brilló."
 
-  Mensajes base:
-    score == 0.0 → "Las corrientes cambian. Mañana el mar sigue ahí."
-    score < 0.4  → "Algo se movió hoy. Eso cuenta."
-    score < 0.7  → "Buen empuje hoy."
-    score < 1.0  → "El estanque está vivo."
-    score == 1.0 → "Hoy el estanque brilló."
-
-NightSummaryWorker (androidMain, WorkManager):
-  - CoroutineWorker que construye blockNames + blockCategories y llama processDay(today, ...)
-  - Construye userPreferencesRepository para persistir unlocks nocturnos
-  - Se planifica como OneTimeWorkRequest con delay hasta la hora configurada
-  - ExistingWorkPolicy.REPLACE para reemplazar al cambiar la hora
-
-NightSummaryScheduler (commonMain, interfaz):
-  - getNightSummaryTime(): Flow<LocalTime>
-  - setNightSummaryTime(time: LocalTime)
-  - scheduleWorker(time: LocalTime)
-  Implementaciones: androidMain (DataStore + WorkManager), iosMain (stub vacío)
-
-Flujo al arrancar la app (MainActivity.onCreate):
-  1. seedIfEmpty (DataSeeder)
-  2. Construye blockNames + blockCategories + userPreferencesRepository
-  3. Procesa ayer con NightSummaryProcessor (fallback si el worker no ejecutó)
-  4. Planifica WorkManager con la hora guardada en DataStore
-  5. viewModel.reload() → checkPendingSummary() + checkPendingUnlocks() → diálogos al arrancar
+Flujo al arrancar (MainActivity.onCreate):
+  1. seedIfEmpty(db, assigner)
+  2. Procesa ayer con NightSummaryProcessor (fallback)
+  3. Planifica WorkManager con hora guardada
+  4. viewModel.reload() → checkPendingSummary + checkPendingUnlocks → diálogos
 
 ---
 
-DATASEED
+DATASEED (producción)
 
-Bloques: 💼 Trabajo (#1A73E8, Lun-Vie 8-17h), 🏐 Voleibol (#E8711A, Mar/Jue 20-22h),
-         💚 Salud (#34A853, None)
-5 tareas para hoy (mix de bloques, algunas con hora, algunas sin).
-XP sembrada por categoría para simular uso real (modo pruebas — limpiar antes de producción).
+Firma: seedIfEmpty(db: RiptideDatabase, assigner: MarineCategoryAssigner)
+Bloques: 💼 Trabajo (#1A73E8, Lun-Vie 9-18h), 🌱 Personal (#9C27B0, sin horario),
+         💚 Salud (#34A853, sin horario)
+4 tareas genéricas para hoy sin XP sembrada, sin unlocks pregrabados.
 Solo ejecuta si workBlockRepo.getAll().isEmpty()
 
 ---
@@ -493,56 +448,44 @@ score = tasksCompleted / tasksTotal — NUNCA visible al usuario.
 
 ESTADOS DE TAREA
 
-PENDING: estado por defecto al crear.
-COMPLETED: da 10 XP al ecosistema marino (divididas entre categorías del bloque).
-EXPIRED: tareas PENDING procesadas en resumen nocturno; no dan experiencia.
-POSTPONED: tarea original marcada como pospuesta; se crea nueva instancia PENDING en la nueva fecha.
+PENDING → COMPLETED: da 10 XP al ecosistema
+PENDING → EXPIRED: resumen nocturno, no da XP
+PENDING → POSTPONED: original marcada; nueva instancia PENDING en nueva fecha
 
 ---
 
 SERIALIZACIÓN
 
 Recurrence y WeeklySlot: @Serializable.
-LocalTime: LocalTimeSerializer (ISO string) en Serializers.kt (commonMain).
-@file:UseSerializers(LocalTimeSerializer::class) en WorkBlock.kt.
-Mappers de Room usan Json.encodeToString<Recurrence>(...) con tipo explícito.
-Plugin kotlin.plugin.serialization en build.gradle.kts requerido.
+LocalTime: LocalTimeSerializer (ISO string) — @file:UseSerializers(LocalTimeSerializer::class) en WorkBlock.kt.
+Mappers usan Json.encodeToString<Recurrence>(...) con tipo explícito.
 
 ---
 
 ROADMAP
 
-MVP completado:
-✅ Room local v6, modelos, serialización
-✅ Calendario semanal navegable con swipe
-✅ Gestión de bloques (crear/editar/eliminar)
-✅ Tareas por bloque con checkbox + estados visuales
-✅ Tareas sin bloque visibles en sección propia
-✅ Drawer desde arriba con gestos unificados
-✅ MarineCategoryAssigner automático
-✅ Navigation Compose
-✅ TaskFormSheet — crear tareas puntuales y recurrentes
-✅ Editar, eliminar y posponer tareas (menú contextual por pulsación larga)
-✅ Eliminación granular de tareas recurrentes (esta / futuras / todas)
-✅ Ordenación correcta de bloques y tareas
-✅ Indicadores de progreso por día en el calendario (barra animada)
-✅ Resumen nocturno (NightSummaryProcessor + WorkManager + DataStore + hora configurable)
+MVP completado ✅ | v2 completada ✅
 
-v2 completada:
-✅ Rachas por bloque (BlockStreak) — badge 🔥 en BlockHeader, lógica en NightSummaryProcessor
-✅ Mensajes contextuales (buildMessage con rachas + progreso + nombre de bloque, diálogo al arrancar)
-✅ Lógica de experiencia y niveles (EcosystemLevelCalculator + EcosystemProcessor)
-✅ AquariumBackground — fondo oceánico con plantas animadas y burbujas (Canvas)
-✅ AquariumCreatures — 10 criaturas, natación con Canvas + Animatable, expect/actual drawEmoji
-✅ Desbloqueo de criaturas — diálogo con nombre, persistencia en DataStore, cola de unlocks
+v2.1 completada (sprint actual):
+✅ Curva XP reajustada — nivel 2 = 1 XP (primer pez con 1 tarea)
+✅ Bug fix edición tareas recurrentes — diálogo scope "solo esta" / "todas las futuras"
+✅ updateRecurringTask en MainViewModel (actualiza def + borra instancias futuras + regenera)
+✅ DataSeeder limpio para distribución — 3 bloques genéricos + 4 tareas, sin XP
+✅ TimeInputField + DateInputField estandarizados (overlay + pickers expect/actual)
+✅ Pickers con estética marina (Dialog propio, OceanMid + Accent #7EC8E3)
+✅ MainDrawer: TimeInputField compact + showPickerIcon=true para hora resumen
 
 v3 — Revisión y pulido:
 ⬜ Arreglar AquariumCreature.ios.kt
-⬜ Animación de entrada de criatura al desbloquearse (nada desde el borde)
-⬜ Revisión de gestos, formularios y edge cases del resumen nocturno
-⬜ Migrar de fallbackToDestructiveMigration a migraciones reales de Room
-⬜ Limpiar DataSeeder para producción
+⬜ Animación entrada criatura al desbloquearse (nada desde el borde)
+⬜ Revisión gestos, formularios, edge cases resumen nocturno
+⬜ Migrar fallbackToDestructiveMigration a migraciones reales Room
 ⬜ Preparar firma de la app
+⬜ Tutorial de primera vez (onboarding al primer inicio)
+    — Persiste en DataStore: hasCompletedOnboarding (UserPreferencesRepository)
+    — Pantalla fullscreen con fondo marino, pasos swipeables
+    — Explica: bloques, tareas, ecosistema, resumen nocturno
+    — Termina creando el primer bloque del usuario (o salta al DataSeeder)
 
 v4: Ktor+PostgreSQL, perfiles, amigos, Google Sign-In
 

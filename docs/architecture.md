@@ -29,15 +29,23 @@ expect fun currentDate(): LocalDate
 expect fun parseColor(hex: String): Color
 expect fun DrawScope.drawEmoji(emoji: String, x: Float, y: Float, sizeSp: Float, mirrored: Boolean)
 
+// commonMain/presentation/components/
+expect fun TimePickerDialogWrapper(initial: LocalTime?, onConfirm: (LocalTime?) -> Unit, onDismiss: () -> Unit)
+expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -> Unit, onDismiss: () -> Unit)
+
 // androidMain
 actual fun generateUUID() = UUID.randomUUID().toString()
 actual fun currentDate() = Clock.System.todayIn(TimeZone.currentSystemDefault())
 actual fun parseColor(hex: String) = Color(android.graphics.Color.parseColor(hex))
 actual fun DrawScope.drawEmoji(...) // nativeCanvas.drawText con android.graphics.Paint
+actual fun TimePickerDialogWrapper(...) // Dialog propio con estética marina + TimePicker M3
+actual fun DatePickerDialogWrapper(...) // Dialog propio con estética marina + DatePicker M3
 
 // iosMain
 actual fun generateUUID() = NSUUID().UUIDString()
 actual fun DrawScope.drawEmoji(...) // pendiente arreglar en v3
+actual fun TimePickerDialogWrapper(...) // stub: llama onDismiss
+actual fun DatePickerDialogWrapper(...) // stub: llama onDismiss
 // parseColor parsea el hex manualmente
 ```
 
@@ -79,6 +87,56 @@ alias(libs.plugins.kotlinSerialization)
 
 ---
 
+## Componentes de input estandarizados (commonMain/presentation/components/)
+
+### TimeInputField
+
+```kotlin
+@Composable
+fun TimeInputField(
+    value: LocalTime?,
+    onValueChange: (LocalTime?) -> Unit,
+    nullable: Boolean = true,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    showPickerIcon: Boolean = true
+)
+```
+
+- `BasicTextField` invisible captura solo dígitos (máx 4); overlay `Text` muestra `HH:mm`
+- El cursor nunca cruza el `:` — problema resuelto separando input de visualización
+- Dígitos rellenados con `--` por la izquierda mientras se escribe
+- `compact=true` — campo reducido para `BlockFormScreen` y `MainDrawer`
+- `showPickerIcon=false` — oculta el icono del reloj en contextos muy compactos
+
+### DateInputField
+
+```kotlin
+@Composable
+fun DateInputField(
+    value: LocalDate?,
+    onValueChange: (LocalDate?) -> Unit,
+    nullable: Boolean = false,
+    modifier: Modifier = Modifier
+)
+```
+
+- Misma técnica: `BasicTextField` invisible + overlay formateado como `YYYY-MM-DD`
+- Los dígitos del usuario reemplazan los de la fecha de hoy desde la derecha:
+  - escribir `"14"` → `YYYY-MM-14`
+  - escribir `"70601"` → `2027-06-01`
+
+### InputFieldDialogs (expect/actual)
+
+Los pickers son `Dialog` propios (no `AlertDialog` de M3) para controlar el fondo y el tema:
+
+- Fondo `OceanMid (#1B3A6B)`
+- `MaterialTheme` override con `primary = Accent (#7EC8E3)`, `onPrimary = OceanDeep`
+- `TimePicker` y `DatePicker` de M3 coloreados con `DatePickerDefaults.colors`
+- iOS: stubs que llaman `onDismiss()` directamente (pendiente en v3)
+
+---
+
 ## ViewModelFactory (androidMain)
 
 Android requiere factories para inyectar dependencias. Cada ViewModel tiene su factory que obtiene repositorios desde `DatabaseProvider`.
@@ -94,25 +152,23 @@ Constructor recibe: `WorkBlockRepository`, `BlockCategoryRepository`, `DayTaskRe
 Funciones públicas:
 - `selectDate(date)` — cambia día seleccionado y recarga tareas
 - `toggleTaskCompleted(task)` — alterna PENDING/COMPLETED + añade XP + detecta desbloqueos
-- `addOneTimeTask(title, blockId?, date, time?)` — crea tarea puntual
-- `addRecurringTask(title, blockId, time, recurrence)` — crea `RecurringTaskDef` + genera instancias para los próximos 7 días
-- `updateOneTimeTask(original, title, blockId?, date, time?)` — edita tarea puntual existente
-- `deleteTask(task)` — elimina por ID (tareas no recurrentes)
-- `deleteRecurringTaskInstance(task)` — elimina solo esta ocurrencia
-- `deleteRecurringTaskFromDate(task)` — desactiva la def + elimina instancias PENDING/POSTPONED desde esta fecha
-- `deleteRecurringTaskAll(task)` — desactiva la def + elimina todas las instancias
-- `postponeTask(task, postponedTo)` — marca original como POSTPONED, crea nueva instancia PENDING en la nueva fecha
-- `insertBlockAndReassign / updateBlockAndReassign / deleteBlockAndReassign` — CRUD de bloques con reasignación automática de categorías marinas
-- `dismissSummary()` — cierra diálogo de resumen nocturno
-- `confirmUnlock(spec, nickname)` — guarda `MarineCreature` con nickname y avanza la cola
-- `dismissUnlock()` — descarta unlock actual y avanza la cola
+- `addOneTimeTask(title, blockId?, date, time?)`
+- `addRecurringTask(title, blockId, time, recurrence)` — crea `RecurringTaskDef` + genera instancias 7 días
+- `updateOneTimeTask(original, title, blockId?, date, time?)`
+- `updateRecurringTask(sourceId, title, blockId, time, recurrence)` — actualiza def + borra instancias PENDING futuras + regenera
+- `deleteTask / deleteRecurringTaskInstance / deleteRecurringTaskFromDate / deleteRecurringTaskAll`
+- `postponeTask(task, postponedTo)` — marca POSTPONED, crea nueva instancia PENDING
+- `insertBlockAndReassign / updateBlockAndReassign / deleteBlockAndReassign`
+- `dismissSummary()` — cierra diálogo resumen nocturno
+- `confirmUnlock(spec, nickname)` — guarda `MarineCreature` + `drop(1)` de la cola
+- `dismissUnlock()` — descarta sin nombre + `drop(1)`
 - `reload()` — recarga completa + `checkPendingSummary()` + `checkPendingUnlocks()`
 
 ---
 
 ## NightSummaryProcessor (commonMain)
 
-Lógica pura de cierre de día. Se llama desde `NightSummaryWorker` (a la hora configurada) y desde `MainActivity.onCreate` (fallback si no se ejecutó por la noche).
+Lógica pura de cierre de día. Se llama desde `NightSummaryWorker` (a la hora configurada) y desde `MainActivity.onCreate` (fallback).
 
 ```
 processDay(date, blockNames, blockCategories)
@@ -130,14 +186,14 @@ processDay(date, blockNames, blockCategories)
 
 ## EcosystemProcessor (commonMain)
 
-Gestiona la XP del ecosistema marino. Devuelve las criaturas recién desbloqueadas en cada operación.
+Gestiona la XP del ecosistema marino. Devuelve las criaturas recién desbloqueadas.
 
 ```kotlin
 addXpForTask(categories): List<CreatureSpec>   // 10 XP divididas entre categorías
 addNightBonus(score, bestStreak, categories): List<CreatureSpec>
 ```
 
-Internamente detecta criaturas desbloqueadas comparando `oldLevel` vs `newLevel` contra `allCreatures[].unlockLevel`.
+Detecta desbloqueos comparando `oldLevel` vs `newLevel` contra `allCreatures[].unlockLevel`.
 
 ---
 
@@ -145,11 +201,13 @@ Internamente detecta criaturas desbloqueadas comparando `oldLevel` vs `newLevel`
 
 ```
 nivel 1 = 0 XP
-nivel 2 = 100 XP  (+100)
-nivel 3 = 250 XP  (+150)
-nivel 4 = 450 XP  (+200)
-nivel 5 = 700 XP  (+250)
-...cada nivel cuesta 50 XP más que el anterior
+nivel 2 = 1 XP    ← garantiza primer pez con 1 sola tarea
+nivel 3 = 21 XP   (+20)
+nivel 4 = 61 XP   (+40)
+nivel 5 = 126 XP  (+65)
+nivel 6 = 226 XP  (+100)
+nivel 7 = 376 XP  (+150)
+... cada nivel cuesta ×1.5 que el anterior
 ```
 
 Funciones: `xpForLevel(n)`, `levelForXp(xp)`, `xpInCurrentLevel(xp)`, `xpForNextLevel(level)`, `nightBonus(score, bestStreak)`.
@@ -158,10 +216,8 @@ Funciones: `xpForLevel(n)`, `levelForXp(xp)`, `xpInCurrentLevel(xp)`, `xpForNext
 
 ## AquariumBackground / AquariumCreatures (commonMain/presentation/aquarium/)
 
-Dos composables independientes que se apilan en el `Box` raíz de `MainScreen`:
-
 **`AquariumBackground`** — siempre visible. Dibuja en Canvas:
-- Fondo degradado oceánico
+- Fondo degradado oceánico (OceanDeep → OceanMid → OceanLight)
 - Plantas con oscilación animada (`swayAngle` infinito)
 - Burbujas con trayectoria vertical + wobble horizontal
 
@@ -169,13 +225,11 @@ Dos composables independientes que se apilan en el `Box` raíz de `MainScreen`:
 - Filtra `allCreatures` por `unlockLevel <= currentLevel` de cada categoría
 - Criaturas móviles: nadan de lado a lado con oscilación vertical `sin()`
 - Criaturas fijas (FLORA, MOLLUSK): posición fija en zona inferior
-- `drawEmoji(emoji, x, y, sizeSp, mirrored)` — expect/actual por plataforma
+- `drawEmoji(emoji, x, y, sizeSp, mirrored)` — expect/actual
 
 ---
 
 ## NightSummaryScheduler (commonMain / interfaz)
-
-Abstrae la lectura/escritura de la hora del resumen nocturno y la planificación del worker.
 
 ```kotlin
 interface NightSummaryScheduler {
@@ -187,8 +241,8 @@ interface NightSummaryScheduler {
 
 | Plataforma | Implementación |
 |---|---|
-| androidMain | `NightSummarySchedulerImpl` — usa `UserPreferencesRepositoryImpl` (DataStore) + `NightSummaryWorker` |
-| iosMain | `NightSummarySchedulerImpl` — stub vacío, devuelve `flowOf(LocalTime(23,30))` |
+| androidMain | DataStore + WorkManager |
+| iosMain | stub vacío, devuelve `flowOf(LocalTime(23,30))` |
 
 ---
 
@@ -198,12 +252,14 @@ interface NightSummaryScheduler {
 interface UserPreferencesRepository {
     fun getNightSummaryTime(): Flow<LocalTime>
     suspend fun setNightSummaryTime(time: LocalTime)
-    suspend fun getPendingUnlocks(): List<String>   // emojis pendientes de nombrar
+    suspend fun getPendingUnlocks(): List<String>
     suspend fun setPendingUnlocks(emojis: List<String>)
+    fun hasCompletedOnboarding(): Flow<Boolean>     // para tutorial primera vez
+    suspend fun setOnboardingCompleted()
 }
 ```
 
-Implementación androidMain: DataStore Preferences. Almacena hora/minuto como `Int` separados y unlocks como String con separador `|`. Valor por defecto: 23:30.
+Implementación androidMain: DataStore Preferences. Hora/minuto como `Int` separados, unlocks como String con separador `|`, onboarding como `Boolean`. Valor por defecto hora: 23:30.
 
 ---
 
@@ -211,7 +267,7 @@ Implementación androidMain: DataStore Preferences. Almacena hora/minuto como `I
 
 ```
 toggleTaskCompleted / addNightBonus
-    → EcosystemProcessor.addXp detecta nivel cruzado
+    → EcosystemProcessor detecta nivel cruzado
     → devuelve List<CreatureSpec> nuevas
     → MainViewModel: añade a pendingUnlocks en UiState
     → (caso nocturno): persiste emojis en DataStore
@@ -228,18 +284,18 @@ MainScreen:
 
 ## NightSummaryWorker (androidMain)
 
-`CoroutineWorker` de WorkManager. Se programa como `OneTimeWorkRequest` con delay calculado hasta la próxima ocurrencia de la hora configurada. Usa `ExistingWorkPolicy.REPLACE` para reemplazar si se cambia la hora.
+`CoroutineWorker` de WorkManager. Se programa como `OneTimeWorkRequest` con delay hasta la próxima ocurrencia de la hora configurada. `ExistingWorkPolicy.REPLACE` para reemplazar si cambia la hora.
 
 ---
 
 ## Ordenación en pantalla principal
 
-**Bloques:** por hora de inicio de su slot ese día de la semana. Bloques sin horario ese día van al final.
+**Bloques:** por hora de inicio de su slot ese día. Bloques sin horario ese día van al final.
 
-**Tareas dentro de un bloque:**
-1. Con hora → ordenadas por hora ascendente
+**Tareas:**
+1. Con hora → ordenadas ascendente
 2. Sin hora → orden de inserción
-3. Completadas al final — misma sub-ordenación
+3. Completadas al final
 
 **Tareas sin bloque:** sección propia "Sin bloque" con icono 📋, antes de los bloques con asignación.
 
@@ -247,15 +303,15 @@ MainScreen:
 
 ## MarineCategoryAssigner
 
-Redistribuye categorías marinas automáticamente al crear, editar o eliminar bloques. El usuario nunca las ve ni las configura. La XP acumulada en `EcosystemState` se mantiene intacta al redistribuir.
+Redistribuye categorías marinas automáticamente al crear, editar o eliminar bloques.
 
 | Nº bloques | Distribución |
 |---|---|
 | 1 | 5 categorías (todas) |
-| 2 | 3 + 3 (1 se repite) |
-| 3 | 2 + 2 + 2 (1 se repite) |
-| 4 | 2 + 1 + 1 + 1 (1 se repite) |
-| 5+ | 1 por bloque sin repetición |
+| 2 | 3 + 3 |
+| 3 | 2 + 2 + 2 |
+| 4 | 2 + 1 + 1 + 1 |
+| 5+ | 1 por bloque |
 
 ---
 
@@ -269,27 +325,26 @@ ROUTE_BLOCK_CREATE → BlockFormScreen (nuevo)
 ROUTE_BLOCK_EDIT   → BlockFormScreen (editar, recibe blockId)
 ```
 
-Al guardar o eliminar un bloque, `BlockFormViewModel` emite `BlockFormResult.Saved` o `BlockFormResult.Deleted`, la navegación llama `mainViewModel.reload()` y hace `popBackStack()`.
+`BlockFormViewModel` emite `BlockFormResult.Saved / .Deleted` → Navigation llama `mainViewModel.reload()` + `popBackStack()`.
 
 ---
 
 ## Gestos en MainScreen
 
-Un único `detectDragGestures` en el `Box` exterior gestiona todo:
-
+Un único `detectDragGestures` gestiona todo:
 - **Vertical hacia abajo** → abre drawer
 - **Vertical hacia arriba** → cierra drawer
 - **Horizontal** (solo si drawer cerrado) → cambia día
 
-El drawer usa `Animatable(drawerOffsetY)`. Overlay oscuro semitransparente al abrir; toque fuera cierra.
+Drawer usa `Animatable(drawerOffsetY)`. Overlay oscuro al abrir; toque fuera cierra.
 
 ---
 
 ## Convenciones
 
-- IDs: UUID v4 generados con `generateUUID()` (expect/actual)
-- Colores: hex string `"#RRGGBB"`, parseados en androidMain con `android.graphics.Color.parseColor`
-- Fechas: siempre `LocalDate` / `LocalTime` / `LocalDateTime` de `kotlinx-datetime`, nunca `java.util.*`
+- IDs: UUID v4 con `generateUUID()` (expect/actual)
+- Colores: hex string `"#RRGGBB"`, parseados en androidMain
+- Fechas: siempre `LocalDate` / `LocalTime` / `LocalDateTime` de `kotlinx-datetime`
 - Base de datos: `fallbackToDestructiveMigration()` durante desarrollo — migrar en v3
-- Dependencias de plataforma (WorkManager, DataStore, Context): nunca en commonMain directamente — siempre a través de interfaces o parámetros
+- Dependencias de plataforma (WorkManager, DataStore, Context): nunca en commonMain — siempre a través de interfaces
 - Métricas internas (score, XP, totalExperience, currentLevel): **nunca visibles al usuario**

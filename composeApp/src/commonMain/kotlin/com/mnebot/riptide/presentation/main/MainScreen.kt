@@ -443,29 +443,74 @@ fun MainScreen(
         }
 
         editingTask?.let { task ->
-            Dialog(
-                onDismissRequest = { editingTask = null },
-                properties = DialogProperties(usePlatformDefaultWidth = false)
-            ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    TaskFormSheet(
-                        blocks = uiState.blocks,
-                        initialDate = uiState.selectedDate,
-                        existingTask = task,
-                        onSaveOneTime = { title, blockId, date, time ->
-                            viewModel.updateOneTimeTask(task, title, blockId, date, time)
-                            editingTask = null
-                        },
-                        onSaveRecurring = { title, blockId, time, recurrence ->
-                            viewModel.addRecurringTask(title, blockId, time, recurrence)
-                            editingTask = null
-                        },
-                        onDelete = {
-                            viewModel.deleteTask(task)
-                            editingTask = null
-                        },
-                        onDismiss = { editingTask = null }
-                    )
+            val isRecurringInstance = task.sourceTaskId != null
+            var editingRecurringScope by remember(task) { mutableStateOf<String?>(null) }
+            // "instance" = solo esta, "all" = todas las futuras
+
+            if (isRecurringInstance && editingRecurringScope == null) {
+                AlertDialog(
+                    onDismissRequest = { editingTask = null },
+                    containerColor = Color(0xFF1B3A6B),
+                    title = {
+                        Text(
+                            "¿Qué quieres editar?",
+                            color = TextPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            ContextMenuItem("Solo esta ocurrencia") {
+                                editingRecurringScope = "instance"
+                            }
+                            ContextMenuItem("Esta y todas las futuras") {
+                                editingRecurringScope = "all"
+                            }
+                        }
+                    },
+                    confirmButton = {}
+                )
+            } else if (!isRecurringInstance || editingRecurringScope != null) {
+                Dialog(
+                    onDismissRequest = { editingTask = null },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                        TaskFormSheet(
+                            blocks = uiState.blocks,
+                            initialDate = uiState.selectedDate,
+                            existingTask = task,
+                            onSaveOneTime = { title, blockId, date, time ->
+                                viewModel.updateOneTimeTask(task, title, blockId, date, time)
+                                editingTask = null
+                            },
+                            onSaveRecurring = { title, blockId, time, recurrence ->
+                                val sourceId = task.sourceTaskId
+                                if (editingRecurringScope == "all" && sourceId != null) {
+                                    viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence)
+                                } else {
+                                    viewModel.updateOneTimeTask(
+                                        task,
+                                        title,
+                                        blockId,
+                                        (task.schedule as? TaskSchedule.OneTime)?.date ?: currentDate(),
+                                        time
+                                    )
+                                }
+                                editingTask = null
+                            },
+                            onDelete = {
+                                if (isRecurringInstance) {
+                                    deletingRecurringTask = task
+                                } else {
+                                    viewModel.deleteTask(task)
+                                }
+                                editingTask = null
+                            },
+                            onDismiss = { editingTask = null }
+                        )
+                    }
                 }
             }
         }

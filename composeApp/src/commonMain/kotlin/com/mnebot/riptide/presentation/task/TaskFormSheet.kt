@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -22,11 +21,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.*
+import com.mnebot.riptide.presentation.components.DateInputField
+import com.mnebot.riptide.presentation.components.TimeInputField
 import com.mnebot.riptide.presentation.main.currentDate
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalDate
@@ -57,19 +56,14 @@ fun TaskFormSheet(
 ) {
     var title by remember { mutableStateOf(existingTask?.title ?: "") }
     var selectedBlockId by remember { mutableStateOf<String?>(existingTask?.blockId) }
-    var isRecurring by remember { mutableStateOf(false) } // edición siempre como puntual por ahora
+    var isRecurring by remember { mutableStateOf(false) }
 
-    // OneTime
     val initialSchedule = existingTask?.schedule as? TaskSchedule.OneTime
-    var dateText by remember { mutableStateOf(initialSchedule?.date?.toString() ?: initialDate.toString()) }
-    var timeText by remember { mutableStateOf(
-        initialSchedule?.time?.let {
-            "${it.hour.toString().padStart(2,'0')}${it.minute.toString().padStart(2,'0')}"
-        } ?: ""
-    ) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(initialSchedule?.date ?: initialDate) }
+    var selectedTime by remember { mutableStateOf<LocalTime?>(initialSchedule?.time) }
 
     // Recurring
-    var recurringTimeDigits by remember { mutableStateOf("") }
+    var recurringTime by remember { mutableStateOf<LocalTime?>(null) }
     val selectedDays = remember { mutableStateMapOf<Int, Unit>() }
 
     Box(
@@ -100,9 +94,8 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Título del sheet
             Text(
-                "Nueva tarea",
+                if (existingTask == null) "Nueva tarea" else "Editar tarea",
                 color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -144,27 +137,30 @@ fun TaskFormSheet(
                 // --- PUNTUAL ---
                 SheetSectionLabel("FECHA")
                 Spacer(modifier = Modifier.height(8.dp))
-                SheetTextField(
-                    value = dateText,
-                    onValueChange = { dateText = it },
-                    placeholder = "YYYY-MM-DD"
+                DateInputField(
+                    value = selectedDate,
+                    onValueChange = { selectedDate = it },
+                    nullable = false,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 SheetSectionLabel("HORA (opcional)")
                 Spacer(modifier = Modifier.height(8.dp))
-                SheetTimeField(
-                    digits = timeText,
-                    onDigitsChange = { timeText = it }
+                TimeInputField(
+                    value = selectedTime,
+                    onValueChange = { selectedTime = it },
+                    nullable = true
                 )
             } else {
                 // --- RECURRENTE ---
                 SheetSectionLabel("HORA")
                 Spacer(modifier = Modifier.height(8.dp))
-                SheetTimeField(
-                    digits = recurringTimeDigits,
-                    onDigitsChange = { recurringTimeDigits = it }
+                TimeInputField(
+                    value = recurringTime,
+                    onValueChange = { recurringTime = it },
+                    nullable = false
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -197,11 +193,10 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Bloque (opcional para puntual, obligatorio para recurrente)
+            // Bloque
             SheetSectionLabel(if (isRecurring) "BLOQUE" else "BLOQUE (opcional)")
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Sin bloque (solo para puntuales)
             if (!isRecurring) {
                 BlockChip(
                     label = "Sin bloque",
@@ -250,13 +245,11 @@ fun TaskFormSheet(
                         .clickable {
                             if (title.isBlank()) return@clickable
                             if (!isRecurring) {
-                                val date = runCatching { LocalDate.parse(dateText) }
-                                    .getOrDefault(currentDate())
-                                val time = parseTimeDigits(timeText)
-                                onSaveOneTime(title, selectedBlockId, date, time)
+                                val date = selectedDate ?: currentDate()
+                                onSaveOneTime(title, selectedBlockId, date, selectedTime)
                             } else {
                                 val blockId = selectedBlockId ?: return@clickable
-                                val time = parseTimeDigits(recurringTimeDigits) ?: return@clickable
+                                val time = recurringTime ?: return@clickable
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
                                 onSaveRecurring(title, blockId, time, Recurrence.Weekly(slots))
@@ -285,14 +278,6 @@ fun TaskFormSheet(
             }
         }
     }
-}
-
-private fun parseTimeDigits(digits: String): LocalTime? {
-    if (digits.length < 4) return null
-    val h = digits.substring(0, 2).toIntOrNull() ?: return null
-    val m = digits.substring(2, 4).toIntOrNull() ?: return null
-    if (h !in 0..23 || m !in 0..59) return null
-    return LocalTime(h, m)
 }
 
 @Composable
@@ -355,49 +340,6 @@ private fun SheetTextField(
         textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
         decorationBox = { inner ->
             if (value.isEmpty()) Text(placeholder, color = SectionLabel, fontSize = 15.sp)
-            inner()
-        }
-    )
-}
-
-@Composable
-private fun SheetTimeField(
-    digits: String,
-    onDigitsChange: (String) -> Unit
-) {
-    val display = when {
-        digits.length >= 3 -> "${digits.substring(0, 2)}:${digits.substring(2)}"
-        else -> digits
-    }
-    BasicTextField(
-        value = display,
-        onValueChange = { input ->
-            val newDigits = input.filter { it.isDigit() }.take(4)
-            onDigitsChange(newDigits)
-        },
-        modifier = Modifier
-            .width(80.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(CardBackground)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        textStyle = TextStyle(
-            color = TextPrimary,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Medium
-        ),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true,
-        decorationBox = { inner ->
-            if (digits.isEmpty()) {
-                Text(
-                    "--:--",
-                    color = SectionLabel,
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
             inner()
         }
     )

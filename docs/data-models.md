@@ -8,7 +8,7 @@ Todos los modelos viven en `commonMain/kotlin/com/mnebot/riptide/domain/model/` 
 
 ```kotlin
 data class WorkBlock(
-    val id: String,                             // UUID
+    val id: String,
     val name: String,
     val marineCategories: List<MarineCategory>, // asignado automáticamente, nunca visible al usuario
     val color: String,                          // hex, ej: "#1A73E8"
@@ -50,9 +50,9 @@ enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 | Estado | Descripción |
 |--------|-------------|
 | PENDING | Estado por defecto al crear |
-| COMPLETED | Da XP al ecosistema marino (tiempo real) |
+| COMPLETED | Da 10 XP al ecosistema marino |
 | EXPIRED | Pendiente al hacer el resumen nocturno; no da XP |
-| POSTPONED | Tarea pospuesta; se crea nueva instancia PENDING en la fecha elegida |
+| POSTPONED | Original pospuesta; nueva instancia PENDING en la fecha elegida |
 
 ---
 
@@ -65,7 +65,7 @@ sealed class TaskSchedule {
 }
 ```
 
-Las instancias generadas por `RecurringTaskGenerator` se crean siempre como `OneTime`.
+Las instancias generadas por `RecurringTaskGenerator` siempre son `OneTime` con `sourceTaskId` apuntando al `RecurringTaskDef`.
 
 ---
 
@@ -88,8 +88,6 @@ data class DayTask(
 
 ## RecurringTaskDef
 
-Definición de una tarea recurrente. Genera instancias `DayTask` para los próximos N días.
-
 ```kotlin
 data class RecurringTaskDef(
     val id: String,
@@ -100,6 +98,10 @@ data class RecurringTaskDef(
     val isActive: Boolean
 )
 ```
+
+Al editar una tarea recurrente desde la UI, aparece un diálogo con dos opciones:
+- **"Solo esta ocurrencia"** → `updateOneTimeTask` (edita solo esa instancia `DayTask`)
+- **"Esta y todas las futuras"** → `updateRecurringTask` (actualiza el `RecurringTaskDef`, borra instancias PENDING futuras, regenera con `RecurringTaskGenerator`)
 
 ---
 
@@ -112,7 +114,7 @@ data class BlockCategory(
 )
 ```
 
-Tabla separada con PK compuesta `(blockId, category)` y FK CASCADE desde `work_blocks`. Nunca visible al usuario.
+Tabla separada con PK compuesta `(blockId, category)` y FK CASCADE. Nunca visible al usuario.
 
 ---
 
@@ -120,11 +122,11 @@ Tabla separada con PK compuesta `(blockId, category)` y FK CASCADE desde `work_b
 
 ```kotlin
 enum class MarineCategory {
-    FISH,       // 🐟 Peces
-    FLORA,      // 🪸 Flora
-    CRUSTACEAN, // 🦞 Crustáceos
-    MOLLUSK,    // 🐚 Moluscos
-    PELAGIC     // 🦈 Pelágicos
+    FISH,       // 🐟
+    FLORA,      // 🪸
+    CRUSTACEAN, // 🦞
+    MOLLUSK,    // 🐚
+    PELAGIC     // 🦈
 }
 ```
 
@@ -144,12 +146,14 @@ data class DaySummary(
 )
 ```
 
-Mensajes según score (con prefijo de progreso si score parcial y sufijo de racha si top ≥ 3 días):
+Mensajes según score:
 - `0.0` → "Las corrientes cambian. Mañana el mar sigue ahí."
 - `< 0.4` → "Algo se movió hoy. Eso cuenta."
 - `< 0.7` → "Buen empuje hoy."
 - `< 1.0` → "El estanque está vivo."
 - `1.0` → "Hoy el estanque brilló."
+
+Con prefijo de progreso si score parcial, y sufijo de racha (`[Bloque] lleva N días seguidos 🔥`) si la racha top ≥ 3.
 
 ---
 
@@ -157,18 +161,18 @@ Mensajes según score (con prefijo de progreso si score parcial y sufijo de rach
 
 ```kotlin
 data class BlockStreak(
-    val blockId: String,        // PK natural, sin campo id separado
+    val blockId: String,        // PK natural
     val currentStreak: Int,
     val lastActiveDate: LocalDate
 )
 ```
 
-Lógica de actualización (en `BlockStreakProcessor`):
-- Al menos 1 tarea COMPLETED en el bloque ese día → día activo → incrementa racha si consecutivo
-- Sin tareas ese día → día neutral, no toca la racha
+Lógica (`BlockStreakProcessor`):
+- ≥1 tarea COMPLETED ese día → incrementa racha si consecutivo
+- Sin tareas ese día → neutral, no toca la racha
 - Tareas pero ninguna COMPLETED → rompe la racha (`currentStreak = 0`)
 
-UI: `🔥 N días` en `BlockHeader` solo si `currentStreak >= 2` (color #FFB347).
+UI: `🔥 N días` en `BlockHeader` si `currentStreak >= 2` (color #FFB347).
 
 ---
 
@@ -186,18 +190,22 @@ data class EcosystemState(
 
 Un registro por categoría marina (5 en total). Curva de niveles:
 
-| Nivel | XP total requerida |
-|---|---|
-| 1 | 0 |
-| 2 | 100 |
-| 3 | 250 |
-| 4 | 450 |
-| 5 | 700 |
-| N | nivel anterior + (N-1)*50 |
+| Nivel | XP total | Coste del nivel |
+|---|---|---|
+| 1 | 0 | — |
+| 2 | 1 | 1 |
+| 3 | 21 | 20 |
+| 4 | 61 | 40 |
+| 5 | 126 | 65 |
+| 6 | 226 | 100 |
+| 7 | 376 | 150 |
+| N | — | anterior × 1.5 |
+
+El nivel 2 = 1 XP garantiza que completar 1 sola tarea desbloquea la primera criatura.
 
 Fuentes de XP:
 - Completar tarea (tiempo real): 10 XP divididas entre las categorías del bloque
-- Bonus nocturno: `score≥1.0→+50` | `score≥0.7→+25` | `score≥0.4→+10` + `bestStreak*5`, dividido entre categorías
+- Bonus nocturno: `score≥1.0→+50` | `score≥0.7→+25` | `score≥0.4→+10` + `bestStreak×5`
 
 ---
 
@@ -206,9 +214,9 @@ Fuentes de XP:
 ```kotlin
 data class MarineCreature(
     val id: String,
-    val ecosystemId: String,        // id del EcosystemState de su categoría
+    val ecosystemId: String,
     val species: CreatureSpecies,
-    val nickname: String?,          // nombre dado por el usuario al desbloquear
+    val nickname: String?,
     val unlockedAtLevel: Int,
     val experience: Int,
     val creatureLevel: Int,
@@ -233,7 +241,7 @@ enum class CreatureSpecies(val category: MarineCategory, val displayName: String
 
 ## CreatureSpec (presentation/aquarium)
 
-Modelo ligero usado en la capa de presentación para el renderizado y detección de desbloqueos:
+Modelo ligero para renderizado y detección de desbloqueos:
 
 ```kotlin
 data class CreatureSpec(
@@ -241,12 +249,12 @@ data class CreatureSpec(
     val species: CreatureSpecies,
     val category: MarineCategory,
     val unlockLevel: Int,
-    val swimDuration: Int,      // ms del ciclo de natación; 0 = criatura fija
-    val wobbleAmplitude: Float  // amplitud de oscilación vertical (fracción de pantalla)
+    val swimDuration: Int,      // ms; 0 = fija
+    val wobbleAmplitude: Float
 )
 ```
 
-| Emoji | Especie | Categoría | Nivel desbloqueo |
+| Emoji | Especie | Categoría | Nivel |
 |---|---|---|---|
 | 🐟 | CLOWNFISH | FISH | 2 |
 | 🪸 | BRAIN_CORAL | FLORA | 2 |
@@ -274,4 +282,4 @@ data class CreatureSpec(
 | `EcosystemStateEntity` | `ecosystem_states` |
 | `MarineCreatureEntity` | `marine_creatures` |
 
-Fechas almacenadas como String ISO. Enums como String. Sealed classes como JSON con `kotlinx-serialization`.
+Fechas como String ISO. Enums como String. Sealed classes como JSON con `kotlinx-serialization`.

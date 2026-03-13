@@ -228,6 +228,28 @@ class MainViewModel(
         }
     }
 
+    fun updateRecurringTask(
+        sourceId: String,
+        title: String,
+        blockId: String,
+        time: LocalTime,
+        recurrence: Recurrence
+    ) {
+        viewModelScope.launch {
+            val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            recurringTaskDefRepository.update(
+                def.copy(title = title, blockId = blockId, time = time, recurrence = recurrence)
+            )
+            val today = currentDate()
+            dayTaskRepository.getBySourceTask(sourceId)
+                .filter { it.status == TaskStatus.PENDING }
+                .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= today } == true }
+                .forEach { dayTaskRepository.delete(it.id) }
+            recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
+            loadDay(_uiState.value.selectedDate)
+        }
+    }
+
     fun postponeTask(task: DayTask, postponedTo: LocalDateTime) {
         viewModelScope.launch {
             dayTaskRepository.update(task.copy(status = TaskStatus.POSTPONED, postponedTo = postponedTo))

@@ -4,11 +4,12 @@ object EcosystemLevelCalculator {
 
     fun xpForLevel(level: Int): Int {
         if (level <= 1) return 0
-        var total = 0
-        var cost = 100
-        for (i in 2..level) {
+        if (level == 2) return 1
+        var total = 1
+        var cost = 20
+        for (i in 3..level) {
             total += cost
-            cost += 50
+            cost = (cost * 1.5f).toInt()
         }
         return total
     }

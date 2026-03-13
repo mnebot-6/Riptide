@@ -104,6 +104,9 @@ composeApp/src/
 │   └── presentation/
 │       ├── aquarium/
 │       │   AquariumBackground, AquariumCreature (+ expect drawEmoji)
+│       ├── components/
+│       │   TimeInputField, DateInputField    ← input estandarizado
+│       │   InputFieldDialogs (expect/actual) ← pickers con estética marina
 │       ├── block/   BlockFormScreen, BlockFormViewModel
 │       ├── main/    MainScreen, MainViewModel, MainUiState,
 │       │            WeekCalendar, MainDrawer,
@@ -123,18 +126,20 @@ composeApp/src/
 │   ├── data/repository/
 │   │   (todas las implementaciones Room + UserPreferencesRepositoryImpl)
 │   └── presentation/
-│       ├── aquarium/  AquariumCreature.android.kt (actual drawEmoji)
-│       ├── block/     BlockFormViewModelFactory
-│       ├── main/      MainViewModelFactory, CurrentDate.android, ParseColor.android
-│       ├── task/      TaskFormViewModelFactory
+│       ├── aquarium/    AquariumCreature.android.kt (actual drawEmoji)
+│       ├── components/  InputFieldDialogs.android.kt (actual pickers marinos)
+│       ├── block/       BlockFormViewModelFactory
+│       ├── main/        MainViewModelFactory, CurrentDate.android, ParseColor.android
+│       ├── task/        TaskFormViewModelFactory
 │       └── Navigation.kt
 │
 └── iosMain/kotlin/com/mnebot/riptide/
     ├── MainViewController.kt
     ├── NightSummarySchedulerImpl.ios.kt
     ├── UuidGenerator.ios.kt
-    ├── presentation/aquarium/  AquariumCreature.ios.kt (pendiente arreglar)
-    └── presentation/main/  CurrentDate.ios, ParseColor.ios
+    ├── presentation/aquarium/    AquariumCreature.ios.kt (pendiente arreglar)
+    ├── presentation/components/  InputFieldDialogs.ios.kt (stubs pendiente v3)
+    └── presentation/main/        CurrentDate.ios, ParseColor.ios
 ```
 
 ---
@@ -145,13 +150,14 @@ composeApp/src/
 |------|--------|
 | MVP — Infraestructura y CRUD | ✅ Completado |
 | MVP — Tareas puntuales y recurrentes | ✅ Completado |
-| MVP — Editar / posponer / eliminar tareas | ✅ Completado |
-| MVP — Indicadores de progreso en calendario | ✅ Completado |
+| MVP — Editar / posponer / eliminar | ✅ Completado |
+| MVP — Indicadores de progreso | ✅ Completado |
 | MVP — Resumen nocturno con WorkManager | ✅ Completado |
 | v2 — Rachas y mensajes contextuales | ✅ Completado |
 | v2 — Ecosistema visual con Canvas | ✅ Completado |
 | v2 — Desbloqueo de criaturas con nombre | ✅ Completado |
-| v3 — Revisión, pulido y estabilización | 🔄 Siguiente |
+| v2.1 — Inputs estandarizados, fix recurrentes, curva XP | ✅ Completado |
+| v3 — Revisión, pulido y onboarding | 🔄 Siguiente |
 | v4 — Backend + sincronización + social | ⬜ Pendiente |
 
 Ver [`docs/roadmap.md`](docs/roadmap.md) para detalle completo.
