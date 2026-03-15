@@ -11,6 +11,7 @@ import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "riptide_prefs")
@@ -21,6 +22,7 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_NIGHT_HOUR = intPreferencesKey("night_summary_hour")
         private val KEY_NIGHT_MINUTE = intPreferencesKey("night_summary_minute")
         private val KEY_PENDING_UNLOCKS = stringPreferencesKey("pending_unlocks")
+        private val KEY_DISMISSED_SUMMARY_DATE = stringPreferencesKey("dismissed_summary_date")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val SEPARATOR = "|"
@@ -48,6 +50,17 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
     override suspend fun setPendingUnlocks(emojis: List<String>) {
         context.dataStore.edit { prefs ->
             prefs[KEY_PENDING_UNLOCKS] = emojis.joinToString(SEPARATOR)
+        }
+    }
+
+    override suspend fun getLastDismissedSummaryDate(): LocalDate? {
+        val raw = context.dataStore.data.first()[KEY_DISMISSED_SUMMARY_DATE] ?: return null
+        return runCatching { LocalDate.parse(raw) }.getOrNull()
+    }
+
+    override suspend fun setLastDismissedSummaryDate(date: LocalDate) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_DISMISSED_SUMMARY_DATE] = date.toString()
         }
     }
 }

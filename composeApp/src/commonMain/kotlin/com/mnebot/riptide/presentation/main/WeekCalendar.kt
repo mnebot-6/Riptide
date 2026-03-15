@@ -103,7 +103,8 @@ fun WeekCalendar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         days.forEach { date ->
-            val tasksForDay = tasksByDate[date] ?: emptyList()
+            val tasksForDay = (tasksByDate[date] ?: emptyList())
+                .filter { it.status != TaskStatus.POSTPONED }
             val total = tasksForDay.size
             val completed = tasksForDay.count { it.status == TaskStatus.COMPLETED }
 

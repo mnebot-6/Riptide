@@ -110,7 +110,7 @@ class MainViewModel(
     fun addRecurringTask(
         title: String,
         blockId: String,
-        time: LocalTime,
+        time: LocalTime?,
         recurrence: Recurrence
     ) {
         viewModelScope.launch {
@@ -124,6 +124,28 @@ class MainViewModel(
             )
             recurringTaskDefRepository.insert(def)
             recurringTaskGenerator.generateUpTo(currentDate(), daysAhead = 7)
+            loadDay(_uiState.value.selectedDate)
+        }
+    }
+
+    fun updateRecurringTask(
+        sourceId: String,
+        title: String,
+        blockId: String,
+        time: LocalTime?,
+        recurrence: Recurrence
+    ) {
+        viewModelScope.launch {
+            val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            recurringTaskDefRepository.update(
+                def.copy(title = title, blockId = blockId, time = time, recurrence = recurrence)
+            )
+            val today = currentDate()
+            dayTaskRepository.getBySourceTask(sourceId)
+                .filter { it.status == TaskStatus.PENDING }
+                .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= today } == true }
+                .forEach { dayTaskRepository.delete(it.id) }
+            recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
             loadDay(_uiState.value.selectedDate)
         }
     }
@@ -192,14 +214,19 @@ class MainViewModel(
 
     private suspend fun checkPendingSummary() {
         val yesterday = currentDate().minus(1, DateTimeUnit.DAY)
-        val summary = daySummaryRepository.getByDate(yesterday)
-        if (summary != null) {
-            _uiState.update { it.copy(pendingSummary = summary) }
-        }
+        val summary = daySummaryRepository.getByDate(yesterday) ?: return
+        val dismissed = userPreferencesRepository.getLastDismissedSummaryDate()
+        if (dismissed == summary.date) return
+        _uiState.update { it.copy(pendingSummary = summary) }
     }
 
     fun dismissSummary() {
-        _uiState.update { it.copy(pendingSummary = null) }
+        viewModelScope.launch {
+            _uiState.value.pendingSummary?.date?.let { date ->
+                userPreferencesRepository.setLastDismissedSummaryDate(date)
+            }
+            _uiState.update { it.copy(pendingSummary = null) }
+        }
     }
 
     fun deleteTask(task: DayTask) {
@@ -228,37 +255,16 @@ class MainViewModel(
         }
     }
 
-    fun updateRecurringTask(
-        sourceId: String,
-        title: String,
-        blockId: String,
-        time: LocalTime,
-        recurrence: Recurrence
-    ) {
+    fun postponeTask(task: DayTask, date: LocalDate, time: LocalTime?) {
         viewModelScope.launch {
-            val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
-            recurringTaskDefRepository.update(
-                def.copy(title = title, blockId = blockId, time = time, recurrence = recurrence)
-            )
-            val today = currentDate()
-            dayTaskRepository.getBySourceTask(sourceId)
-                .filter { it.status == TaskStatus.PENDING }
-                .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= today } == true }
-                .forEach { dayTaskRepository.delete(it.id) }
-            recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
-            loadDay(_uiState.value.selectedDate)
-        }
-    }
-
-    fun postponeTask(task: DayTask, postponedTo: LocalDateTime) {
-        viewModelScope.launch {
+            val postponedTo = LocalDateTime(date, time ?: LocalTime(0, 0))
             dayTaskRepository.update(task.copy(status = TaskStatus.POSTPONED, postponedTo = postponedTo))
             dayTaskRepository.insert(
                 task.copy(
                     id = generateUUID(),
                     schedule = TaskSchedule.OneTime(
-                        date = postponedTo.date,
-                        time = postponedTo.time
+                        date = date,
+                        time = time
                     ),
                     status = TaskStatus.PENDING,
                     postponedTo = null
@@ -339,6 +345,12 @@ class MainViewModel(
             loadDay(_uiState.value.selectedDate)
             checkPendingSummary()
             checkPendingUnlocks()
+        }
+    }
+
+    fun updateNightSummaryTime(time: LocalTime) {
+        viewModelScope.launch {
+            userPreferencesRepository.setNightSummaryTime(time)
         }
     }
 }

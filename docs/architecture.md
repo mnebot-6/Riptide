@@ -62,9 +62,9 @@ alias(libs.plugins.kotlinSerialization)
 
 ---
 
-## androidMain — Room (v6)
+## androidMain — Room (v7)
 
-- `RiptideDatabase` — `fallbackToDestructiveMigration(true)` durante desarrollo. Migrar a migraciones reales en v3.
+- `RiptideDatabase` — versión 7. `fallbackToDestructiveMigration(true)` durante desarrollo. Migrar a migraciones reales en v3.
 - `DatabaseProvider` — singleton con `lazy`
 - IDs como `String` (UUID) para facilitar sincronización futura con backend
 
@@ -75,7 +75,7 @@ alias(libs.plugins.kotlinSerialization)
 | `work_blocks` | `WorkBlockEntity` |
 | `block_categories` | `BlockCategoryEntity` — PK compuesta `(blockId, category)`, FK CASCADE desde `work_blocks` |
 | `day_tasks` | `DayTaskEntity` |
-| `recurring_task_defs` | `RecurringTaskDefEntity` — FK CASCADE desde `work_blocks` |
+| `recurring_task_defs` | `RecurringTaskDefEntity` — FK CASCADE desde `work_blocks`, `time String?` nullable |
 | `day_summaries` | `DaySummaryEntity` |
 | `block_streaks` | `BlockStreakEntity` — PK `blockId` (sin campo id separado) |
 | `ecosystem_states` | `EcosystemStateEntity` |
@@ -84,6 +84,10 @@ alias(libs.plugins.kotlinSerialization)
 ### DayTaskEntity — campos clave
 
 `scheduleType` ("ONE_TIME" | "RECURRING"), `date` (String?), `time` (String?), `recurrence` (String? JSON), `status` (String), `completedAt` (String?), `postponedTo` (String?), `sourceTaskId` (String?), `blockId` (String? FK SET_NULL).
+
+### RecurringTaskDefEntity — campos clave
+
+`blockId` (String FK CASCADE), `title` (String), `time` (String? — nullable, hora opcional), `recurrence` (String JSON), `isActive` (Boolean).
 
 ---
 
@@ -153,16 +157,21 @@ Funciones públicas:
 - `selectDate(date)` — cambia día seleccionado y recarga tareas
 - `toggleTaskCompleted(task)` — alterna PENDING/COMPLETED + añade XP + detecta desbloqueos
 - `addOneTimeTask(title, blockId?, date, time?)`
-- `addRecurringTask(title, blockId, time, recurrence)` — crea `RecurringTaskDef` + genera instancias 7 días
+- `addRecurringTask(title, blockId, time: LocalTime?, recurrence)` — crea `RecurringTaskDef` + genera instancias 7 días
 - `updateOneTimeTask(original, title, blockId?, date, time?)`
-- `updateRecurringTask(sourceId, title, blockId, time, recurrence)` — actualiza def + borra instancias PENDING futuras + regenera
+- `updateRecurringTask(sourceId, title, blockId, time: LocalTime?, recurrence)` — actualiza def + borra instancias PENDING futuras + regenera
 - `deleteTask / deleteRecurringTaskInstance / deleteRecurringTaskFromDate / deleteRecurringTaskAll`
-- `postponeTask(task, postponedTo)` — marca POSTPONED, crea nueva instancia PENDING
+- `postponeTask(task, date: LocalDate, time: LocalTime?)` — marca POSTPONED, crea nueva instancia PENDING con hora opcional
 - `insertBlockAndReassign / updateBlockAndReassign / deleteBlockAndReassign`
-- `dismissSummary()` — cierra diálogo resumen nocturno
+- `dismissSummary()` — persiste fecha descartada en DataStore + limpia UiState
 - `confirmUnlock(spec, nickname)` — guarda `MarineCreature` + `drop(1)` de la cola
 - `dismissUnlock()` — descarta sin nombre + `drop(1)`
 - `reload()` — recarga completa + `checkPendingSummary()` + `checkPendingUnlocks()`
+- `updateNightSummaryTime(time)` — persiste hora en DataStore
+
+### checkPendingSummary
+
+Compara la fecha del summary de ayer con `getLastDismissedSummaryDate()` en DataStore. Si coinciden, no muestra el diálogo. Evita que el resumen reaparezca al reabrir la app o rotar la pantalla.
 
 ---
 
@@ -173,13 +182,18 @@ Lógica pura de cierre de día. Se llama desde `NightSummaryWorker` (a la hora c
 ```
 processDay(date, blockNames, blockCategories)
   1. Si ya existe DaySummary para esa fecha → no hacer nada (idempotente)
-  2. Expira tareas PENDING del día → EXPIRED
-  3. Calcula score = completadas / total
-  4. blockStreakProcessor.processDay(date, blockIds) → Map<String, Int>
-  5. ecosystemProcessor.addNightBonus(score, bestStreak, allCategories) → List<CreatureSpec>
-  6. Persiste nuevos unlocks en DataStore via UserPreferencesRepository
-  7. buildMessage(score, total, completed, streaks, blockNames)
-  8. Guarda DaySummary
+  2. Filtra tareas evaluables:
+     - Excluye POSTPONED
+     - Incluye OneTime con date <= fecha del resumen
+     - Incluye sin fecha si están COMPLETED
+     - Excluye sin fecha y PENDING (se evalúan en el resumen de otro día)
+  3. Expira tareas PENDING evaluables → EXPIRED
+  4. Calcula score = completadas / total (sobre evaluables)
+  5. blockStreakProcessor.processDay(date, blockIds) → Map<String, Int>
+  6. ecosystemProcessor.addNightBonus(score, bestStreak, allCategories) → List<CreatureSpec>
+  7. Persiste nuevos unlocks en DataStore via UserPreferencesRepository
+  8. buildMessage(score, total, completed, streaks, blockNames)
+  9. Guarda DaySummary
 ```
 
 ---
@@ -254,12 +268,14 @@ interface UserPreferencesRepository {
     suspend fun setNightSummaryTime(time: LocalTime)
     suspend fun getPendingUnlocks(): List<String>
     suspend fun setPendingUnlocks(emojis: List<String>)
-    fun hasCompletedOnboarding(): Flow<Boolean>     // para tutorial primera vez
+    suspend fun getLastDismissedSummaryDate(): LocalDate?
+    suspend fun setLastDismissedSummaryDate(date: LocalDate)
+    fun hasCompletedOnboarding(): Flow<Boolean>
     suspend fun setOnboardingCompleted()
 }
 ```
 
-Implementación androidMain: DataStore Preferences. Hora/minuto como `Int` separados, unlocks como String con separador `|`, onboarding como `Boolean`. Valor por defecto hora: 23:30.
+Implementación androidMain: DataStore Preferences. Hora/minuto como `Int` separados, unlocks como String con separador `|`, dismissed_summary_date como String ISO, onboarding como `Boolean`. Valor por defecto hora: 23:30.
 
 ---
 
@@ -274,7 +290,7 @@ toggleTaskCompleted / addNightBonus
     → al arrancar: checkPendingUnlocks() lee DataStore → añade a UiState
 
 MainScreen:
-    → pendingSummary primero (si existe)
+    → pendingSummary primero (si existe y no fue descartado)
     → pendingUnlocks.first() → diálogo con emoji + campo nombre
     → confirmUnlock(spec, nickname) → guarda MarineCreature → drop(1)
     → siguiente unlock en cola
@@ -288,6 +304,33 @@ MainScreen:
 
 ---
 
+## Pantalla principal — estructura de capas
+
+```
+Box (fillMaxSize, pointerInput gestos)
+ ├── AquariumBackground()
+ ├── AquariumCreatures(...)
+ ├── when(showAquarium)
+ │    ├── true  → botón cerrar (FAB ✕)
+ │    └── false → Column
+ │                 ├── MainHeader (fijo)
+ │                 │    ├── Fila: 🌊 Riptide + ⟳ + 📅 + ➕ + ☰
+ │                 │    └── WeekCalendar
+ │                 └── MainContent (scrollable)
+ ├── AlertDialog contextMenu
+ ├── AlertDialog deletingRecurring
+ ├── AlertDialog editingScopeTask    ← diálogo scope edición recurrente
+ ├── AlertDialog pendingSummary
+ ├── AlertDialog pendingUnlocks
+ ├── Drawer overlay + MainDrawer
+ ├── DatePickerDialogWrapper         ← para ir a día concreto desde header
+ ├── Dialog TaskFormSheet (nueva tarea)
+ ├── Dialog TaskFormSheet (editar tarea)
+ └── Dialog PostponeSheet
+```
+
+---
+
 ## Ordenación en pantalla principal
 
 **Bloques:** por hora de inicio de su slot ese día. Bloques sin horario ese día van al final.
@@ -298,6 +341,33 @@ MainScreen:
 3. Completadas al final
 
 **Tareas sin bloque:** sección propia "Sin bloque" con icono 📋, antes de los bloques con asignación.
+
+---
+
+## Gestos en MainScreen
+
+Un único `detectDragGestures` en el Box raíz gestiona todo:
+- **Vertical hacia abajo** → abre drawer
+- **Horizontal** (solo si drawer cerrado) → cambia día
+
+El Box del drawer tiene su propio `detectDragGestures`:
+- **Vertical hacia arriba** → cierra drawer
+
+Drawer usa `Animatable(drawerOffsetY)`. Overlay oscuro al abrir; toque fuera cierra.
+
+---
+
+## Edición de tareas recurrentes — flujo de scope
+
+Al pulsar "Editar" en el menú contextual de una tarea con `sourceTaskId != null`:
+
+1. Se muestra diálogo: "Solo esta ocurrencia" / "Esta y las futuras" / "Todas las ocurrencias"
+2. "Solo esta ocurrencia" → abre `TaskFormSheet` normal → `updateOneTimeTask`
+3. "Esta y las futuras" / "Todas las ocurrencias" → abre `TaskFormSheet` con `forceRecurring=true`
+   → switch bloqueado en modo recurrente → `updateRecurringTask`
+
+Convención interna: se añade sufijo `_future` o `_all` al `sourceTaskId` en el estado de UI para
+transportar el scope. Se limpia antes de pasar al formulario y nunca se persiste en base de datos.
 
 ---
 
@@ -329,17 +399,6 @@ ROUTE_BLOCK_EDIT   → BlockFormScreen (editar, recibe blockId)
 
 ---
 
-## Gestos en MainScreen
-
-Un único `detectDragGestures` gestiona todo:
-- **Vertical hacia abajo** → abre drawer
-- **Vertical hacia arriba** → cierra drawer
-- **Horizontal** (solo si drawer cerrado) → cambia día
-
-Drawer usa `Animatable(drawerOffsetY)`. Overlay oscuro al abrir; toque fuera cierra.
-
----
-
 ## Convenciones
 
 - IDs: UUID v4 con `generateUUID()` (expect/actual)
@@ -348,3 +407,4 @@ Drawer usa `Animatable(drawerOffsetY)`. Overlay oscuro al abrir; toque fuera cie
 - Base de datos: `fallbackToDestructiveMigration()` durante desarrollo — migrar en v3
 - Dependencias de plataforma (WorkManager, DataStore, Context): nunca en commonMain — siempre a través de interfaces
 - Métricas internas (score, XP, totalExperience, currentLevel): **nunca visibles al usuario**
+- Pantalla bloqueada en portrait (AndroidManifest, `screenOrientation="portrait"`)

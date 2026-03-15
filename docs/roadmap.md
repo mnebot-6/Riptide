@@ -4,7 +4,7 @@
 
 ### Infraestructura
 - Proyecto KMP con Compose Multiplatform
-- Room completo v6 (entities, DAOs, database, mappers, repositorios)
+- Room completo v7 (entities, DAOs, database, mappers, repositorios)
 - `BlockCategory` con tabla separada y FK CASCADE
 - `generateUUID` expect/actual (commonMain / androidMain / iosMain)
 - `parseColor` y `currentDate` expect/actual
@@ -20,30 +20,32 @@
 - Todas las interfaces de repositorio
 - `MarineCategoryAssigner` — redistribución automática de categorías marinas
 - `RecurringTaskGenerator` — generación de instancias para los próximos N días
-- `NightSummaryProcessor` — expira pendientes, calcula score, genera mensaje, guarda `DaySummary`
+- `NightSummaryProcessor` — expira pendientes evaluables, calcula score, genera mensaje, guarda `DaySummary`
 - `TaskStatus` (PENDING, COMPLETED, EXPIRED, POSTPONED)
 - `TaskSchedule` sealed class (OneTime, Recurring)
-- `RecurringTaskDef` — definición de tareas recurrentes con bloque obligatorio
+- `RecurringTaskDef` — definición de tareas recurrentes con bloque obligatorio, hora opcional
 - `Recurrence` / `WeeklySlot` — completamente `@Serializable`
 
 ### UI — Pantalla principal
 - Fondo oceánico (AquariumBackground con Canvas + frosted glass cards)
 - `WeekCalendar` — 7 días navegables, swipe horizontal, indicador día actual
-- Barra de progreso animada por día en el calendario
+- Barra de progreso animada por día en el calendario (excluye POSTPONED)
 - Lista de bloques ordenada: primero los que tienen horario ese día, luego el resto
 - Lista de tareas: con hora primero, sin hora después, completadas al final
 - Tareas sin bloque visibles en sección propia
 - Checkbox con color del bloque, tachado al completar, ⌛ expiradas, ⏰ pospuestas
-- Drawer desde arriba con gesto vertical
+- Drawer desde arriba con gesto vertical (cierre con drag hacia arriba desde el propio drawer)
 - Gestos unificados (vertical = drawer, horizontal = cambio de día)
 - FAB 🐟 siempre visible; AquariumFullScreen al pulsarlo
-- Sección AJUSTES en drawer con hora configurable del resumen nocturno
+- Header fijo con nombre app + DatePicker + volver a hoy + añadir tarea + abrir drawer
+- Drawer compacto: solo BLOQUES + AJUSTES; lista de bloques con scroll interno (85% pantalla)
 
 ### UI — Gestión de tareas
-- `TaskFormSheet` — crear y editar tareas puntuales y recurrentes
+- `TaskFormSheet` — crear y editar tareas puntuales y recurrentes; hora opcional en recurrentes; `forceRecurring` para forzar modo al editar
 - Menú contextual por pulsación larga: Editar, Posponer, Eliminar
-- Al eliminar tarea recurrente: diálogo con 3 opciones (solo esta / esta y futuras / todas)
-- `PostponeSheet` — nueva fecha + hora; marca original como POSTPONED y crea nueva instancia PENDING
+- Al editar tarea recurrente: diálogo scope (solo esta / esta y futuras / todas)
+- Al eliminar tarea recurrente: diálogo scope (solo esta / esta y futuras / todas)
+- `PostponeSheet` — nueva fecha + hora opcional; marca original como POSTPONED y crea nueva instancia PENDING
 
 ### UI — Gestión de bloques
 - `BlockFormScreen` completo (crear / editar / eliminar)
@@ -51,10 +53,13 @@
 
 ### Resumen nocturno
 - `NightSummaryProcessor` (commonMain) — lógica pura de cierre de día
+- Evaluación selectiva: solo tareas con `date <= fecha resumen` o completadas sin fecha
+- Tareas POSTPONED excluidas completamente del resumen y de la barra de progreso
 - `NightSummaryWorker` (androidMain, WorkManager) — ejecuta a la hora configurada
 - Fallback al arrancar la app (procesa ayer si no se procesó)
 - Hora configurable desde el drawer (persiste en DataStore)
 - `NightSummaryScheduler` como interfaz commonMain con implementaciones por plataforma
+- No reaparece si ya fue cerrado (fecha descartada en DataStore)
 
 ---
 
@@ -90,28 +95,44 @@
 
 ## ✅ v2.1 completada
 
-### Correcciones y mejoras pre-distribución
-
-- **Curva XP reajustada** — nivel 1→2 cuesta 1 XP (garantiza primer pez con 1 tarea completada, independientemente de las categorías del bloque)
-- **Fix edición de tareas recurrentes** — al editar una tarea con `sourceTaskId`, aparece un diálogo previo:
-  - "Solo esta ocurrencia" → `updateOneTimeTask`
-  - "Esta y todas las futuras" → `updateRecurringTask` (actualiza def, borra instancias PENDING futuras, regenera)
-- **`updateRecurringTask`** añadido a `MainViewModel`
-- **`DataSeeder` limpio para distribución** — firma `seedIfEmpty(db, assigner)`, 3 bloques genéricos (Trabajo, Personal, Salud) + 4 tareas para hoy, sin XP sembrada ni unlocks pregrabados
-- **`TimeInputField` estandarizado** — `BasicTextField` invisible + overlay formateado; cursor nunca cruza el `:`; parámetros `compact` y `showPickerIcon`
-- **`DateInputField` estandarizado** — misma técnica para fechas; dígitos rellenan desde la derecha sobre la fecha de hoy como base; cursor nunca cruza los `-`
-- **Pickers con estética marina** — `Dialog` propio con fondo `OceanMid` y `MaterialTheme` override (`Accent #7EC8E3`); `TimePicker` y `DatePicker` de M3 dentro del dialog custom
-- **`MainDrawer`** actualizado con `TimeInputField(compact=true, showPickerIcon=true)`
-- `TaskFormSheet`, `PostponeSheet` y `BlockFormScreen` migrados a los nuevos componentes de input
+- Curva XP reajustada — nivel 1→2 cuesta 1 XP
+- Fix edición de tareas recurrentes con diálogo de scope
+- `updateRecurringTask` en `MainViewModel`
+- `DataSeeder` limpio para distribución
+- `TimeInputField` y `DateInputField` estandarizados
+- Pickers con estética marina
+- `MainDrawer` con `TimeInputField` compact
 
 ---
 
-## v3 — Revisión, pulido y onboarding
+## ✅ Sprint de fixes y mejoras (pre-v3)
 
-Antes de pasar al backend, una versión dedicada a estabilizar y preparar la app para distribución real.
+- Bloquear rotación de pantalla (portrait only)
+- Resumen nocturno no reaparece al reabrir — fecha descartada en DataStore
+- Scroll mantiene posición al completar tarea — `rememberLazyListState` fuera del `when`
+- Posponer tarea — hora opcional
+- Tareas POSTPONED excluidas de resumen y barra de progreso
+- Resumen nocturno evalúa solo tareas vencidas o completadas sin fecha
+- Nuevo Header fijo con acciones integradas
+- Drawer con scroll interno en lista de bloques (85% pantalla con `LocalWindowInfo`)
+- Tareas recurrentes — hora opcional (`RecurringTaskDef.time: LocalTime?`)
+- Editar tarea recurrente — diálogo scope igual que al borrar; `forceRecurring` en `TaskFormSheet`
+- `RiptideDatabase` versión 7
+
+---
+
+## 🔄 v3 — Revisión, pulido y onboarding
+
+### Pendientes del sprint de fixes
+- Ordenación bloques por tarea no completada con hora más temprana
+- Long press en cabecera del bloque → crear tarea rápida con bloque preseleccionado
+- Comprobar XP tareas sin bloque
+- Pulsar criatura → ver nombre, nivel, etc. (solo con tareas ocultas)
+- Resumen de criaturas accesible desde el Drawer (nueva pantalla NavHost)
+- Patrón de nado de criaturas más orgánico y variado
 
 ### Onboarding
-- **Tutorial de primera vez** — pantalla fullscreen que aparece solo en el primer inicio
+- Tutorial de primera vez — pantalla fullscreen que aparece solo en el primer inicio
   - Estado persistido en DataStore: `hasCompletedOnboarding` en `UserPreferencesRepository`
   - Pasos swipeables con fondo marino
   - Explica conceptos clave: bloques, tareas, ecosistema, resumen nocturno
@@ -127,12 +148,13 @@ Antes de pasar al backend, una versión dedicada a estabilizar y preparar la app
 ### UX y feedback
 - Animación de entrada de criatura al desbloquearse (entra nadando desde el borde)
 - Feedback visual al completar tarea
-- Revisar accesibilidad básica (tamaños de texto, contraste)
 
 ### Técnico
 - Migrar de `fallbackToDestructiveMigration` a migraciones reales de Room
-- Revisar memory leaks potenciales en ViewModels y coroutines
 - Preparar firma de la app para distribución
+
+### Fase final
+- Estanque como fondo de pantalla dinámico (WallpaperService)
 
 ---
 

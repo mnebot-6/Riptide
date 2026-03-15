@@ -54,7 +54,7 @@ Al alcanzar ciertos niveles de constancia, nuevos habitantes aparecen en el esta
 |---|---|
 | Multiplataforma | Kotlin Multiplatform (KMP) |
 | UI | Compose Multiplatform |
-| Persistencia | Room 2.8.4 (offline-first, v6) |
+| Persistencia | Room 2.8.4 (offline-first, v7) |
 | Serialización | kotlinx-serialization-json 1.7.3 |
 | Arquitectura | MVVM |
 | Navegación | Navigation Compose (multiplatform) |
@@ -96,8 +96,8 @@ composeApp/src/
 │   │   ├── EcosystemProcessor.kt
 │   │   ├── EcosystemLevelCalculator.kt
 │   │   ├── model/
-│   │   │   WorkBlock, DayTask, RecurringTaskDef, DaySummary,
-│   │   │   BlockStreak, EcosystemState, MarineCreature,
+│   │   │   WorkBlock, DayTask, RecurringTaskDef (time nullable),
+│   │   │   DaySummary, BlockStreak, EcosystemState, MarineCreature,
 │   │   │   BlockCategory, MarineCategory, CreatureSpecies,
 │   │   │   Recurrence, WeeklySlot, TaskStatus, TaskSchedule
 │   │   └── repository/  (interfaces)
@@ -109,9 +109,9 @@ composeApp/src/
 │       │   InputFieldDialogs (expect/actual) ← pickers con estética marina
 │       ├── block/   BlockFormScreen, BlockFormViewModel
 │       ├── main/    MainScreen, MainViewModel, MainUiState,
-│       │            WeekCalendar, MainDrawer,
+│       │            WeekCalendar, MainDrawer (BLOQUES+AJUSTES, sin TAREAS),
 │       │            CurrentDate(expect), ParseColor(expect)
-│       └── task/    TaskFormSheet, PostponeSheet, TaskFormViewModel
+│       └── task/    TaskFormSheet (forceRecurring), PostponeSheet, TaskFormViewModel
 │
 ├── androidMain/kotlin/com/mnebot/riptide/
 │   ├── App.kt, MainActivity.kt, DataSeeder.kt
@@ -119,12 +119,13 @@ composeApp/src/
 │   ├── NightSummarySchedulerImpl.android.kt
 │   ├── UuidGenerator.android.kt
 │   ├── data/local/
-│   │   ├── entity/   (todas las entities Room)
+│   │   ├── entity/   (todas las entities Room; RecurringTaskDefEntity.time String?)
 │   │   ├── dao/      (todos los DAOs)
-│   │   ├── db/       RiptideDatabase v6, DatabaseProvider
-│   │   └── mapper/   (domain ↔ entity)
+│   │   ├── db/       RiptideDatabase v7, DatabaseProvider
+│   │   └── mapper/   (domain ↔ entity; RecurringTaskDefMapper con time nullable)
 │   ├── data/repository/
-│   │   (todas las implementaciones Room + UserPreferencesRepositoryImpl)
+│   │   (todas las implementaciones Room + UserPreferencesRepositoryImpl
+│   │    con dismissed_summary_date)
 │   └── presentation/
 │       ├── aquarium/    AquariumCreature.android.kt (actual drawEmoji)
 │       ├── components/  InputFieldDialogs.android.kt (actual pickers marinos)
@@ -157,6 +158,7 @@ composeApp/src/
 | v2 — Ecosistema visual con Canvas | ✅ Completado |
 | v2 — Desbloqueo de criaturas con nombre | ✅ Completado |
 | v2.1 — Inputs estandarizados, fix recurrentes, curva XP | ✅ Completado |
+| Sprint fixes — Header, drawer, resumen, recurrentes, scroll | ✅ Completado |
 | v3 — Revisión, pulido y onboarding | 🔄 Siguiente |
 | v4 — Backend + sincronización + social | ⬜ Pendiente |
 

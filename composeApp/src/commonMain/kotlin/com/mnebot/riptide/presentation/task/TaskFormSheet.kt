@@ -49,14 +49,15 @@ fun TaskFormSheet(
     blocks: List<WorkBlock>,
     initialDate: LocalDate = currentDate(),
     existingTask: DayTask? = null,
+    forceRecurring: Boolean = false,
     onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?) -> Unit,
-    onSaveRecurring: (title: String, blockId: String, time: LocalTime, recurrence: Recurrence) -> Unit,
+    onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence) -> Unit,
     onDelete: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     var title by remember { mutableStateOf(existingTask?.title ?: "") }
     var selectedBlockId by remember { mutableStateOf<String?>(existingTask?.blockId) }
-    var isRecurring by remember { mutableStateOf(false) }
+    var isRecurring by remember { mutableStateOf(forceRecurring) }
 
     val initialSchedule = existingTask?.schedule as? TaskSchedule.OneTime
     var selectedDate by remember { mutableStateOf<LocalDate?>(initialSchedule?.date ?: initialDate) }
@@ -123,7 +124,8 @@ fun TaskFormSheet(
                 Text("¿Es una tarea recurrente?", color = TextSecondary, fontSize = 14.sp)
                 Switch(
                     checked = isRecurring,
-                    onCheckedChange = { isRecurring = it },
+                    onCheckedChange = { if (!forceRecurring) isRecurring = it },
+                    enabled = !forceRecurring,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = TextPrimary,
                         checkedTrackColor = Color(0xFF1A73E8)
@@ -155,12 +157,13 @@ fun TaskFormSheet(
                 )
             } else {
                 // --- RECURRENTE ---
-                SheetSectionLabel("HORA")
+                SheetSectionLabel("HORA (opcional)")
                 Spacer(modifier = Modifier.height(8.dp))
                 TimeInputField(
                     value = recurringTime,
                     onValueChange = { recurringTime = it },
-                    nullable = false
+                    nullable = true,
+                    showPickerIcon = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -249,10 +252,9 @@ fun TaskFormSheet(
                                 onSaveOneTime(title, selectedBlockId, date, selectedTime)
                             } else {
                                 val blockId = selectedBlockId ?: return@clickable
-                                val time = recurringTime ?: return@clickable
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
-                                onSaveRecurring(title, blockId, time, Recurrence.Weekly(slots))
+                                onSaveRecurring(title, blockId, recurringTime, Recurrence.Weekly(slots))
                             }
                         }
                         .padding(vertical = 14.dp),

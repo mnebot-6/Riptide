@@ -15,7 +15,7 @@ fun RecurringTaskDefEntity.toDomain(): RecurringTaskDef = RecurringTaskDef(
     id = id,
     blockId = blockId,
     title = title,
-    time = LocalTime.parse(time),
+    time = time?.let { LocalTime.parse(it) },
     recurrence = Json.decodeFromString<Recurrence>(recurrence),
     isActive = isActive
 )
@@ -24,7 +24,7 @@ fun RecurringTaskDef.toEntity(): RecurringTaskDefEntity = RecurringTaskDefEntity
     id = id,
     blockId = blockId,
     title = title,
-    time = time.toString(),
+    time = time?.toString(),
     recurrence = Json.encodeToString<Recurrence>(this.recurrence),
     isActive = isActive
 )

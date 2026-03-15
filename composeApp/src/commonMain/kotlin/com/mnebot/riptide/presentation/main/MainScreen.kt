@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.presentation.aquarium.AquariumBackground
 import com.mnebot.riptide.presentation.aquarium.AquariumCreatures
+import com.mnebot.riptide.presentation.components.DatePickerDialogWrapper
 import com.mnebot.riptide.presentation.task.PostponeSheet
 import com.mnebot.riptide.presentation.task.TaskFormSheet
 import kotlinx.coroutines.launch
@@ -98,10 +100,12 @@ fun MainScreen(
     var showAquarium by remember { mutableStateOf(false) }
     var showDrawer by remember { mutableStateOf(false) }
     var showTaskSheet by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<DayTask?>(null) }
     var postponingTask by remember { mutableStateOf<DayTask?>(null) }
     var contextMenuTask by remember { mutableStateOf<DayTask?>(null) }
     var deletingRecurringTask by remember { mutableStateOf<DayTask?>(null) }
+    var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
@@ -166,13 +170,8 @@ fun MainScreen(
                 }
             }
     ) {
-        // Capa 1 — fondo siempre visible
         AquariumBackground()
-
-        // Capa 2 — criaturas siempre visibles (si nivel >= 2)
-        AquariumCreatures(
-            ecosystemByCategory = uiState.ecosystemByCategory
-        )
+        AquariumCreatures(ecosystemByCategory = uiState.ecosystemByCategory)
 
         when {
             showAquarium -> {
@@ -189,19 +188,39 @@ fun MainScreen(
             }
             else -> {
                 val sorted = sortedBlocks(uiState.blocks, uiState.tasksByBlock, uiState.selectedDate)
-                MainContent(
-                    blocks = sorted,
-                    tasksByBlock = uiState.tasksByBlock,
-                    selectedDate = uiState.selectedDate,
-                    today = currentDate(),
-                    isLoading = uiState.isLoading,
-                    error = uiState.error,
-                    onDateSelected = { viewModel.selectDate(it) },
-                    onTaskToggle = { viewModel.toggleTaskCompleted(it) },
-                    onTaskLongPress = { contextMenuTask = it },
-                    streaksByBlock = uiState.streaksByBlock,
-                    onAquariumClick = { showAquarium = true }
-                )
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Header fijo
+                    MainHeader(
+                        selectedDate = uiState.selectedDate,
+                        today = currentDate(),
+                        tasksByBlock = uiState.tasksByBlock,
+                        onCalendarClick = { showDatePicker = true },
+                        onTodayClick = { viewModel.selectDate(currentDate()) },
+                        onAddTaskClick = { showTaskSheet = true },
+                        onDrawerClick = {
+                            scope.launch {
+                                drawerOffsetY.animateTo(1f, animationSpec = tween(250))
+                                showDrawer = true
+                            }
+                        },
+                        onDateSelected = { viewModel.selectDate(it) },
+                        onWeekChange = { viewModel.selectDate(it) }
+                    )
+
+                    // Contenido scrollable
+                    MainContent(
+                        blocks = sorted,
+                        tasksByBlock = uiState.tasksByBlock,
+                        selectedDate = uiState.selectedDate,
+                        isLoading = uiState.isLoading,
+                        error = uiState.error,
+                        onTaskToggle = { viewModel.toggleTaskCompleted(it) },
+                        onTaskLongPress = { contextMenuTask = it },
+                        streaksByBlock = uiState.streaksByBlock,
+                        onAquariumClick = { showAquarium = true }
+                    )
+                }
             }
         }
 
@@ -209,19 +228,18 @@ fun MainScreen(
         contextMenuTask?.let { task ->
             AlertDialog(
                 onDismissRequest = { contextMenuTask = null },
-                containerColor = Color(0xFF1B3A6B),
+                containerColor = OceanMid,
                 title = {
-                    Text(
-                        task.title,
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(task.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         ContextMenuItem("✏️ Editar") {
-                            editingTask = task
+                            if (task.sourceTaskId != null) {
+                                editingScopeTask = task
+                            } else {
+                                editingTask = task
+                            }
                             contextMenuTask = null
                         }
                         if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
@@ -244,17 +262,42 @@ fun MainScreen(
             )
         }
 
+        // Diálogo scope edición recurrente
+        editingScopeTask?.let { task ->
+            AlertDialog(
+                onDismissRequest = { editingScopeTask = null },
+                containerColor = OceanMid,
+                title = {
+                    Text("¿Qué quieres editar?", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ContextMenuItem("Solo esta ocurrencia") {
+                            editingTask = task
+                            editingScopeTask = null
+                        }
+                        ContextMenuItem("Esta y las futuras") {
+                            // Marcamos con una convención: guardamos en editingTask pero
+                            // el onSaveRecurring usará updateRecurringTask
+                            editingTask = task.copy(sourceTaskId = task.sourceTaskId + "_future")
+                            editingScopeTask = null
+                        }
+                        ContextMenuItem("Todas las ocurrencias") {
+                            editingTask = task.copy(sourceTaskId = task.sourceTaskId + "_all")
+                            editingScopeTask = null
+                        }
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+
         deletingRecurringTask?.let { task ->
             AlertDialog(
                 onDismissRequest = { deletingRecurringTask = null },
-                containerColor = Color(0xFF1B3A6B),
+                containerColor = OceanMid,
                 title = {
-                    Text(
-                        "¿Qué quieres eliminar?",
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text("¿Qué quieres eliminar?", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -280,22 +323,13 @@ fun MainScreen(
         uiState.pendingSummary?.let { summary ->
             AlertDialog(
                 onDismissRequest = { viewModel.dismissSummary() },
-                containerColor = Color(0xFF1B3A6B),
+                containerColor = OceanMid,
                 title = {
-                    Text(
-                        "Resumen de ayer",
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text("Resumen de ayer", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            summary.feedbackMessage,
-                            color = TextPrimary,
-                            fontSize = 15.sp
-                        )
+                        Text(summary.feedbackMessage, color = TextPrimary, fontSize = 15.sp)
                         Text(
                             "${summary.tasksCompleted} de ${summary.tasksTotal} tareas completadas",
                             color = TextSecondary,
@@ -314,17 +348,11 @@ fun MainScreen(
         val currentUnlock = uiState.pendingUnlocks.firstOrNull()
         if (currentUnlock != null && uiState.pendingSummary == null) {
             var nickname by remember(currentUnlock) { mutableStateOf("") }
-
             AlertDialog(
                 onDismissRequest = {},
-                containerColor = Color(0xFF1B3A6B),
+                containerColor = OceanMid,
                 title = {
-                    Text(
-                        "¡Algo nuevo en el estanque!",
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text("¡Algo nuevo en el estanque!", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(
@@ -383,17 +411,41 @@ fun MainScreen(
                     .graphicsLayer {
                         translationY = -size.height * (1f - drawerOffsetY.value)
                     }
+                    .pointerInput(showDrawer) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    if (drawerOffsetY.value < 0.7f) {
+                                        drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                                        showDrawer = false
+                                    } else {
+                                        drawerOffsetY.animateTo(1f, animationSpec = tween(250))
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                scope.launch {
+                                    drawerOffsetY.animateTo(
+                                        if (showDrawer) 1f else 0f,
+                                        animationSpec = tween(250)
+                                    )
+                                }
+                            }
+                        ) { _, dragAmount ->
+                            val isVertical = kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x)
+                            if (isVertical && dragAmount.y < 0) {
+                                scope.launch {
+                                    drawerOffsetY.snapTo(
+                                        (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
             ) {
                 MainDrawer(
                     blocks = uiState.blocks,
                     nightSummaryTime = nightSummaryTime,
-                    onAddTask = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        showTaskSheet = true
-                    },
                     onAddBlock = {
                         scope.launch {
                             drawerOffsetY.animateTo(0f, animationSpec = tween(250))
@@ -408,16 +460,27 @@ fun MainScreen(
                         }
                         onNavigateToEditBlock(blockId)
                     },
-                    onNightSummaryTimeChanged = { newTime ->
-                        scope.launch {
-                            nightSummaryScheduler.setNightSummaryTime(newTime)
-                            nightSummaryScheduler.scheduleWorker(newTime)
-                        }
+                    onNightSummaryTimeChanged = { time ->
+                        nightSummaryScheduler.scheduleWorker(time)
+                        viewModel.updateNightSummaryTime(time)
                     }
                 )
             }
         }
 
+        // DatePicker para ir a día concreto
+        if (showDatePicker) {
+            DatePickerDialogWrapper(
+                initial = uiState.selectedDate,
+                onConfirm = { date ->
+                    if (date != null) viewModel.selectDate(date)
+                    showDatePicker = false
+                },
+                onDismiss = { showDatePicker = false }
+            )
+        }
+
+        // TaskFormSheet — nueva tarea desde header
         if (showTaskSheet) {
             Dialog(
                 onDismissRequest = { showTaskSheet = false },
@@ -441,79 +504,50 @@ fun MainScreen(
             }
         }
 
+        // TaskFormSheet — editar tarea existente
         editingTask?.let { task ->
-            val isRecurringInstance = task.sourceTaskId != null
-            var editingRecurringScope by remember(task) { mutableStateOf<String?>(null) }
-            // "instance" = solo esta, "all" = todas las futuras
+            Dialog(
+                onDismissRequest = { editingTask = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    val isFutureEdit = task.sourceTaskId?.endsWith("_future") == true
+                    val isAllEdit = task.sourceTaskId?.endsWith("_all") == true
+                    val isRecurringEdit = isFutureEdit || isAllEdit
+                    val realSourceId = task.sourceTaskId
+                        ?.removeSuffix("_future")
+                        ?.removeSuffix("_all")
+                    val taskForForm = if (isRecurringEdit) task.copy(sourceTaskId = realSourceId) else task
 
-            if (isRecurringInstance && editingRecurringScope == null) {
-                AlertDialog(
-                    onDismissRequest = { editingTask = null },
-                    containerColor = Color(0xFF1B3A6B),
-                    title = {
-                        Text(
-                            "¿Qué quieres editar?",
-                            color = TextPrimary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            ContextMenuItem("Solo esta ocurrencia") {
-                                editingRecurringScope = "instance"
+                    TaskFormSheet(
+                        blocks = uiState.blocks,
+                        initialDate = uiState.selectedDate,
+                        existingTask = taskForForm,
+                        forceRecurring = isRecurringEdit,
+                        onSaveOneTime = { title, blockId, date, time ->
+                            viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time)
+                            editingTask = null
+                        },
+                        onSaveRecurring = { title, blockId, time, recurrence ->
+                            val sourceId = realSourceId ?: return@TaskFormSheet
+                            viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence)
+                            editingTask = null
+                        },
+                        onDelete = {
+                            if (taskForForm.sourceTaskId != null) {
+                                deletingRecurringTask = taskForForm
+                            } else {
+                                viewModel.deleteTask(taskForForm)
                             }
-                            ContextMenuItem("Esta y todas las futuras") {
-                                editingRecurringScope = "all"
-                            }
-                        }
-                    },
-                    confirmButton = {}
-                )
-            } else if (!isRecurringInstance || editingRecurringScope != null) {
-                Dialog(
-                    onDismissRequest = { editingTask = null },
-                    properties = DialogProperties(usePlatformDefaultWidth = false)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                        TaskFormSheet(
-                            blocks = uiState.blocks,
-                            initialDate = uiState.selectedDate,
-                            existingTask = task,
-                            onSaveOneTime = { title, blockId, date, time ->
-                                viewModel.updateOneTimeTask(task, title, blockId, date, time)
-                                editingTask = null
-                            },
-                            onSaveRecurring = { title, blockId, time, recurrence ->
-                                val sourceId = task.sourceTaskId
-                                if (editingRecurringScope == "all" && sourceId != null) {
-                                    viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence)
-                                } else {
-                                    viewModel.updateOneTimeTask(
-                                        task,
-                                        title,
-                                        blockId,
-                                        (task.schedule as? TaskSchedule.OneTime)?.date ?: currentDate(),
-                                        time
-                                    )
-                                }
-                                editingTask = null
-                            },
-                            onDelete = {
-                                if (isRecurringInstance) {
-                                    deletingRecurringTask = task
-                                } else {
-                                    viewModel.deleteTask(task)
-                                }
-                                editingTask = null
-                            },
-                            onDismiss = { editingTask = null }
-                        )
-                    }
+                            editingTask = null
+                        },
+                        onDismiss = { editingTask = null }
+                    )
                 }
             }
         }
 
+        // PostponeSheet
         postponingTask?.let { task ->
             Dialog(
                 onDismissRequest = { postponingTask = null },
@@ -522,10 +556,7 @@ fun MainScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                     PostponeSheet(
                         task = task,
-                        onPostpone = { postponedTo ->
-                            viewModel.postponeTask(task, postponedTo)
-                            postponingTask = null
-                        },
+                        onPostpone = { date, time -> viewModel.postponeTask(task, date, time) },
                         onDismiss = { postponingTask = null }
                     )
                 }
@@ -535,20 +566,90 @@ fun MainScreen(
 }
 
 @Composable
-private fun ContextMenuItem(
-    label: String,
-    tint: Color = TextPrimary,
-    onClick: () -> Unit
+private fun MainHeader(
+    selectedDate: LocalDate,
+    today: LocalDate,
+    tasksByBlock: Map<String?, List<DayTask>>,
+    onCalendarClick: () -> Unit,
+    onTodayClick: () -> Unit,
+    onAddTaskClick: () -> Unit,
+    onDrawerClick: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
+    onWeekChange: (LocalDate) -> Unit
 ) {
-    Text(
-        text = label,
-        color = tint,
-        fontSize = 15.sp,
+    val tasksByDate = remember(tasksByBlock) {
+        tasksByBlock.values
+            .flatten()
+            .groupBy { task ->
+                when (val schedule = task.schedule) {
+                    is TaskSchedule.OneTime -> schedule.date
+                    is TaskSchedule.Recurring -> null
+                }
+            }
+            .filterKeys { it != null }
+            .mapKeys { it.key!! }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 10.dp)
-    )
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp, bottom = 8.dp)
+    ) {
+        // Fila superior: nombre + acciones
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("🌊", fontSize = 22.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Riptide",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Volver a hoy (solo visible si no estamos en hoy)
+            if (selectedDate != today) {
+                HeaderIconButton(icon = "⟳", onClick = onTodayClick)
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+
+            HeaderIconButton(icon = "📅", onClick = onCalendarClick)
+            Spacer(modifier = Modifier.width(4.dp))
+            HeaderIconButton(icon = "➕", onClick = onAddTaskClick)
+            Spacer(modifier = Modifier.width(4.dp))
+            HeaderIconButton(icon = "☰", onClick = onDrawerClick)
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // WeekCalendar
+        WeekCalendar(
+            selectedDate = selectedDate,
+            today = today,
+            tasksByDate = tasksByDate,
+            onDateSelected = onDateSelected,
+            onWeekChange = onWeekChange
+        )
+    }
+}
+
+@Composable
+private fun HeaderIconButton(icon: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(CardBackground)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(icon, fontSize = 16.sp)
+    }
 }
 
 @Composable
@@ -556,90 +657,56 @@ private fun MainContent(
     blocks: List<WorkBlock>,
     tasksByBlock: Map<String?, List<DayTask>>,
     selectedDate: LocalDate,
-    today: LocalDate,
     isLoading: Boolean,
     error: String?,
-    onDateSelected: (LocalDate) -> Unit,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
     onAquariumClick: () -> Unit,
     streaksByBlock: Map<String, Int>,
 ) {
     val blocksWithTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
+    val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .padding(top = 40.dp)
-        ) {
-            val tasksByDate = remember(tasksByBlock) {
-                tasksByBlock.values
-                    .flatten()
-                    .groupBy { task ->
-                        when (val schedule = task.schedule) {
-                            is TaskSchedule.OneTime -> schedule.date
-                            is TaskSchedule.Recurring -> null
-                        }
-                    }
-                    .filterKeys { it != null }
-                    .mapKeys { it.key!! }
+        when {
+            isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator(color = TextPrimary)
             }
-
-            WeekCalendar(
-                selectedDate = selectedDate,
-                today = today,
-                tasksByDate = tasksByDate,
-                onDateSelected = onDateSelected,
-                onWeekChange = onDateSelected
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0x33FFFFFF)))
-
-            when {
-                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator(color = TextPrimary)
-                }
-                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("Error: $error", color = TextPrimary)
-                }
-                blocksWithTasks.isEmpty() && tasksByBlock[null].isNullOrEmpty() -> Box(
-                    Modifier.fillMaxSize(),
-                    Alignment.Center
-                ) {
-                    Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
-                }
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    item { Spacer(modifier = Modifier.height(12.dp)) }
-                    val unassignedTasks = sortedTasks(tasksByBlock[null] ?: emptyList())
-                    if (unassignedTasks.isNotEmpty()) {
-                        item {
-                            UnassignedSection(
-                                tasks = unassignedTasks,
-                                onTaskToggle = onTaskToggle,
-                                onTaskLongPress = onTaskLongPress
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
-                    items(blocksWithTasks) { block ->
-                        val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
-                        val streak = streaksByBlock[block.id] ?: 0
-                        BlockSection(
-                            block = block,
-                            tasks = tasks,
-                            selectedDate = selectedDate,
-                            streak = streak,
+            error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text("Error: $error", color = TextPrimary)
+            }
+            blocksWithTasks.isEmpty() && tasksByBlock[null].isNullOrEmpty() -> Box(
+                Modifier.fillMaxSize(), Alignment.Center
+            ) {
+                Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
+            }
+            else -> LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val unassignedTasks = sortedTasks(tasksByBlock[null] ?: emptyList())
+                if (unassignedTasks.isNotEmpty()) {
+                    item {
+                        UnassignedSection(
+                            tasks = unassignedTasks,
                             onTaskToggle = onTaskToggle,
                             onTaskLongPress = onTaskLongPress
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
+                }
+                items(blocksWithTasks) { block ->
+                    val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
+                    val streak = streaksByBlock[block.id] ?: 0
+                    BlockSection(
+                        block = block,
+                        tasks = tasks,
+                        selectedDate = selectedDate,
+                        streak = streak,
+                        onTaskToggle = onTaskToggle,
+                        onTaskLongPress = onTaskLongPress
+                    )
                 }
             }
         }
@@ -653,6 +720,19 @@ private fun MainContent(
             elevation = FloatingActionButtonDefaults.elevation(0.dp)
         ) { Text("🐟", fontSize = 20.sp) }
     }
+}
+
+@Composable
+private fun ContextMenuItem(label: String, tint: Color = TextPrimary, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = tint,
+        fontSize = 15.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 10.dp)
+    )
 }
 
 @Composable
@@ -806,12 +886,7 @@ private fun UnassignedSection(
                 contentAlignment = Alignment.Center
             ) { Text("📋", fontSize = 18.sp) }
             Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                "Sin bloque",
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
+            Text("Sin bloque", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->

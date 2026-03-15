@@ -4,9 +4,9 @@ import kotlinx.datetime.LocalTime
 
 data class RecurringTaskDef(
     val id: String,
-    val blockId: String,              // las recurrentes siempre tienen bloque
+    val blockId: String,
     val title: String,
-    val time: LocalTime,
+    val time: LocalTime?,              // nullable — la hora es opcional en recurrentes
     val recurrence: Recurrence,
     val isActive: Boolean
 )

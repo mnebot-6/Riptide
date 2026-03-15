@@ -33,7 +33,7 @@ class RecurringTaskGenerator(
                         title = def.title,
                         schedule = TaskSchedule.OneTime(
                             date = date,
-                            time = def.time
+                            time = def.time       // ya es LocalTime?, OneTime lo acepta
                         ),
                         status = TaskStatus.PENDING,
                         completedAt = null,

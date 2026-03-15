@@ -1,18 +1,20 @@
-// presentation/main/MainDrawer.kt
 package com.mnebot.riptide.presentation.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,23 +28,27 @@ private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
 private val DividerColor = Color(0x33FFFFFF)
-
 @Composable
 fun MainDrawer(
     blocks: List<WorkBlock>,
     nightSummaryTime: LocalTime,
-    onAddTask: () -> Unit,
     onAddBlock: () -> Unit,
     onEditBlock: (String) -> Unit,
     onNightSummaryTimeChanged: (LocalTime) -> Unit
 ) {
+    val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(max = screenHeight * 0.85f)
             .background(Brush.verticalGradient(listOf(OceanDeep, OceanMid)))
             .statusBarsPadding()
             .padding(vertical = 24.dp)
     ) {
+        // Header fijo
         Row(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -56,21 +62,21 @@ fun MainDrawer(
         HorizontalDivider(color = DividerColor)
         Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("TAREAS")
-        Spacer(modifier = Modifier.height(8.dp))
-        DrawerItem(icon = "➕", label = "Añadir tarea", onClick = onAddTask)
-
-        Spacer(modifier = Modifier.height(20.dp))
-        HorizontalDivider(color = DividerColor)
-        Spacer(modifier = Modifier.height(20.dp))
-
         SectionTitle("BLOQUES")
         Spacer(modifier = Modifier.height(8.dp))
-        blocks.forEach { block ->
-            DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
+
+        // Lista de bloques con scroll interno cuando es necesario
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+        ) {
+            blocks.forEach { block ->
+                DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
+            }
+            DrawerItem(icon = "➕", label = "Añadir bloque", onClick = onAddBlock)
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        DrawerItem(icon = "➕", label = "Añadir bloque", onClick = onAddBlock)
 
         Spacer(modifier = Modifier.height(20.dp))
         HorizontalDivider(color = DividerColor)

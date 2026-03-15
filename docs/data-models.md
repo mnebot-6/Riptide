@@ -51,8 +51,8 @@ enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 |--------|-------------|
 | PENDING | Estado por defecto al crear |
 | COMPLETED | Da 10 XP al ecosistema marino |
-| EXPIRED | Pendiente al hacer el resumen nocturno; no da XP |
-| POSTPONED | Original pospuesta; nueva instancia PENDING en la fecha elegida |
+| EXPIRED | Pendiente evaluable al hacer el resumen nocturno; no da XP |
+| POSTPONED | Original pospuesta; nueva instancia PENDING en la fecha elegida (hora opcional). No cuenta ni como completada ni como fallida en resumen ni en barra de progreso |
 
 ---
 
@@ -93,15 +93,18 @@ data class RecurringTaskDef(
     val id: String,
     val blockId: String,    // siempre tiene bloque
     val title: String,
-    val time: LocalTime,
+    val time: LocalTime?,   // nullable — la hora es opcional en tareas recurrentes
     val recurrence: Recurrence,
     val isActive: Boolean
 )
 ```
 
-Al editar una tarea recurrente desde la UI, aparece un diálogo con dos opciones:
+Al editar una tarea recurrente desde la UI, aparece un diálogo con tres opciones:
 - **"Solo esta ocurrencia"** → `updateOneTimeTask` (edita solo esa instancia `DayTask`)
-- **"Esta y todas las futuras"** → `updateRecurringTask` (actualiza el `RecurringTaskDef`, borra instancias PENDING futuras, regenera con `RecurringTaskGenerator`)
+- **"Esta y todas las futuras"** → `TaskFormSheet` con `forceRecurring=true` → `updateRecurringTask`
+- **"Todas las ocurrencias"** → `TaskFormSheet` con `forceRecurring=true` → `updateRecurringTask`
+
+`updateRecurringTask` actualiza el `RecurringTaskDef`, borra instancias PENDING futuras y regenera con `RecurringTaskGenerator`.
 
 ---
 
@@ -139,7 +142,7 @@ data class DaySummary(
     val id: String,
     val date: LocalDate,
     val score: Float,           // 0.0–1.0, NUNCA visible al usuario
-    val tasksTotal: Int,
+    val tasksTotal: Int,        // solo tareas evaluables (excluye POSTPONED y futuras no completadas)
     val tasksCompleted: Int,
     val streakDay: Int,
     val feedbackMessage: String // sí visible
@@ -154,6 +157,8 @@ Mensajes según score:
 - `1.0` → "Hoy el estanque brilló."
 
 Con prefijo de progreso si score parcial, y sufijo de racha (`[Bloque] lleva N días seguidos 🔥`) si la racha top ≥ 3.
+
+El diálogo del resumen no reaparece si ya fue cerrado: la fecha descartada se persiste en DataStore (`dismissed_summary_date`) y se compara al arrancar.
 
 ---
 
@@ -269,14 +274,14 @@ data class CreatureSpec(
 
 ---
 
-## Room — androidMain (v6)
+## Room — androidMain (v7)
 
 | Entity | Tabla |
 |--------|-------|
 | `WorkBlockEntity` | `work_blocks` |
 | `BlockCategoryEntity` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
 | `DayTaskEntity` | `day_tasks` — `scheduleType`, `date?`, `time?`, `recurrence?` JSON, `status`, `completedAt?`, `postponedTo?`, `sourceTaskId?`, `blockId?` FK SET_NULL |
-| `RecurringTaskDefEntity` | `recurring_task_defs` — `blockId` FK CASCADE, `recurrence` JSON |
+| `RecurringTaskDefEntity` | `recurring_task_defs` — `blockId` FK CASCADE, `recurrence` JSON, `time String?` nullable |
 | `DaySummaryEntity` | `day_summaries` |
 | `BlockStreakEntity` | `block_streaks` — PK `blockId` |
 | `EcosystemStateEntity` | `ecosystem_states` |

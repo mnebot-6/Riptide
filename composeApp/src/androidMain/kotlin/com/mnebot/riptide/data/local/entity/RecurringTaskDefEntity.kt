@@ -19,7 +19,7 @@ data class RecurringTaskDefEntity(
     @PrimaryKey val id: String,
     val blockId: String,
     val title: String,
-    val time: String,                // LocalTime serializado
+    val time: String?,               // LocalTime serializado, nullable
     val recurrence: String,          // JSON
     val isActive: Boolean
 )
