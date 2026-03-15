@@ -8,43 +8,34 @@ import com.mnebot.riptide.data.repository.*
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
-import com.mnebot.riptide.presentation.main.MainViewModel
 
 class MainViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val db = DatabaseProvider.getDatabase(context)
-        val workBlockRepository = WorkBlockRepositoryImpl(db.workBlockDao())
-        val blockCategoryRepository = BlockCategoryRepositoryImpl(db.blockCategoryDao())
-        val dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao())
-        val recurringTaskDefRepository = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao())
-        val marineCategoryAssigner = MarineCategoryAssigner(
-            workBlockRepository, blockCategoryRepository
-        )
-        val recurringTaskGenerator = RecurringTaskGenerator(
-            recurringTaskDefRepository, dayTaskRepository
-        )
+        val workBlockRepo = WorkBlockRepositoryImpl(db.workBlockDao())
+        val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
+        val dayTaskRepo = DayTaskRepositoryImpl(db.dayTaskDao())
+        val recurringTaskDefRepo = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao())
+        val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+        val userPreferencesRepo = UserPreferencesRepositoryImpl(context)
 
         @Suppress("UNCHECKED_CAST")
         return MainViewModel(
-            workBlockRepository = WorkBlockRepositoryImpl(db.workBlockDao()),
-            blockCategoryRepository = BlockCategoryRepositoryImpl(db.blockCategoryDao()),
-            dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
-            recurringTaskDefRepository = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao()),
-            recurringTaskGenerator = RecurringTaskGenerator(
-                RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao()),
-                DayTaskRepositoryImpl(db.dayTaskDao())
-            ),
+            workBlockRepository = workBlockRepo,
+            blockCategoryRepository = blockCategoryRepo,
+            dayTaskRepository = dayTaskRepo,
+            recurringTaskDefRepository = recurringTaskDefRepo,
+            recurringTaskGenerator = RecurringTaskGenerator(recurringTaskDefRepo, dayTaskRepo),
             marineCategoryAssigner = MarineCategoryAssigner(
-                WorkBlockRepositoryImpl(db.workBlockDao()),
-                BlockCategoryRepositoryImpl(db.blockCategoryDao())
+                workBlockRepo,
+                blockCategoryRepo,
+                ecosystemStateRepo
             ),
             blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
             daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
-            ecosystemProcessor = EcosystemProcessor(
-                EcosystemStateRepositoryImpl(db.ecosystemStateDao())
-            ),
-            ecosystemStateRepository = EcosystemStateRepositoryImpl(db.ecosystemStateDao()),
-            userPreferencesRepository = UserPreferencesRepositoryImpl(context),
+            ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo),
+            ecosystemStateRepository = ecosystemStateRepo,
+            userPreferencesRepository = userPreferencesRepo,
             marineCreatureRepository = MarineCreatureRepositoryImpl(db.marineCreatureDao()),
         ) as T
     }

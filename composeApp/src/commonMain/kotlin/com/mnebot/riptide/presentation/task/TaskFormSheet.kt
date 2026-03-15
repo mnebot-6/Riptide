@@ -49,6 +49,7 @@ fun TaskFormSheet(
     blocks: List<WorkBlock>,
     initialDate: LocalDate = currentDate(),
     existingTask: DayTask? = null,
+    existingDef: RecurringTaskDef? = null,
     forceRecurring: Boolean = false,
     onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?) -> Unit,
     onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence) -> Unit,
@@ -64,8 +65,15 @@ fun TaskFormSheet(
     var selectedTime by remember { mutableStateOf<LocalTime?>(initialSchedule?.time) }
 
     // Recurring
-    var recurringTime by remember { mutableStateOf<LocalTime?>(null) }
-    val selectedDays = remember { mutableStateMapOf<Int, Unit>() }
+    var recurringTime by remember {
+        mutableStateOf<LocalTime?>(existingDef?.time)
+    }
+    val selectedDays = remember {
+        mutableStateMapOf<Int, Unit>().also { map ->
+            val slots = (existingDef?.recurrence as? Recurrence.Weekly)?.slots
+            slots?.forEach { map[it.dayOfWeek] = Unit }
+        }
+    }
 
     Box(
         modifier = Modifier

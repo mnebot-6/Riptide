@@ -9,5 +9,6 @@ data class EcosystemStateEntity(
     val category: String,
     val totalExperience: Int,
     val currentLevel: Int,
+    val isUnlocked: Boolean,
     val lastUpdated: String
 )

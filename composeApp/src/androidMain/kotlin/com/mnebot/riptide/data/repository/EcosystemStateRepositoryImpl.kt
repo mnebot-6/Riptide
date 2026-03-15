@@ -12,6 +12,13 @@ class EcosystemStateRepositoryImpl(
 ) : EcosystemStateRepository {
     override suspend fun getByCategory(category: MarineCategory): EcosystemState? =
         dao.getByCategory(category.name)?.toDomain()
+
+    override suspend fun getAll(): List<EcosystemState> =
+        dao.getAll().map { it.toDomain() }
+
+    override suspend fun getUnlocked(): List<EcosystemState> =
+        dao.getUnlocked().map { it.toDomain() }
+
     override suspend fun update(state: EcosystemState) = dao.update(state.toEntity())
     override suspend fun insert(state: EcosystemState) = dao.insert(state.toEntity())
 }

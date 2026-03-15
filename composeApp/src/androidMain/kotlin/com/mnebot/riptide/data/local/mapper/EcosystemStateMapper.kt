@@ -10,6 +10,7 @@ fun EcosystemStateEntity.toDomain(): EcosystemState = EcosystemState(
     category = MarineCategory.valueOf(category),
     totalExperience = totalExperience,
     currentLevel = currentLevel,
+    isUnlocked = isUnlocked,
     lastUpdated = LocalDateTime.parse(lastUpdated)
 )
 
@@ -18,5 +19,6 @@ fun EcosystemState.toEntity(): EcosystemStateEntity = EcosystemStateEntity(
     category = category.name,
     totalExperience = totalExperience,
     currentLevel = currentLevel,
+    isUnlocked = isUnlocked,
     lastUpdated = lastUpdated.toString()
 )

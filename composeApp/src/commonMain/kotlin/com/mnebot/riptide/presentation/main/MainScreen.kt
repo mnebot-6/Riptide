@@ -106,6 +106,8 @@ fun MainScreen(
     var contextMenuTask by remember { mutableStateOf<DayTask?>(null) }
     var deletingRecurringTask by remember { mutableStateOf<DayTask?>(null) }
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
+    var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
+
     val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
@@ -506,32 +508,40 @@ fun MainScreen(
 
         // TaskFormSheet — editar tarea existente
         editingTask?.let { task ->
+            val isFutureEdit = task.sourceTaskId?.endsWith("_future") == true
+            val isAllEdit = task.sourceTaskId?.endsWith("_all") == true
+            val isRecurringEdit = isFutureEdit || isAllEdit
+            val realSourceId = task.sourceTaskId
+                ?.removeSuffix("_future")
+                ?.removeSuffix("_all")
+            val taskForForm = if (isRecurringEdit) task.copy(sourceTaskId = realSourceId) else task
+
+            // Cargar def si es edición recurrente y aún no la tenemos
+            LaunchedEffect(task.id) {
+                editingTaskDef = realSourceId?.let { viewModel.getRecurringTaskDef(it) }
+            }
+
             Dialog(
-                onDismissRequest = { editingTask = null },
+                onDismissRequest = { editingTask = null; editingTaskDef = null },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    val isFutureEdit = task.sourceTaskId?.endsWith("_future") == true
-                    val isAllEdit = task.sourceTaskId?.endsWith("_all") == true
-                    val isRecurringEdit = isFutureEdit || isAllEdit
-                    val realSourceId = task.sourceTaskId
-                        ?.removeSuffix("_future")
-                        ?.removeSuffix("_all")
-                    val taskForForm = if (isRecurringEdit) task.copy(sourceTaskId = realSourceId) else task
-
                     TaskFormSheet(
                         blocks = uiState.blocks,
                         initialDate = uiState.selectedDate,
                         existingTask = taskForForm,
+                        existingDef = if (isRecurringEdit) editingTaskDef else null,
                         forceRecurring = isRecurringEdit,
                         onSaveOneTime = { title, blockId, date, time ->
                             viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time)
                             editingTask = null
+                            editingTaskDef = null
                         },
                         onSaveRecurring = { title, blockId, time, recurrence ->
                             val sourceId = realSourceId ?: return@TaskFormSheet
                             viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence)
                             editingTask = null
+                            editingTaskDef = null
                         },
                         onDelete = {
                             if (taskForForm.sourceTaskId != null) {
@@ -540,8 +550,9 @@ fun MainScreen(
                                 viewModel.deleteTask(taskForForm)
                             }
                             editingTask = null
+                            editingTaskDef = null
                         },
-                        onDismiss = { editingTask = null }
+                        onDismiss = { editingTask = null; editingTaskDef = null }
                     )
                 }
             }
@@ -666,6 +677,8 @@ private fun MainContent(
 ) {
     val blocksWithTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
     val listState = rememberLazyListState()
+
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color(0x33FFFFFF)))
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {

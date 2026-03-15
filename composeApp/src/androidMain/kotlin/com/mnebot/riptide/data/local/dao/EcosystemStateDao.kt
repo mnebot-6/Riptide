@@ -12,6 +12,12 @@ interface EcosystemStateDao {
     @Query("SELECT * FROM ecosystem_states WHERE category = :category LIMIT 1")
     suspend fun getByCategory(category: String): EcosystemStateEntity?
 
+    @Query("SELECT * FROM ecosystem_states")
+    suspend fun getAll(): List<EcosystemStateEntity>
+
+    @Query("SELECT * FROM ecosystem_states WHERE isUnlocked = 1")
+    suspend fun getUnlocked(): List<EcosystemStateEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(state: EcosystemStateEntity)
 

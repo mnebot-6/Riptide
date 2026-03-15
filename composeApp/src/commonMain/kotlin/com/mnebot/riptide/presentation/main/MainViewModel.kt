@@ -107,6 +107,9 @@ class MainViewModel(
         }
     }
 
+    suspend fun getRecurringTaskDef(sourceId: String): RecurringTaskDef? =
+        recurringTaskDefRepository.getById(sourceId)
+
     fun addRecurringTask(
         title: String,
         blockId: String,

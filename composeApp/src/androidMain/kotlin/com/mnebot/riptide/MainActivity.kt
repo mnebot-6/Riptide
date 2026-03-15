@@ -13,11 +13,11 @@ import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
 import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
+import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.NightSummaryProcessor
-import com.mnebot.riptide.presentation.main.MainViewModel
 import com.mnebot.riptide.presentation.main.MainViewModelFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -26,11 +26,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MainViewModel by viewModels {
+    private val viewModel by viewModels<com.mnebot.riptide.presentation.main.MainViewModel> {
         MainViewModelFactory(applicationContext)
     }
 
@@ -42,9 +41,11 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             val db = DatabaseProvider.getDatabase(applicationContext)
+            val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
             val assigner = MarineCategoryAssigner(
                 WorkBlockRepositoryImpl(db.workBlockDao()),
-                BlockCategoryRepositoryImpl(db.blockCategoryDao())
+                BlockCategoryRepositoryImpl(db.blockCategoryDao()),
+                ecosystemStateRepo
             )
             DataSeeder.seedIfEmpty(db, assigner)
 
@@ -59,9 +60,7 @@ class MainActivity : ComponentActivity() {
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
                 blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
             )
-            val ecosystemProcessor = EcosystemProcessor(
-                EcosystemStateRepositoryImpl(db.ecosystemStateDao())
-            )
+            val ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo)
             val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
 
             val processor = NightSummaryProcessor(

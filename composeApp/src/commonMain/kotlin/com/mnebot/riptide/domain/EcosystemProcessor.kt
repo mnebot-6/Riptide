@@ -14,13 +14,14 @@ class EcosystemProcessor(
     private val ecosystemStateRepository: EcosystemStateRepository
 ) {
     suspend fun addXpForTask(categories: List<MarineCategory>): List<CreatureSpec> {
-        if (categories.isEmpty()) return emptyList()
-        val xpEach = EcosystemLevelCalculator.XP_PER_TASK / categories.size
-        val unlocked = mutableListOf<CreatureSpec>()
-        categories.forEach { category ->
-            unlocked += addXp(category, xpEach)
+        val targets = categories.ifEmpty {
+            ecosystemStateRepository.getUnlocked()
+                .map { it.category }
+                .filter { it != MarineCategory.DECORATION }
         }
-        return unlocked
+        if (targets.isEmpty()) return emptyList()
+        val xpEach = EcosystemLevelCalculator.XP_PER_TASK / targets.size
+        return targets.flatMap { addXp(it, xpEach) }
     }
 
     suspend fun addNightBonus(
@@ -28,15 +29,16 @@ class EcosystemProcessor(
         bestStreak: Int,
         categories: List<MarineCategory>
     ): List<CreatureSpec> {
-        if (categories.isEmpty()) return emptyList()
+        val targets = categories.ifEmpty {
+            ecosystemStateRepository.getUnlocked()
+                .map { it.category }
+                .filter { it != MarineCategory.DECORATION }
+        }
+        if (targets.isEmpty()) return emptyList()
         val bonus = EcosystemLevelCalculator.nightBonus(score, bestStreak)
         if (bonus == 0) return emptyList()
-        val xpEach = bonus / categories.size
-        val unlocked = mutableListOf<CreatureSpec>()
-        categories.forEach { category ->
-            unlocked += addXp(category, xpEach)
-        }
-        return unlocked
+        val xpEach = bonus / targets.size
+        return targets.flatMap { addXp(it, xpEach) }
     }
 
     private suspend fun addXp(category: MarineCategory, xp: Int): List<CreatureSpec> {
@@ -44,7 +46,8 @@ class EcosystemProcessor(
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val existing = ecosystemStateRepository.getByCategory(category)
 
-        val oldLevel = existing?.currentLevel ?: 0
+        // Si no existe aún, el nivel de partida para detectar desbloqueos es 1 (nivel base)
+        val oldLevel = if (existing == null) 1 else existing.currentLevel
         val newXp = (existing?.totalExperience ?: 0) + xp
         val newLevel = EcosystemLevelCalculator.levelForXp(newXp)
 
@@ -55,6 +58,7 @@ class EcosystemProcessor(
                     category = category,
                     totalExperience = newXp,
                     currentLevel = newLevel,
+                    isUnlocked = category.isUnlockedByDefault,
                     lastUpdated = now
                 )
             )
@@ -68,10 +72,28 @@ class EcosystemProcessor(
             )
         }
 
-        // Detecta criaturas recién desbloqueadas (nivel cruzado entre oldLevel y newLevel)
         return allCreatures.filter { spec ->
             spec.category == category &&
                     spec.unlockLevel in (oldLevel + 1)..newLevel
+        }
+    }
+
+    suspend fun unlockCategory(category: MarineCategory) {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val existing = ecosystemStateRepository.getByCategory(category)
+        if (existing == null) {
+            ecosystemStateRepository.insert(
+                EcosystemState(
+                    id = generateUUID(),
+                    category = category,
+                    totalExperience = 0,
+                    currentLevel = 1,
+                    isUnlocked = true,
+                    lastUpdated = now
+                )
+            )
+        } else {
+            ecosystemStateRepository.update(existing.copy(isUnlocked = true))
         }
     }
 }

@@ -1,8 +1,8 @@
 package com.mnebot.riptide
 
 import com.mnebot.riptide.data.local.db.RiptideDatabase
-import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.model.*
@@ -20,6 +20,23 @@ object DataSeeder {
         val now = kotlin.time.Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault())
         val today = now.date
+
+        // Insertar EcosystemStates ANTES del reassign para que tenga categorías disponibles
+        val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+        MarineCategory.entries
+            .filter { it.isUnlockedByDefault }
+            .forEach { category ->
+                ecosystemStateRepo.insert(
+                    EcosystemState(
+                        id = generateUUID(),
+                        category = category,
+                        totalExperience = 0,
+                        currentLevel = 1,
+                        isUnlocked = true,
+                        lastUpdated = now
+                    )
+                )
+            }
 
         val blockTrabajo = WorkBlock(
             id = generateUUID(),
@@ -52,10 +69,30 @@ object DataSeeder {
             recurrence = Recurrence.None,
             isActive = true
         )
+        val blockFormacion = WorkBlock(
+            id = generateUUID(),
+            name = "Formación",
+            marineCategories = emptyList(),
+            color = "#F4A300",
+            icon = "📚",
+            recurrence = Recurrence.None,
+            isActive = true
+        )
+        val blockOcio = WorkBlock(
+            id = generateUUID(),
+            name = "Ocio",
+            marineCategories = emptyList(),
+            color = "#E91E63",
+            icon = "🎮",
+            recurrence = Recurrence.None,
+            isActive = true
+        )
 
         workBlockRepo.insert(blockTrabajo)
         workBlockRepo.insert(blockPersonal)
         workBlockRepo.insert(blockSalud)
+        workBlockRepo.insert(blockFormacion)
+        workBlockRepo.insert(blockOcio)
 
         assigner.reassign()
 

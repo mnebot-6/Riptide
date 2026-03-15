@@ -7,5 +7,6 @@ data class EcosystemState(
     val category: MarineCategory,
     val totalExperience: Int,
     val currentLevel: Int,
+    val isUnlocked: Boolean,
     val lastUpdated: LocalDateTime
 )
