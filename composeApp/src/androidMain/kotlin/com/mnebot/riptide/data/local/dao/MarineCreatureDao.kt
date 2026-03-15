@@ -12,6 +12,9 @@ interface MarineCreatureDao {
     @Query("SELECT * FROM marine_creatures WHERE ecosystemId = :ecosystemId")
     suspend fun getByEcosystem(ecosystemId: String): List<MarineCreatureEntity>
 
+    @Query("SELECT * FROM marine_creatures WHERE category = :category")
+    suspend fun getByCategory(category: String): List<MarineCreatureEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(creature: MarineCreatureEntity)
 

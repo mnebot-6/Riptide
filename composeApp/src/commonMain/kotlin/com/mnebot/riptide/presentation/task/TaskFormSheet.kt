@@ -48,6 +48,7 @@ private val days = listOf(
 fun TaskFormSheet(
     blocks: List<WorkBlock>,
     initialDate: LocalDate = currentDate(),
+    initialBlockId: String? = null,
     existingTask: DayTask? = null,
     existingDef: RecurringTaskDef? = null,
     forceRecurring: Boolean = false,
@@ -57,17 +58,14 @@ fun TaskFormSheet(
     onDismiss: () -> Unit
 ) {
     var title by remember { mutableStateOf(existingTask?.title ?: "") }
-    var selectedBlockId by remember { mutableStateOf<String?>(existingTask?.blockId) }
+    var selectedBlockId by remember { mutableStateOf<String?>(initialBlockId ?: existingTask?.blockId) }
     var isRecurring by remember { mutableStateOf(forceRecurring) }
 
     val initialSchedule = existingTask?.schedule as? TaskSchedule.OneTime
     var selectedDate by remember { mutableStateOf<LocalDate?>(initialSchedule?.date ?: initialDate) }
     var selectedTime by remember { mutableStateOf<LocalTime?>(initialSchedule?.time) }
 
-    // Recurring
-    var recurringTime by remember {
-        mutableStateOf<LocalTime?>(existingDef?.time)
-    }
+    var recurringTime by remember { mutableStateOf<LocalTime?>(existingDef?.time) }
     val selectedDays = remember {
         mutableStateMapOf<Int, Unit>().also { map ->
             val slots = (existingDef?.recurrence as? Recurrence.Weekly)?.slots
@@ -91,7 +89,6 @@ fun TaskFormSheet(
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp, bottom = 32.dp)
         ) {
-            // Asa
             Box(
                 modifier = Modifier
                     .width(36.dp)
@@ -112,7 +109,6 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Nombre
             SheetSectionLabel("NOMBRE")
             Spacer(modifier = Modifier.height(8.dp))
             SheetTextField(
@@ -123,7 +119,6 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Tipo: puntual / recurrente
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -144,7 +139,6 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (!isRecurring) {
-                // --- PUNTUAL ---
                 SheetSectionLabel("FECHA")
                 Spacer(modifier = Modifier.height(8.dp))
                 DateInputField(
@@ -164,7 +158,6 @@ fun TaskFormSheet(
                     nullable = true
                 )
             } else {
-                // --- RECURRENTE ---
                 SheetSectionLabel("HORA (opcional)")
                 Spacer(modifier = Modifier.height(8.dp))
                 TimeInputField(
@@ -204,7 +197,6 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Bloque
             SheetSectionLabel(if (isRecurring) "BLOQUE" else "BLOQUE (opcional)")
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -230,7 +222,6 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)

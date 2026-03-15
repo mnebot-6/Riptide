@@ -1,5 +1,6 @@
 package com.mnebot.riptide.presentation.main
 
+import com.mnebot.riptide.domain.model.CreatureSpecies
 import com.mnebot.riptide.domain.model.DaySummary
 import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.EcosystemState
@@ -14,6 +15,7 @@ data class MainUiState(
     val tasksByBlock: Map<String?, List<DayTask>> = emptyMap(),
     val streaksByBlock: Map<String, Int> = emptyMap(),
     val ecosystemByCategory: Map<MarineCategory, EcosystemState> = emptyMap(),
+    val creatureLevelBySpecies: Map<CreatureSpecies, Int> = emptyMap(),
     val pendingSummary: DaySummary? = null,
     val pendingUnlocks: List<CreatureSpec> = emptyList(),
     val isLoading: Boolean = false,

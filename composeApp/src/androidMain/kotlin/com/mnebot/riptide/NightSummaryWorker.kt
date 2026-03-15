@@ -12,17 +12,17 @@ import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
 import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
+import com.mnebot.riptide.data.repository.MarineCreatureRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
+import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.NightSummaryProcessor
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
-import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 
 class NightSummaryWorker(
     private val context: Context,
@@ -43,7 +43,8 @@ class NightSummaryWorker(
             blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
         )
         val ecosystemProcessor = EcosystemProcessor(
-            EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            EcosystemStateRepositoryImpl(db.ecosystemStateDao()),
+            MarineCreatureRepositoryImpl(db.marineCreatureDao())
         )
         val userPreferencesRepository = UserPreferencesRepositoryImpl(context)
 
@@ -69,16 +70,11 @@ class NightSummaryWorker(
             val now = kotlin.time.Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault())
 
-            var targetHour = at.hour
-            var targetMinute = at.minute
-
-            // Calcular delay hasta la próxima ocurrencia
             val nowMinutes = now.hour * 60 + now.minute
-            val targetMinutes = targetHour * 60 + targetMinute
+            val targetMinutes = at.hour * 60 + at.minute
             val delayMinutes = if (targetMinutes > nowMinutes) {
                 (targetMinutes - nowMinutes).toLong()
             } else {
-                // Ya pasó hoy, programar para mañana
                 (24 * 60 - nowMinutes + targetMinutes).toLong()
             }
 

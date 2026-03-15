@@ -187,6 +187,12 @@ class MainViewModel(
                     ecosystemStateRepository.getByCategory(category)?.let { category to it }
                 }.toMap()
 
+                val unlockedCreatures = MarineCategory.entries.flatMap { category ->
+                    ecosystemStateRepository.getByCategory(category) ?: return@flatMap emptyList<MarineCreature>()
+                    marineCreatureRepository.getByCategory(category)
+                }
+                val creatureLevelBySpecies = unlockedCreatures.associate { it.species to it.creatureLevel }
+
                 _uiState.update {
                     it.copy(
                         blocks = blocks,
@@ -194,7 +200,8 @@ class MainViewModel(
                         streaksByBlock = streaksByBlock,
                         isLoading = false,
                         error = null,
-                        ecosystemByCategory = ecosystemByCategory
+                        ecosystemByCategory = ecosystemByCategory,
+                        creatureLevelBySpecies = creatureLevelBySpecies
                     )
                 }
             } catch (e: Exception) {

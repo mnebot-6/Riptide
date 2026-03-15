@@ -2,215 +2,145 @@
 
 ## Visión general
 
-El proyecto usa **Kotlin Multiplatform con Compose Multiplatform**. Todo el código vive dentro de `composeApp/src/`, dividido en tres source sets:
+Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `composeApp/src/`:
 
-- `commonMain` — código compartido Android + iOS (modelos, repositorios, ViewModels, UI)
-- `androidMain` — exclusivo Android (Room, implementaciones, factories, navegación)
-- `iosMain` — exclusivo iOS (entrypoint UIViewController, actuals)
+- `commonMain` — modelos, repositorios, ViewModels, UI compartida
+- `androidMain` — Room, implementaciones, factories, navegación
+- `iosMain` — entrypoint, actuals (parcialmente pendientes)
 
 ---
 
 ## commonMain
 
-Ruta base: `composeApp/src/commonMain/kotlin/com/mnebot/riptide/`
-
-| Archivo | Qué hace |
-|---|---|
-| `UuidGenerator.kt` | `expect fun generateUUID(): String` |
-| `Serializers.kt` | `LocalTimeSerializer` — serializa `LocalTime` como ISO string |
-| `NightSummaryScheduler.kt` | Interfaz: `getNightSummaryTime`, `setNightSummaryTime`, `scheduleWorker` |
-
 ### `domain/model/`
 
 | Archivo | Qué representa |
 |---|---|
-| `MarineCategory.kt` | Enum: FISH, FLORA, CRUSTACEAN, MOLLUSK, PELAGIC |
-| `WorkBlock.kt` | Bloque de actividad + `Recurrence` (sealed `@Serializable`) + `WeeklySlot` |
-| `TaskStatus.kt` | Enum: PENDING, COMPLETED, EXPIRED, POSTPONED |
-| `TaskSchedule.kt` | Sealed class: `OneTime(date, time?)` / `Recurring(time, recurrence)` |
-| `DayTask.kt` | Instancia de tarea. `blockId` nullable, `sourceTaskId` para recurrentes |
-| `RecurringTaskDef.kt` | Definición de tarea recurrente. Siempre tiene bloque. `time: LocalTime?` (hora opcional) |
-| `DaySummary.kt` | Resumen del día: score interno + mensaje emocional |
-| `BlockStreak.kt` | Racha de días consecutivos. PK natural = `blockId` |
-| `EcosystemState.kt` | Estado XP + nivel por categoría marina |
-| `MarineCreature.kt` | Criatura individual con nickname + `CreatureSpecies` enum |
-| `BlockCategory.kt` | Relación bloque ↔ categoría marina (asignación automática) |
+| `MarineCategory.kt` | Enum con `isUnlockedByDefault`. 9 categorías: 5 base + CEPHALOPOD/REPTILE/MAMMAL/DECORATION |
+| `WorkBlock.kt` | Bloque + `Recurrence` sealed `@Serializable` + `WeeklySlot` |
+| `TaskStatus.kt` | PENDING, COMPLETED, EXPIRED, POSTPONED |
+| `TaskSchedule.kt` | `OneTime(date, time?)` / `Recurring(time, recurrence)` |
+| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes |
+| `RecurringTaskDef.kt` | `time: LocalTime?` nullable |
+| `DaySummary.kt` | Score interno + mensaje visible |
+| `BlockStreak.kt` | PK natural = `blockId` |
+| `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoría |
+| `MarineCreature.kt` | `experience` + `creatureLevel` individuales + `CreatureSpecies` (24 especies) |
+| `BlockCategory.kt` | Relación bloque ↔ categoría (automática) |
 
 ### `domain/repository/`
 
-| Archivo | Operaciones |
+| Archivo | Operaciones clave |
 |---|---|
-| `WorkBlockRepository.kt` | getAll, getById, insert, update, delete |
-| `DayTaskRepository.kt` | getByDate, getByBlock, getById, insert, update, updateStatus, delete, deleteBySourceId, deleteBySourceIdFromDate |
-| `RecurringTaskDefRepository.kt` | getAll, getActive, getById, insert, update, delete |
-| `BlockCategoryRepository.kt` | getCategoriesForBlocks, setCategories |
-| `BlockStreakRepository.kt` | getByBlockId, insert, update |
-| `DaySummaryRepository.kt` | getByDate, insert |
-| `EcosystemStateRepository.kt` | getByCategory, insert, update |
-| `MarineCreatureRepository.kt` | getByEcosystem, insert, update |
-| `UserPreferencesRepository.kt` | getNightSummaryTime (Flow), setNightSummaryTime, getPendingUnlocks, setPendingUnlocks, getLastDismissedSummaryDate, setLastDismissedSummaryDate, hasCompletedOnboarding (Flow), setOnboardingCompleted |
+| `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
+| `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
+| `UserPreferencesRepository.kt` | nightSummaryTime, pendingUnlocks, **lastDismissedSummaryDate**, hasCompletedOnboarding |
+| Resto | operaciones estándar |
 
 ### `domain/`
 
 | Archivo | Qué hace |
 |---|---|
-| `MarineCategoryAssigner.kt` | Redistribuye categorías marinas al cambiar bloques |
-| `RecurringTaskGenerator.kt` | Genera instancias `DayTask` a partir de defs activos para los próximos N días; soporta `time` nullable |
-| `BlockStreakProcessor.kt` | Calcula y persiste rachas por bloque |
-| `NightSummaryProcessor.kt` | Filtra tareas evaluables, expira pendientes, calcula score, genera mensaje, guarda `DaySummary`; excluye POSTPONED y tareas futuras no completadas |
-| `EcosystemProcessor.kt` | Gestiona XP; devuelve `List<CreatureSpec>` desbloqueadas |
-| `EcosystemLevelCalculator.kt` | Curva de niveles, funciones de XP, bonus nocturno |
+| `MarineCategoryAssigner.kt` | Redistribuye entre categorías **desbloqueadas** (requiere `EcosystemStateRepository`) |
+| `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable |
+| `BlockStreakProcessor.kt` | Rachas por bloque |
+| `NightSummaryProcessor.kt` | Evaluación selectiva; excluye POSTPONED y futuras no completadas |
+| `EcosystemProcessor.kt` | XP a categorías + XP a criaturas individuales; requiere `MarineCreatureRepository` |
+| `EcosystemLevelCalculator.kt` | Curva de niveles compartida para ecosistemas y criaturas |
 
 ### `presentation/aquarium/`
 
 | Archivo | Qué hace |
 |---|---|
-| `AquariumBackground.kt` | Canvas: fondo degradado + plantas animadas + burbujas |
-| `AquariumCreature.kt` | `CreatureSpec`, `allCreatures`, `AquariumCreatures` composable + `expect fun DrawScope.drawEmoji(...)` |
-
-### `presentation/components/`
-
-| Archivo | Qué hace |
-|---|---|
-| `TimeInputField.kt` | Input hora estandarizado. `BasicTextField` invisible + overlay `HH:mm`. Params: `value`, `onValueChange`, `nullable`, `compact`, `showPickerIcon`. `expect fun TimePickerDialogWrapper` |
-| `DateInputField.kt` | Input fecha estandarizado. `BasicTextField` invisible + overlay `YYYY-MM-DD`. Dígitos rellenan desde la derecha sobre fecha de hoy. `expect fun DatePickerDialogWrapper` |
+| `AquariumBackground.kt` | Canvas: degradado + plantas + burbujas |
+| `AquariumCreature.kt` | `CreatureSpec` (con `speedScalePerLevel`), `allCreatures` (24), `AquariumCreatures` (recibe `creatureLevelBySpecies`) |
 
 ### `presentation/main/`
 
 | Archivo | Qué hace |
 |---|---|
-| `CurrentDate.kt` | `expect fun currentDate(): LocalDate` |
-| `ParseColor.kt` | `expect fun parseColor(hex: String): Color` |
-| `MainUiState.kt` | Estado de UI: fecha, bloques, tareas, streaks, ecosistema, pendingSummary, pendingUnlocks |
-| `MainViewModel.kt` | Toda la lógica: tareas, bloques, XP, desbloqueos, resumen nocturno, hora resumen |
-| `MainScreen.kt` | Composable raíz. Capas: AquariumBackground → AquariumCreatures → Header+contenido → diálogos |
-| `WeekCalendar.kt` | Calendario semanal navegable con barra de progreso animada (excluye POSTPONED) |
-| `MainDrawer.kt` | Drawer desde arriba: BLOQUES + AJUSTES. Lista de bloques con scroll interno (85% pantalla). Sin sección TAREAS |
-
-### `presentation/block/`
-
-| Archivo | Qué hace |
-|---|---|
-| `BlockFormScreen.kt` | Formulario crear/editar/eliminar bloque. Usa `TimeInputField(compact=true)` |
-| `BlockFormViewModel.kt` | Emite `BlockFormResult.Saved` / `.Deleted` |
+| `MainUiState.kt` | + `creatureLevelBySpecies: Map<CreatureSpecies, Int>` |
+| `MainViewModel.kt` | Carga `creatureLevelBySpecies` en `loadDay`; `getRecurringTaskDef` público |
+| `MainScreen.kt` | Long press en cabecera → `onBlockHeaderLongPress`; `quickTaskBlock` para preselección |
+| `WeekCalendar.kt` | Excluye POSTPONED |
+| `MainDrawer.kt` | Solo BLOQUES + AJUSTES; scroll interno con `LocalWindowInfo` |
 
 ### `presentation/task/`
 
 | Archivo | Qué hace |
 |---|---|
-| `TaskFormSheet.kt` | Bottom sheet crear/editar tareas. Hora opcional en recurrentes. Parámetro `forceRecurring` para edición de scope futuras/todas |
-| `PostponeSheet.kt` | Bottom sheet posponer tarea. Fecha obligatoria, hora opcional |
-| `TaskFormViewModel.kt` | Lógica del formulario de tarea |
+| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` |
+| `PostponeSheet.kt` | Hora opcional |
 
 ---
 
 ## androidMain
 
-Ruta base: `composeApp/src/androidMain/kotlin/com/mnebot/riptide/`
-
-| Archivo | Para qué sirve |
-|---|---|
-| `App.kt` | NavHost con las tres rutas |
-| `MainActivity.kt` | Punto de entrada. Inicializa DB, DataSeeder, NightSummaryProcessor fallback, WorkManager. Pantalla bloqueada en portrait (AndroidManifest) |
-| `DataSeeder.kt` | `seedIfEmpty(db, assigner)` — 3 bloques genéricos + 4 tareas para hoy; sin XP; solo si BD vacía |
-| `NightSummaryWorker.kt` | CoroutineWorker WorkManager |
-| `NightSummarySchedulerImpl.android.kt` | DataStore + WorkManager |
-| `UuidGenerator.android.kt` | `actual fun generateUUID()` |
-
 ### `data/local/entity/`
 
-| Archivo | Tabla |
+| Entity | Cambios recientes |
 |---|---|
-| `WorkBlockEntity.kt` | `work_blocks` |
-| `BlockCategoryEntity.kt` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity.kt` | `day_tasks` |
-| `RecurringTaskDefEntity.kt` | `recurring_task_defs` — `time String?` nullable |
-| `DaySummaryEntity.kt` | `day_summaries` |
-| `BlockStreakEntity.kt` | `block_streaks` — PK `blockId` |
-| `EcosystemStateEntity.kt` | `ecosystem_states` |
-| `MarineCreatureEntity.kt` | `marine_creatures` |
+| `RecurringTaskDefEntity` | `time: String?` nullable |
+| `EcosystemStateEntity` | + `isUnlocked: Boolean` |
 
 ### `data/local/dao/`
 
-Un DAO por entity. Operaciones estándar con `@Query`, `@Insert(onConflict = REPLACE)`, `@Update`, `@Delete`.
+| DAO | Queries añadidas |
+|---|---|
+| `EcosystemStateDao` | `getAll()`, `getUnlocked()` |
+| `MarineCreatureDao` | `getByCategory(category: String)` |
 
 ### `data/local/db/`
 
-| Archivo | Para qué sirve |
-|---|---|
-| `RiptideDatabase.kt` | Clase Room principal. Versión 7. `fallbackToDestructiveMigration(true)` |
-| `DatabaseProvider.kt` | Singleton lazy |
-
-### `data/local/mapper/`
-
-Un mapper por entidad. Convierte dominio ↔ entity. Usan `Json.encodeToString<Recurrence>(...)` con tipo explícito. `RecurringTaskDefMapper` maneja `time` como `String?` nullable.
-
-### `data/repository/`
-
-| Archivo | Implementa |
-|---|---|
-| `WorkBlockRepositoryImpl.kt` | `WorkBlockRepository` |
-| `BlockCategoryRepositoryImpl.kt` | `BlockCategoryRepository` |
-| `DayTaskRepositoryImpl.kt` | `DayTaskRepository` |
-| `RecurringTaskDefRepositoryImpl.kt` | `RecurringTaskDefRepository` |
-| `BlockStreakRepositoryImpl.kt` | `BlockStreakRepository` |
-| `DaySummaryRepositoryImpl.kt` | `DaySummaryRepository` |
-| `EcosystemStateRepositoryImpl.kt` | `EcosystemStateRepository` |
-| `MarineCreatureRepositoryImpl.kt` | `MarineCreatureRepository` |
-| `UserPreferencesRepositoryImpl.kt` | `UserPreferencesRepository` — DataStore: hora resumen, pending unlocks, dismissed_summary_date, hasCompletedOnboarding |
+`RiptideDatabase` — **versión 8**. `fallbackToDestructiveMigration(true)`.
 
 ### `presentation/`
 
-| Archivo | Para qué sirve |
+| Archivo | Nota |
 |---|---|
-| `Navigation.kt` | Define rutas, conecta `BlockFormResult` con `mainViewModel.reload()` |
-| `main/MainViewModelFactory.kt` | Construye `MainViewModel` con todos los repositorios |
-| `main/CurrentDate.android.kt` | `actual fun currentDate()` |
-| `main/ParseColor.android.kt` | `actual fun parseColor(hex)` |
-| `aquarium/AquariumCreature.android.kt` | `actual fun DrawScope.drawEmoji(...)` con nativeCanvas |
-| `components/InputFieldDialogs.android.kt` | `actual TimePickerDialogWrapper` + `actual DatePickerDialogWrapper` — Dialog propio con estética marina (OceanMid + Accent #7EC8E3) |
-| `block/BlockFormViewModelFactory.kt` | Construye `BlockFormViewModel` |
-| `task/TaskFormViewModelFactory.kt` | Construye `TaskFormViewModel` |
+| `MainViewModelFactory.kt` | `EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo)` |
+| `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
+| `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
+| `NightSummaryWorker.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
+
+### `DataSeeder.kt`
+
+5 bloques genéricos. **Orden crítico**:
+1. Crear `EcosystemState` para las 5 categorías base (`isUnlocked=true`)
+2. Insertar bloques
+3. `assigner.reassign()`
+4. Insertar tareas
 
 ---
 
 ## iosMain
 
-Ruta base: `composeApp/src/iosMain/kotlin/com/mnebot/riptide/`
-
-| Archivo | Para qué sirve |
-|---|---|
-| `MainViewController.kt` | Punto de entrada iOS |
-| `NightSummarySchedulerImpl.ios.kt` | Stub vacío, devuelve `flowOf(LocalTime(23,30))` |
-| `UuidGenerator.ios.kt` | `actual fun generateUUID()` usando `NSUUID` |
-| `presentation/main/CurrentDate.ios.kt` | `actual fun currentDate()` |
-| `presentation/main/ParseColor.ios.kt` | `actual fun parseColor(hex)` parseando hex manualmente |
-| `presentation/aquarium/AquariumCreature.ios.kt` | `actual fun DrawScope.drawEmoji(...)` — pendiente arreglar en v3 |
-| `presentation/components/InputFieldDialogs.ios.kt` | `actual TimePickerDialogWrapper` + `actual DatePickerDialogWrapper` — stubs que llaman `onDismiss()` (pendiente en v3) |
+Todo pendiente para v6 excepto `UuidGenerator`, `CurrentDate` y `ParseColor`.
 
 ---
 
 ## Capas del Box raíz en MainScreen
 
 ```
-Box (fillMaxSize, pointerInput gestos)
+Box (pointerInput gestos)
  ├── AquariumBackground()
- ├── AquariumCreatures(...)
+ ├── AquariumCreatures(ecosystemByCategory, creatureLevelBySpecies)
  ├── when(showAquarium)
- │    ├── true  → botón cerrar (FAB ✕)
+ │    ├── true  → FAB ✕
  │    └── false → Column
- │                 ├── MainHeader (fijo, se oculta con FAB)
- │                 │    ├── Fila: 🌊 Riptide + ⟳ + 📅 + ➕ + ☰
+ │                 ├── MainHeader
+ │                 │    ├── 🌊 Riptide + ⟳ + 📅 + ➕ + ☰
  │                 │    └── WeekCalendar
- │                 └── MainContent (scrollable, LazyColumn con rememberLazyListState)
+ │                 └── MainContent (LazyColumn, rememberLazyListState)
+ │                      ├── BlockSection (long press header → nueva tarea)
+ │                      └── TaskCard (long press → menú contextual)
  ├── AlertDialog contextMenu
  ├── AlertDialog deletingRecurring
- ├── AlertDialog editingScopeTask    ← diálogo scope edición recurrente
+ ├── AlertDialog editingScopeTask
  ├── AlertDialog pendingSummary
  ├── AlertDialog pendingUnlocks
- ├── Drawer overlay + MainDrawer (con pointerInput propio para cerrar con drag hacia arriba)
- ├── DatePickerDialogWrapper         ← para ir a día concreto desde header
- ├── Dialog TaskFormSheet (nueva tarea desde header)
- ├── Dialog TaskFormSheet (editar tarea existente, con lógica de scope)
+ ├── Drawer (pointerInput propio para cerrar)
+ ├── DatePickerDialogWrapper
+ ├── Dialog TaskFormSheet (nueva / editar)
  └── Dialog PostponeSheet
 ```

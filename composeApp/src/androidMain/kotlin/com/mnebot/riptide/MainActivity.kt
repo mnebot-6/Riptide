@@ -12,6 +12,7 @@ import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
 import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
 import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
 import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
+import com.mnebot.riptide.data.repository.MarineCreatureRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val db = DatabaseProvider.getDatabase(applicationContext)
             val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            val marineCreatureRepo = MarineCreatureRepositoryImpl(db.marineCreatureDao())
             val assigner = MarineCategoryAssigner(
                 WorkBlockRepositoryImpl(db.workBlockDao()),
                 BlockCategoryRepositoryImpl(db.blockCategoryDao()),
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
                 blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
             )
-            val ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo)
+            val ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo)
             val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
 
             val processor = NightSummaryProcessor(

@@ -59,11 +59,23 @@ private fun sortedBlocks(
     val dayOfWeek = date.dayOfWeek.isoDayNumber
     return blocks.sortedWith(compareBy(
         { block ->
-            val recurrence = block.recurrence
-            if (recurrence is Recurrence.Weekly) {
-                val slot = recurrence.slots.firstOrNull { it.dayOfWeek == dayOfWeek }
-                if (slot?.startTime != null) slot.startTime.toSecondOfDay() else Int.MAX_VALUE
-            } else Int.MAX_VALUE
+            // Hora de la tarea no completada más temprana con hora definida
+            val earliestTaskTime = tasksByBlock[block.id]
+                ?.filter { it.status != TaskStatus.COMPLETED && it.status != TaskStatus.POSTPONED }
+                ?.mapNotNull { (it.schedule as? TaskSchedule.OneTime)?.time }
+                ?.minOrNull()
+                ?.toSecondOfDay()
+
+            if (earliestTaskTime != null) {
+                earliestTaskTime
+            } else {
+                // Fallback: hora del slot del bloque ese día
+                val recurrence = block.recurrence
+                if (recurrence is Recurrence.Weekly) {
+                    val slot = recurrence.slots.firstOrNull { it.dayOfWeek == dayOfWeek }
+                    slot?.startTime?.toSecondOfDay() ?: Int.MAX_VALUE
+                } else Int.MAX_VALUE
+            }
         },
         { it.name }
     ))
@@ -107,6 +119,7 @@ fun MainScreen(
     var deletingRecurringTask by remember { mutableStateOf<DayTask?>(null) }
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
+    var quickTaskBlock by remember { mutableStateOf<WorkBlock?>(null) }
 
     val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -173,7 +186,10 @@ fun MainScreen(
             }
     ) {
         AquariumBackground()
-        AquariumCreatures(ecosystemByCategory = uiState.ecosystemByCategory)
+        AquariumCreatures(
+            ecosystemByCategory = uiState.ecosystemByCategory,
+            creatureLevelBySpecies = uiState.creatureLevelBySpecies
+        )
 
         when {
             showAquarium -> {
@@ -219,6 +235,10 @@ fun MainScreen(
                         error = uiState.error,
                         onTaskToggle = { viewModel.toggleTaskCompleted(it) },
                         onTaskLongPress = { contextMenuTask = it },
+                        onBlockHeaderLongPress = { block ->
+                            quickTaskBlock = block
+                            showTaskSheet = true
+                        },
                         streaksByBlock = uiState.streaksByBlock,
                         onAquariumClick = { showAquarium = true }
                     )
@@ -485,22 +505,25 @@ fun MainScreen(
         // TaskFormSheet — nueva tarea desde header
         if (showTaskSheet) {
             Dialog(
-                onDismissRequest = { showTaskSheet = false },
+                onDismissRequest = { showTaskSheet = false; quickTaskBlock = null },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                     TaskFormSheet(
                         blocks = uiState.blocks,
                         initialDate = uiState.selectedDate,
+                        initialBlockId = quickTaskBlock?.id,
                         onSaveOneTime = { title, blockId, date, time ->
                             viewModel.addOneTimeTask(title, blockId, date, time)
                             showTaskSheet = false
+                            quickTaskBlock = null
                         },
                         onSaveRecurring = { title, blockId, time, recurrence ->
                             viewModel.addRecurringTask(title, blockId, time, recurrence)
                             showTaskSheet = false
+                            quickTaskBlock = null
                         },
-                        onDismiss = { showTaskSheet = false }
+                        onDismiss = { showTaskSheet = false; quickTaskBlock = null }
                     )
                 }
             }
@@ -672,6 +695,7 @@ private fun MainContent(
     error: String?,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
+    onBlockHeaderLongPress: (WorkBlock) -> Unit,
     onAquariumClick: () -> Unit,
     streaksByBlock: Map<String, Int>,
 ) {
@@ -718,7 +742,8 @@ private fun MainContent(
                         selectedDate = selectedDate,
                         streak = streak,
                         onTaskToggle = onTaskToggle,
-                        onTaskLongPress = onTaskLongPress
+                        onTaskLongPress = onTaskLongPress,
+                        onHeaderLongPress = onBlockHeaderLongPress
                     )
                 }
             }
@@ -755,10 +780,16 @@ private fun BlockSection(
     selectedDate: LocalDate,
     streak: Int,
     onTaskToggle: (DayTask) -> Unit,
-    onTaskLongPress: (DayTask) -> Unit
+    onTaskLongPress: (DayTask) -> Unit,
+    onHeaderLongPress: (WorkBlock) -> Unit
 ) {
     Column {
-        BlockHeader(block = block, selectedDate = selectedDate, streak = streak)
+        BlockHeader(
+            block = block,
+            selectedDate = selectedDate,
+            streak = streak,
+            onLongPress = { onHeaderLongPress(block) }
+        )
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
             TaskCard(
@@ -772,11 +803,20 @@ private fun BlockSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BlockHeader(block: WorkBlock, selectedDate: LocalDate, streak: Int) {
+private fun BlockHeader(
+    block: WorkBlock,
+    selectedDate: LocalDate,
+    streak: Int,
+    onLongPress: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(bottom = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onLongPress)
+            .padding(bottom = 4.dp)
     ) {
         Box(
             modifier = Modifier

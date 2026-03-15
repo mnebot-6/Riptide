@@ -17,6 +17,7 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
         val dayTaskRepo = DayTaskRepositoryImpl(db.dayTaskDao())
         val recurringTaskDefRepo = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao())
         val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+        val marineCreatureRepo = MarineCreatureRepositoryImpl(db.marineCreatureDao())
         val userPreferencesRepo = UserPreferencesRepositoryImpl(context)
 
         @Suppress("UNCHECKED_CAST")
@@ -33,10 +34,10 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
             ),
             blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
             daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
-            ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo),
+            ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo),
             ecosystemStateRepository = ecosystemStateRepo,
             userPreferencesRepository = userPreferencesRepo,
-            marineCreatureRepository = MarineCreatureRepositoryImpl(db.marineCreatureDao()),
+            marineCreatureRepository = marineCreatureRepo,
         ) as T
     }
 }
