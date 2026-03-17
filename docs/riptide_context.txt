@@ -86,9 +86,19 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   presentation/
     aquarium/
       AquariumBackground.kt
-      AquariumCreature.kt       (CreatureSpec con speedScalePerLevel; 24 especies en allCreatures;
-                                 AquariumCreatures recibe ecosystemByCategory + creatureLevelBySpecies;
-                                 tamaño y velocidad ajustados por creatureLevel individual)
+      AquariumCreature.kt       (CreatureSpec con SwimZone, EasingType, personalYFraction,
+                                 verticalCoupling, microWobble, xErraticness, fixedWobbleScale;
+                                 24 especies en allCreatures; AquariumCreatures recibe
+                                 ecosystemByCategory + creatureLevelBySpecies + creaturesData;
+                                 hit-testing por posición real de frame; freeze on press)
+      CreatureDetailDialog.kt   (dialog OceanMid: emoji, displayName, nickname editable,
+                                 XpBar visual, fecha de desbloqueo)
+      CreatureExtensions.kt     (displayName: String, xpRequiredForLevel(level): Int —
+                                 compartido por CreatureDetailDialog y EcosystemScreen)
+      EcosystemScreen.kt        (pantalla nueva: grid 3 col por categoría; cards desbloqueadas
+                                 con nick/nivel, cards bloqueadas con silueta + barra progreso;
+                                 IntrinsicSize.Max para altura uniforme en cada fila;
+                                 abre CreatureDetailDialog al pulsar)
     block/
       BlockFormScreen.kt
       BlockFormViewModel.kt
@@ -99,11 +109,11 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     main/
       CurrentDate.kt
       ParseColor.kt
-      MainUiState.kt            (+ creatureLevelBySpecies: Map<CreatureSpecies, Int>)
-      MainViewModel.kt
+      MainUiState.kt            (+ creaturesData: List<MarineCreature>)
+      MainViewModel.kt          (+ updateCreatureNickname(creatureId, nickname))
       MainScreen.kt
       WeekCalendar.kt
-      MainDrawer.kt
+      MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen)
     task/
       TaskFormSheet.kt          (+ initialBlockId para long press en cabecera de bloque)
       PostponeSheet.kt
@@ -150,7 +160,7 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       MainViewModelFactory.kt
     task/
       TaskFormViewModelFactory.kt
-    Navigation.kt
+    Navigation.kt               (+ ROUTE_ECOSYSTEM = "ecosystem"; composable conectado a MainViewModel)
 
 composeApp/src/iosMain/kotlin/com/mnebot/riptide/
   MainViewController.kt
@@ -210,7 +220,19 @@ CreatureSpecies (24 especies, con categoría y displayName):
 
 CreatureSpec (presentation/aquarium):
   emoji, species, category, unlockLevel, swimDuration(ms; 0=fija),
-  wobbleAmplitude, speedScalePerLevel(+más rápido, -más lento al crecer)
+  wobbleAmplitude, speedScalePerLevel, swimZone(SwimZone),
+  personalYFraction, waveCount, erraticness, driftSpeed, driftAmplitude,
+  pauseFraction, easingType(EasingType), verticalCoupling, microWobble,
+  xErraticness, fixedWobbleScale
+
+SwimZone enum: SURFACE(0.17, 0.06) | UPPER(0.31, 0.09) | MID(0.46, 0.12)
+               LOWER(0.63, 0.09) | BOTTOM(0.81, 0.05)
+  (centerFraction, bandFraction)
+
+EasingType enum: SMOOTH | BURST | CRAWL
+  SMOOTH: coseno estándar (peces, tortugas, ballenas)
+  BURST:  80% en el primer 30% — propulsión a chorro (calamar, gamba, pulpo)
+  CRAWL:  95% lineal (crustáceos que caminan)
 
 ---
 
@@ -280,12 +302,56 @@ ECOSISTEMA VISUAL
 AquariumCreatures recibe:
   ecosystemByCategory: Map<MarineCategory, EcosystemState>
   creatureLevelBySpecies: Map<CreatureSpecies, Int>
+  creaturesData: List<MarineCreature>
+  freezeState: CreatureFreezeState
+  onCreatureLongPress: (MarineCreature, CreatureSpec) -> Unit
 
 Filtro: state.isUnlocked && state.currentLevel >= spec.unlockLevel
 
 Tamaño: baseSize * (0.8f + (creatureLevel - 1) * 0.10f)
 Velocidad: swimDuration / max(0.3f, 1f + (creatureLevel-1) * speedScalePerLevel)
-Zona de nado: por el momento semi-aleatoria por índice; a futuro explícita por especie.
+
+Zona de nado: asignada por especie (SwimZone). personalYFraction distribuye la base Y
+dentro de la banda, evitando que criaturas de la misma zona estén a la misma altura.
+
+Sistema de movimiento por capas (criaturas nadadoras):
+  1. Onda primaria — waveCount (entero) → sin salto en loop
+  2. Onda secundaria — waveCount·PHI (irracional) → patrón aperiódico
+  3. Deriva lenta — driftSpeed fraccionario → eje Y siempre diferente entre ciclos
+  4. Acoplamiento vertical — verticalCoupling: arco ligado a posición X (delfín salta)
+  5. Microwobble — alta frecuencia (~1.5Hz), simula aleta/cola
+  6. Perturbación X — xErraticness: microaceleraciones horizontales (clownfish, medusa)
+
+Criaturas fijas: ondeo de corriente escalado por fixedWobbleScale (0=rígido, 1.8=anemona).
+Hit-testing: `findHitCreature` compara offset del toque contra posiciones reales del último
+frame dibujado (creaturePositions). Un único pointerInput en el Layout — no Boxes superpuestos.
+Freeze on tap: la criatura se congela en su posición al pulsar; se descongela en onDismiss.
+
+---
+
+DETALLE DE CRIATURA (CreatureDetailDialog)
+
+Trigger: tap en AquariumCreatures → freezeState.freeze + onCreatureLongPress
+Dialog OceanMid con:
+  - Emoji (56sp)
+  - displayName (de CreatureExtensions.kt)
+  - Nickname editable con BasicTextField (siempre visible, puede guardarse vacío → null)
+  - XpBar: puntos de nivel (máx 10) + barra de progreso al siguiente nivel (sin números)
+  - Fecha de desbloqueo ("En el estanque desde el DD/MM/YYYY")
+  - Botón Guardar → onNicknameChanged + onDismiss → unfreeze
+Persistencia: MainViewModel.updateCreatureNickname → marineCreatureRepository.update
+
+---
+
+PANTALLA MI ECOSISTEMA (EcosystemScreen)
+
+Acceso: Drawer → sección ECOSISTEMA → "Mi ecosistema" → navController.navigate(ROUTE_ECOSYSTEM)
+Fondo OceanDeep, sin header de vuelta atrás (swipe back de Android).
+Grid 3 columnas por categoría, separadas por divider.
+IntrinsicSize.Max en cada fila → todas las cards igualan la altura de la más alta.
+Cards desbloqueadas: emoji + nickname/displayName + puntos de nivel (máx 5) → abre CreatureDetailDialog
+Cards bloqueadas: silueta (alpha 10%) + barra de progreso al unlockLevel + "Nv. X" o "🔒"
+El CreatureDetailDialog desde EcosystemScreen también llama a updateCreatureNickname.
 
 ---
 
@@ -295,6 +361,7 @@ MainUiState:
   selectedDate, blocks, tasksByBlock, streaksByBlock,
   ecosystemByCategory: Map<MarineCategory, EcosystemState>,
   creatureLevelBySpecies: Map<CreatureSpecies, Int>,
+  creaturesData: List<MarineCreature>,
   pendingSummary, pendingUnlocks, isLoading, error
 
 MainViewModel funciones:
@@ -306,7 +373,8 @@ MainViewModel funciones:
   insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign,
   getRecurringTaskDef(sourceId): RecurringTaskDef?,
   dismissSummary, confirmUnlock, dismissUnlock, reload,
-  updateNightSummaryTime(time)
+  updateNightSummaryTime(time),
+  updateCreatureNickname(creatureId, nickname)
 
 ---
 
@@ -331,7 +399,8 @@ Long press en tarea → menú contextual: Editar / Posponer / Eliminar
   Editar recurrente → diálogo scope (solo esta / futuras / todas)
   Eliminar recurrente → diálogo scope
 
-Drawer: BLOQUES + AJUSTES; scroll interno (85% pantalla con LocalWindowInfo).
+Drawer: BLOQUES + ECOSISTEMA + AJUSTES; scroll interno (85% pantalla con LocalWindowInfo).
+  Sección ECOSISTEMA: botón "Mi ecosistema 🐠" → navega a EcosystemScreen.
 FAB 🐟: AquariumFullScreen.
 Resumen nocturno: no reaparece si ya fue cerrado (fecha en DataStore).
 
@@ -359,28 +428,20 @@ Orden correcto:
 
 ROADMAP
 
-MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅
+MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅
 
-Sprint v2 ampliado completado:
-✅ 9 categorías marinas (5 base + CEPHALOPOD/REPTILE/MAMMAL/DECORATION)
-✅ 24 especies con emojis y patrones individuales
-✅ EcosystemState.isUnlocked — categorías desbloqueables
-✅ MarineCategoryAssigner redistribuye entre desbloqueadas
-✅ EcosystemProcessor reparte XP a criaturas individuales (experience + creatureLevel)
-✅ CreatureSpec.speedScalePerLevel — velocidad y tamaño según nivel individual
-✅ creatureLevelBySpecies en MainUiState
-✅ Ordenación bloques por tarea pendiente con hora más temprana
-✅ Long press en cabecera del bloque → crear tarea con bloque preseleccionado
-✅ DataSeeder con 5 bloques y EcosystemStates pre-creados
-✅ RiptideDatabase versión 8
-
-Próximos pasos (antes de v3):
-⬜ Testing automatizado (dominio) + manual
-⬜ Patrón de nado más orgánico y variado
-⬜ Pulsar criatura → ver nombre, nivel, etc.
-⬜ Resumen de criaturas desde el Drawer
+Sprint pre-v3 completado:
+✅ Tap en criatura → CreatureDetailDialog (nickname editable, XpBar, fecha desbloqueo)
+✅ EcosystemScreen — pantalla "Mi ecosistema" con grid por categoría
+✅ Drawer: sección ECOSISTEMA con navegación a EcosystemScreen
+✅ Patrón de nado orgánico: SwimZone, EasingType, personalYFraction, verticalCoupling,
+   microWobble, xErraticness, fixedWobbleScale, waveCount, erraticness, driftSpeed
+✅ CreatureExtensions.kt — displayName y xpRequiredForLevel compartidos
+✅ Fix PostponeSheet: se cierra correctamente tras posponer
+✅ Fix hit-testing criaturas: un único pointerInput con posiciones reales de frame
 
 v3 — Revisión, pulido y onboarding:
+⬜ Testing automatizado (dominio) + manual
 ⬜ Animación entrada criatura al desbloquearse
 ⬜ Revisión gestos y edge cases
 ⬜ Migrar a migraciones reales Room

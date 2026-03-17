@@ -187,11 +187,11 @@ class MainViewModel(
                     ecosystemStateRepository.getByCategory(category)?.let { category to it }
                 }.toMap()
 
-                val unlockedCreatures = MarineCategory.entries.flatMap { category ->
+                val allCreaturesFromDb = MarineCategory.entries.flatMap { category ->
                     ecosystemStateRepository.getByCategory(category) ?: return@flatMap emptyList<MarineCreature>()
                     marineCreatureRepository.getByCategory(category)
                 }
-                val creatureLevelBySpecies = unlockedCreatures.associate { it.species to it.creatureLevel }
+                val creatureLevelBySpecies = allCreaturesFromDb.associate { it.species to it.creatureLevel }
 
                 _uiState.update {
                     it.copy(
@@ -201,7 +201,8 @@ class MainViewModel(
                         isLoading = false,
                         error = null,
                         ecosystemByCategory = ecosystemByCategory,
-                        creatureLevelBySpecies = creatureLevelBySpecies
+                        creatureLevelBySpecies = creatureLevelBySpecies,
+                        creaturesData = allCreaturesFromDb
                     )
                 }
             } catch (e: Exception) {
@@ -295,10 +296,8 @@ class MainViewModel(
         viewModelScope.launch {
             val sourceId = task.sourceTaskId ?: return@launch
             val date = (task.schedule as? TaskSchedule.OneTime)?.date ?: return@launch
-            // Desactivar la definición para que no genere más instancias
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
             recurringTaskDefRepository.update(def.copy(isActive = false))
-            // Borrar todas las instancias pendientes desde esta fecha inclusive
             dayTaskRepository.deleteBySourceIdFromDate(sourceId, date)
             loadDay(_uiState.value.selectedDate)
         }
@@ -332,7 +331,7 @@ class MainViewModel(
                     MarineCreature(
                         id = generateUUID(),
                         ecosystemId = ecosystemState.id,
-                        species = spec.species,  // directo, sin búsqueda
+                        species = spec.species,
                         nickname = nickname.trim(),
                         unlockedAtLevel = spec.unlockLevel,
                         experience = 0,
@@ -361,6 +360,17 @@ class MainViewModel(
     fun updateNightSummaryTime(time: LocalTime) {
         viewModelScope.launch {
             userPreferencesRepository.setNightSummaryTime(time)
+        }
+    }
+
+    // Persiste el nickname editado desde el dialog de detalle de criatura
+    fun updateCreatureNickname(creatureId: String, nickname: String) {
+        viewModelScope.launch {
+            val creature = _uiState.value.creaturesData.find { it.id == creatureId } ?: return@launch
+            marineCreatureRepository.update(
+                creature.copy(nickname = nickname.trim().ifEmpty { null })
+            )
+            loadDay(_uiState.value.selectedDate)
         }
     }
 }

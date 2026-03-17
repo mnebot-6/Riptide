@@ -63,17 +63,21 @@
 
 ---
 
-## 🔄 Próximos pasos (antes de v3)
+## ✅ Sprint pre-v3
 
-- **Testing** — automatizado para dominio (EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales
-- **Patrón de nado más orgánico** — movimiento menos lineal, más variado entre especies
-- **Pulsar criatura → ver info** — nombre, nivel, especie (solo con tareas ocultas por FAB)
-- **Resumen de criaturas desde el Drawer** — nueva pantalla NavHost con todas las especies (desbloqueadas con info, bloqueadas como silueta)
+- **Tap en criatura → detalle**: `CreatureDetailDialog` con nickname editable, `XpBar` visual sin números, fecha de desbloqueo. Freeze de la criatura al pulsar, unfreeze al cerrar.
+- **EcosystemScreen**: pantalla nueva "Mi ecosistema" con grid 3 columnas por categoría. Cards desbloqueadas (nick + puntos de nivel) y bloqueadas (silueta + barra de progreso al unlockLevel). `IntrinsicSize.Max` para altura uniforme. Abre `CreatureDetailDialog` al pulsar.
+- **Drawer renovado**: sección ECOSISTEMA con botón de navegación a `EcosystemScreen`.
+- **Patrón de nado orgánico**: `SwimZone` (5 bandas), `EasingType` (SMOOTH/BURST/CRAWL), `personalYFraction` (cota personal dentro de banda), `verticalCoupling` (delfín salta), `microWobble` (aleta/cola), `xErraticness` (microaceleraciones horizontales), `waveCount` + `erraticness` (onda secundaria irracional), `driftSpeed` + `driftAmplitude` (deriva lenta aperiódica). `fixedWobbleScale` diferencia rigidez entre flora.
+- **`CreatureExtensions.kt`**: `displayName` y `xpRequiredForLevel` compartidos entre `CreatureDetailDialog` y `EcosystemScreen`.
+- **Fix PostponeSheet**: se cierra correctamente tras confirmar posponer.
+- **Fix hit-testing**: un único `pointerInput` con posiciones reales del frame. Elimina el bug de mostrar siempre la misma criatura.
 
 ---
 
 ## v3 — Revisión, pulido y onboarding
 
+- Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales
 - Animación de entrada de criatura al desbloquearse (nada desde el borde)
 - Revisión de gestos, formularios y edge cases del resumen nocturno
 - Migrar `fallbackToDestructiveMigration` a migraciones reales de Room

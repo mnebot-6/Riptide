@@ -10,6 +10,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.presentation.aquarium.EcosystemScreen
 import com.mnebot.riptide.presentation.block.BlockFormResult
 import com.mnebot.riptide.presentation.block.BlockFormScreen
 import com.mnebot.riptide.presentation.block.BlockFormViewModel
@@ -21,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 const val ROUTE_MAIN = "main"
 const val ROUTE_BLOCK_CREATE = "block/create"
 const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
+const val ROUTE_ECOSYSTEM = "ecosystem"
 
 fun NavGraphBuilder.mainGraph(
     mainViewModel: MainViewModel,
@@ -34,7 +36,8 @@ fun NavGraphBuilder.mainGraph(
             onNavigateToCreateBlock = { navController.navigate(ROUTE_BLOCK_CREATE) },
             onNavigateToEditBlock = { blockId ->
                 navController.navigate("block/edit/$blockId")
-            }
+            },
+            onNavigateToEcosystem = { navController.navigate(ROUTE_ECOSYSTEM) }
         )
     }
 
@@ -81,6 +84,17 @@ fun NavGraphBuilder.mainGraph(
             onSave = { updatedBlock -> blockFormViewModel.saveBlock(updatedBlock) },
             onDelete = { id -> blockFormViewModel.deleteBlock(id) },
             onBack = { navController.popBackStack() }
+        )
+    }
+
+    composable(ROUTE_ECOSYSTEM) {
+        val uiState by mainViewModel.uiState.collectAsState()
+        EcosystemScreen(
+            ecosystemByCategory = uiState.ecosystemByCategory,
+            creaturesData = uiState.creaturesData,
+            onCreatureNicknameChanged = { creatureId, nickname ->
+                mainViewModel.updateCreatureNickname(creatureId, nickname)
+            }
         )
     }
 }

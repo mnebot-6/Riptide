@@ -28,13 +28,15 @@ private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
 private val DividerColor = Color(0x33FFFFFF)
+
 @Composable
 fun MainDrawer(
     blocks: List<WorkBlock>,
     nightSummaryTime: LocalTime,
     onAddBlock: () -> Unit,
     onEditBlock: (String) -> Unit,
-    onNightSummaryTimeChanged: (LocalTime) -> Unit
+    onNightSummaryTimeChanged: (LocalTime) -> Unit,
+    onNavigateToEcosystem: () -> Unit
 ) {
     val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
         LocalWindowInfo.current.containerSize.height.toDp()
@@ -48,7 +50,6 @@ fun MainDrawer(
             .statusBarsPadding()
             .padding(vertical = 24.dp)
     ) {
-        // Header fijo
         Row(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -62,38 +63,41 @@ fun MainDrawer(
         HorizontalDivider(color = DividerColor)
         Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("BLOQUES")
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Lista de bloques con scroll interno cuando es necesario
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState())
         ) {
+            SectionTitle("BLOQUES")
+            Spacer(modifier = Modifier.height(8.dp))
             blocks.forEach { block ->
                 DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
             }
             DrawerItem(icon = "➕", label = "Añadir bloque", onClick = onAddBlock)
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            SectionTitle("ECOSISTEMA")
+            Spacer(modifier = Modifier.height(8.dp))
+            DrawerItem(icon = "🐠", label = "Mi ecosistema", onClick = onNavigateToEcosystem)
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            SectionTitle("AJUSTES")
+            Spacer(modifier = Modifier.height(12.dp))
+            NightSummaryTimeSetting(
+                currentTime = nightSummaryTime,
+                onTimeChanged = onNightSummaryTimeChanged
+            )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-        HorizontalDivider(color = DividerColor)
-        Spacer(modifier = Modifier.height(20.dp))
-
-        SectionTitle("AJUSTES")
-        Spacer(modifier = Modifier.height(12.dp))
-        NightSummaryTimeSetting(
-            currentTime = nightSummaryTime,
-            onTimeChanged = onNightSummaryTimeChanged
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Box(
                 modifier = Modifier
                     .width(40.dp)
@@ -107,24 +111,14 @@ fun MainDrawer(
 }
 
 @Composable
-private fun NightSummaryTimeSetting(
-    currentTime: LocalTime,
-    onTimeChanged: (LocalTime) -> Unit
-) {
+private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (LocalTime) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("🌙", fontSize = 18.sp)
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = "Resumen nocturno",
-            color = TextSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.weight(1f)
-        )
+        Text("Resumen nocturno", color = TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         TimeInputField(
             value = currentTime,
             onValueChange = { it?.let { t -> onTimeChanged(t) } },
@@ -150,10 +144,7 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun DrawerItem(icon: String, label: String, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(icon, fontSize = 18.sp)
@@ -165,20 +156,12 @@ private fun DrawerItem(icon: String, label: String, onClick: () -> Unit) {
 @Composable
 private fun DrawerBlockItem(block: WorkBlock, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(block.icon, fontSize = 18.sp)
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = block.name,
-            color = TextPrimary,
-            fontSize = 15.sp,
-            modifier = Modifier.weight(1f)
-        )
+        Text(text = block.name, color = TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text("›", color = TextSecondary, fontSize = 20.sp)
     }
 }

@@ -53,24 +53,27 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | Archivo | Qué hace |
 |---|---|
 | `AquariumBackground.kt` | Canvas: degradado + plantas + burbujas |
-| `AquariumCreature.kt` | `CreatureSpec` (con `speedScalePerLevel`), `allCreatures` (24), `AquariumCreatures` (recibe `creatureLevelBySpecies`) |
+| `AquariumCreature.kt` | `CreatureSpec` (SwimZone, EasingType, personalYFraction, verticalCoupling, microWobble, xErraticness, fixedWobbleScale), `allCreatures` (24), `AquariumCreatures`, `CreatureFreezeState`, hit-testing por posición real de frame |
+| `CreatureDetailDialog.kt` | Dialog OceanMid: emoji, nombre, nickname editable, XpBar sin números, fecha desbloqueo |
+| `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos entre dialogs |
+| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": grid 3 col por categoría, cards desbloqueadas/bloqueadas, IntrinsicSize.Max, CreatureDetailDialog |
 
 ### `presentation/main/`
 
 | Archivo | Qué hace |
 |---|---|
-| `MainUiState.kt` | + `creatureLevelBySpecies: Map<CreatureSpecies, Int>` |
-| `MainViewModel.kt` | Carga `creatureLevelBySpecies` en `loadDay`; `getRecurringTaskDef` público |
-| `MainScreen.kt` | Long press en cabecera → `onBlockHeaderLongPress`; `quickTaskBlock` para preselección |
+| `MainUiState.kt` | + `creaturesData: List<MarineCreature>` |
+| `MainViewModel.kt` | `loadDay` carga `creaturesData`; + `updateCreatureNickname` |
+| `MainScreen.kt` | Long press header → `onBlockHeaderLongPress`; tap criatura → `CreatureDetailDialog` |
 | `WeekCalendar.kt` | Excluye POSTPONED |
-| `MainDrawer.kt` | Solo BLOQUES + AJUSTES; scroll interno con `LocalWindowInfo` |
+| `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES; scroll interno con `LocalWindowInfo` |
 
 ### `presentation/task/`
 
 | Archivo | Qué hace |
 |---|---|
 | `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` |
-| `PostponeSheet.kt` | Hora opcional |
+| `PostponeSheet.kt` | Hora opcional. `onPostpone` llama a `postponingTask = null` tras confirmar. |
 
 ---
 
@@ -78,7 +81,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 ### `data/local/entity/`
 
-| Entity | Cambios recientes |
+| Entity | Cambios relevantes |
 |---|---|
 | `RecurringTaskDefEntity` | `time: String?` nullable |
 | `EcosystemStateEntity` | + `isUnlocked: Boolean` |
@@ -102,6 +105,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
 | `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
 | `NightSummaryWorker.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
+| `Navigation.kt` | + `ROUTE_ECOSYSTEM = "ecosystem"`; composable usa `MainViewModel` compartido |
 
 ### `DataSeeder.kt`
 
@@ -124,14 +128,15 @@ Todo pendiente para v6 excepto `UuidGenerator`, `CurrentDate` y `ParseColor`.
 ```
 Box (pointerInput gestos)
  ├── AquariumBackground()
- ├── AquariumCreatures(ecosystemByCategory, creatureLevelBySpecies)
+ ├── AquariumCreatures(ecosystemByCategory, creatureLevelBySpecies, creaturesData,
+ │                     freezeState, onCreatureLongPress)
  ├── when(showAquarium)
  │    ├── true  → FAB ✕
  │    └── false → Column
  │                 ├── MainHeader
  │                 │    ├── 🌊 Riptide + ⟳ + 📅 + ➕ + ☰
  │                 │    └── WeekCalendar
- │                 └── MainContent (LazyColumn, rememberLazyListState)
+ │                 └── MainContent (LazyColumn)
  │                      ├── BlockSection (long press header → nueva tarea)
  │                      └── TaskCard (long press → menú contextual)
  ├── AlertDialog contextMenu
@@ -139,7 +144,9 @@ Box (pointerInput gestos)
  ├── AlertDialog editingScopeTask
  ├── AlertDialog pendingSummary
  ├── AlertDialog pendingUnlocks
+ ├── CreatureDetailDialog (tap criatura)
  ├── Drawer (pointerInput propio para cerrar)
+ │    └── MainDrawer(onNavigateToEcosystem)
  ├── DatePickerDialogWrapper
  ├── Dialog TaskFormSheet (nueva / editar)
  └── Dialog PostponeSheet

@@ -43,6 +43,11 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.LocalTime
 import kotlin.collections.mapKeys
+import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
+import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
+import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
+import com.mnebot.riptide.domain.model.MarineCreature
+import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
@@ -104,7 +109,8 @@ fun MainScreen(
     viewModel: MainViewModel,
     nightSummaryScheduler: NightSummaryScheduler,
     onNavigateToCreateBlock: () -> Unit,
-    onNavigateToEditBlock: (String) -> Unit
+    onNavigateToEditBlock: (String) -> Unit,
+    onNavigateToEcosystem: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
@@ -120,6 +126,8 @@ fun MainScreen(
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
     var quickTaskBlock by remember { mutableStateOf<WorkBlock?>(null) }
+    var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
+    val creatureFreezeState = rememberCreatureFreezeState()
 
     val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -188,7 +196,12 @@ fun MainScreen(
         AquariumBackground()
         AquariumCreatures(
             ecosystemByCategory = uiState.ecosystemByCategory,
-            creatureLevelBySpecies = uiState.creatureLevelBySpecies
+            creatureLevelBySpecies = uiState.creatureLevelBySpecies,
+            creaturesData = uiState.creaturesData,
+            freezeState = creatureFreezeState,
+            onCreatureLongPress = { creature, spec ->
+                selectedCreature = creature to spec
+            }
         )
 
         when {
@@ -281,6 +294,20 @@ fun MainScreen(
                     }
                 },
                 confirmButton = {}
+            )
+        }
+
+        selectedCreature?.let { (creature, spec) ->
+            CreatureDetailDialog(
+                creature = creature,
+                spec = spec,
+                onDismiss = {
+                    creatureFreezeState.unfreeze(creature.species)
+                    selectedCreature = null
+                },
+                onNicknameChanged = { nickname ->
+                    viewModel.updateCreatureNickname(creature.id, nickname)
+                }
             )
         }
 
@@ -485,6 +512,13 @@ fun MainScreen(
                     onNightSummaryTimeChanged = { time ->
                         nightSummaryScheduler.scheduleWorker(time)
                         viewModel.updateNightSummaryTime(time)
+                    },
+                    onNavigateToEcosystem = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onNavigateToEcosystem()
                     }
                 )
             }
@@ -590,7 +624,10 @@ fun MainScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                     PostponeSheet(
                         task = task,
-                        onPostpone = { date, time -> viewModel.postponeTask(task, date, time) },
+                        onPostpone = { date, time ->
+                            viewModel.postponeTask(task, date, time)
+                            postponingTask = null
+                        },
                         onDismiss = { postponingTask = null }
                     )
                 }

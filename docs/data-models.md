@@ -114,7 +114,7 @@ enum class MarineCategory(val isUnlockedByDefault: Boolean) {
 }
 ```
 
-Las 5 categorías base se desbloquean desde el inicio. Las demás requieren condiciones especiales (aún por definir en código — `unlockCategory()` existe en `EcosystemProcessor`).
+Las 5 categorías base se desbloquean desde el inicio. Las demás requieren condiciones especiales (`unlockCategory()` existe en `EcosystemProcessor`).
 
 DECORATION no recibe XP ni participa en la redistribución de categorías.
 
@@ -127,7 +127,7 @@ data class DaySummary(
     val id: String,
     val date: LocalDate,
     val score: Float,           // NUNCA visible
-    val tasksTotal: Int,        // solo tareas evaluables
+    val tasksTotal: Int,
     val tasksCompleted: Int,
     val streakDay: Int,
     val feedbackMessage: String
@@ -197,36 +197,27 @@ data class MarineCreature(
 
 ```kotlin
 enum class CreatureSpecies(val category: MarineCategory, val displayName: String) {
-    // FISH
     CLOWNFISH(FISH, "Pez payaso"),
     ANGELFISH(FISH, "Pez ángel"),
     PUFFERFISH(FISH, "Pez globo"),
-    // FLORA
     BRAIN_CORAL(FLORA, "Coral cerebro"),
     ANEMONE(FLORA, "Anémona"),
     KELP(FLORA, "Alga kelp"),
-    // CRUSTACEAN
     LOBSTER(CRUSTACEAN, "Langosta"),
     HERMIT_CRAB(CRUSTACEAN, "Cangrejo ermitaño"),
     SHRIMP(CRUSTACEAN, "Gamba"),
-    // MOLLUSK
     SEA_URCHIN(MOLLUSK, "Erizo de mar"),
     STARFISH(MOLLUSK, "Estrella de mar"),
     OYSTER(MOLLUSK, "Ostra"),
-    // PELAGIC
     MANTA_RAY(PELAGIC, "Raya manta"),
     MOON_JELLYFISH(PELAGIC, "Medusa luna"),
     WHALE_SHARK(PELAGIC, "Tiburón ballena"),
-    // CEPHALOPOD
     OCTOPUS(CEPHALOPOD, "Pulpo"),
     SQUID(CEPHALOPOD, "Calamar"),
-    // REPTILE
     SEA_TURTLE(REPTILE, "Tortuga marina"),
-    // MAMMAL
     DOLPHIN(MAMMAL, "Delfín"),
     SEAL(MAMMAL, "Foca"),
     BLUE_WHALE(MAMMAL, "Ballena azul"),
-    // DECORATION
     TREASURE_CHEST(DECORATION, "Cofre del tesoro"),
     ANCHOR(DECORATION, "Ancla"),
     SUNKEN_SHIP(DECORATION, "Barco hundido")
@@ -243,41 +234,45 @@ data class CreatureSpec(
     val species: CreatureSpecies,
     val category: MarineCategory,
     val unlockLevel: Int,
-    val swimDuration: Int,
-    val wobbleAmplitude: Float,
-    val speedScalePerLevel: Float  // + más rápido, - más lento, 0 sin cambio
+    val swimDuration: Int,          // ms; 0 = fija
+    val wobbleAmplitude: Float,     // amplitud onda Y primaria (fracción de banda)
+    val speedScalePerLevel: Float,  // + más rápido, - más lento al crecer
+    val swimZone: SwimZone,         // banda vertical asignada
+    val personalYFraction: Float,   // [0..1] cota personal dentro de la banda
+    val waveCount: Int,             // entero → sin salto en loop
+    val erraticness: Float,         // [0..1] peso onda secundaria (PHI·waveCount)
+    val driftSpeed: Float,          // velocidad deriva lenta del eje Y (fraccionario)
+    val driftAmplitude: Float,      // cuánto se desplaza el centro de nado
+    val pauseFraction: Float,       // fracción del ciclo en pausa en cada extremo
+    val easingType: EasingType,     // SMOOTH / BURST / CRAWL
+    val verticalCoupling: Float,    // [0..1] arco vertical acoplado a X (delfín salta)
+    val microWobble: Float,         // amplitud oscilación alta frecuencia (aleta/cola)
+    val xErraticness: Float,        // perturbación aperiódica de X
+    val fixedWobbleScale: Float     // para criaturas fijas: escala de ondeo de corriente
 )
 ```
 
-| Emoji | Especie | Categoría | Nivel | speedScalePerLevel |
-|---|---|---|---|---|
-| 🐟 | CLOWNFISH | FISH | 2 | +0.05 |
-| 🐠 | ANGELFISH | FISH | 4 | +0.05 |
-| 🐡 | PUFFERFISH | FISH | 7 | +0.03 |
-| 🪸 | BRAIN_CORAL | FLORA | 2 | 0 |
-| 🌿 | ANEMONE | FLORA | 4 | 0 |
-| 🎋 | KELP | FLORA | 6 | 0 |
-| 🦞 | LOBSTER | CRUSTACEAN | 2 | +0.04 |
-| 🦀 | HERMIT_CRAB | CRUSTACEAN | 4 | +0.05 |
-| 🦐 | SHRIMP | CRUSTACEAN | 6 | +0.06 |
-| 🐚 | SEA_URCHIN | MOLLUSK | 2 | 0 |
-| ⭐ | STARFISH | MOLLUSK | 4 | 0 |
-| 🦪 | OYSTER | MOLLUSK | 7 | 0 |
-| 🦈 | MANTA_RAY | PELAGIC | 2 | +0.04 |
-| 🪼 | MOON_JELLYFISH | PELAGIC | 4 | -0.02 |
-| 🐋 | WHALE_SHARK | PELAGIC | 8 | -0.04 |
-| 🐙 | OCTOPUS | CEPHALOPOD | 2 | +0.05 |
-| 🦑 | SQUID | CEPHALOPOD | 5 | +0.06 |
-| 🐢 | SEA_TURTLE | REPTILE | 2 | -0.03 |
-| 🐬 | DOLPHIN | MAMMAL | 2 | +0.03 |
-| 🦭 | SEAL | MAMMAL | 5 | -0.02 |
-| 🐳 | BLUE_WHALE | MAMMAL | 8 | -0.04 |
-| 🪙 | TREASURE_CHEST | DECORATION | 1 | 0 |
-| ⚓ | ANCHOR | DECORATION | 1 | 0 |
-| 🚢 | SUNKEN_SHIP | DECORATION | 1 | 0 |
+### SwimZone
 
-Efectos visuales por `creatureLevel`:
-- Tamaño: `baseSize * (0.8f + (creatureLevel - 1) * 0.10f)` — empieza al 80%, +10% por nivel
+| Zona | centerFraction | bandFraction | Especies |
+|---|---|---|---|
+| SURFACE | 0.17 | 0.06 | Delfín, Ballena azul |
+| UPPER | 0.31 | 0.09 | Clownfish, Medusa luna, Foca |
+| MID | 0.46 | 0.12 | Angelfish, Pufferfish, Manta ray, Calamar, Tortuga, Tiburón ballena |
+| LOWER | 0.63 | 0.09 | Langosta, Cangrejo, Gamba, Pulpo |
+| BOTTOM | 0.81 | 0.05 | Flora, Moluscos, Decoración |
+
+### EasingType
+
+| Tipo | Comportamiento | Especies |
+|---|---|---|
+| SMOOTH | Coseno estándar — entrada y salida suaves | Peces, tortuga, mamíferos, manta |
+| BURST | 80% en el primer 30%, luego planea | Gamba, calamar, pulpo |
+| CRAWL | 95% lineal | Langosta, cangrejo ermitaño |
+
+### Efectos visuales por `creatureLevel`
+
+- Tamaño: `baseSize * (0.8f + (creatureLevel - 1) * 0.10f)`
 - Velocidad: `swimDuration / max(0.3f, 1f + (creatureLevel - 1) * speedScalePerLevel)`
 
 ---
