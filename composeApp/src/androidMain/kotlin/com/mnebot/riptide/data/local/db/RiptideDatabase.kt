@@ -16,8 +16,9 @@ import com.mnebot.riptide.data.local.entity.*
         EcosystemStateEntity::class,
         MarineCreatureEntity::class
     ],
-    version = 8
+    version = 9
 )
+
 abstract class RiptideDatabase : RoomDatabase() {
     abstract fun workBlockDao(): WorkBlockDao
     abstract fun blockCategoryDao(): BlockCategoryDao

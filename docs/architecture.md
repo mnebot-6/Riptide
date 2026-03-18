@@ -35,9 +35,9 @@ expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -
 
 ---
 
-## androidMain — Room (v8)
+## androidMain — Room (v9)
 
-`fallbackToDestructiveMigration(true)` durante desarrollo.
+Migraciones reales desde v9. `MIGRATION_8_9` añade `hasBeenRewarded` a `day_tasks`.
 
 ### Historial de versiones de esquema
 
@@ -46,6 +46,7 @@ expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -
 | 6 | Esquema base |
 | 7 | `RecurringTaskDefEntity.time` → `String?` nullable |
 | 8 | `EcosystemStateEntity` + `isUnlocked: Boolean` |
+| 9 | `DayTaskEntity` + `hasBeenRewarded: Boolean` (migración real) |
 
 ---
 
@@ -69,6 +70,7 @@ Casos especiales:
 - `categories` vacío en `addXpForTask` → reparte entre todas las desbloqueadas (tareas sin bloque)
 - Criatura recién desbloqueada: `experience=0`, no recibe XP hasta el siguiente evento
 - XP sobrante (xp % N) se pierde
+- XP solo se otorga si `!task.hasBeenRewarded` (controlado en `MainViewModel`)
 
 ---
 
@@ -77,6 +79,20 @@ Casos especiales:
 Redistribuye entre categorías con `isUnlocked=true`, excluyendo DECORATION.
 
 **Orden crítico en DataSeeder**: los `EcosystemState` deben existir ANTES de llamar a `reassign()`. Si no existen, `getUnlocked()` devuelve lista vacía y los bloques no reciben categorías.
+
+---
+
+## MainViewModel — toggleTaskCompleted
+
+```kotlin
+fun toggleTaskCompleted(task: DayTask) {
+    // Desmarcar:
+    //   Si DaySummary existe para la fecha → EXPIRED (el resumen ya procesó)
+    //   Si no → PENDING
+    // Marcar: COMPLETED + hasBeenRewarded = true
+    // XP solo si !task.hasBeenRewarded (objeto original, inmutable)
+}
+```
 
 ---
 
@@ -90,7 +106,6 @@ private fun loadDay(date: LocalDate) {
     val streaksByBlock = ...
     val ecosystemByCategory = MarineCategory.entries.mapNotNull { ... }.toMap()
 
-    // Niveles individuales + lista completa de criaturas para el UiState
     val allCreaturesFromDb = MarineCategory.entries.flatMap { category ->
         ecosystemStateRepository.getByCategory(category) ?: return@flatMap emptyList()
         marineCreatureRepository.getByCategory(category)
@@ -116,13 +131,37 @@ private fun loadDay(date: LocalDate) {
 ```kotlin
 val sizeScale = 0.8f + (creatureLevel - 1) * 0.10f
 val speedMultiplier = max(0.3f, 1f + (creatureLevel - 1) * spec.speedScalePerLevel)
-val cycleDuration = (spec.swimDuration / speedMultiplier).toInt().coerceAtLeast(2000)
+val cycleDuration = (variedDuration / speedMultiplier).toLong().coerceAtLeast(2000L)
 ```
+
+### Capa 0 — Tempo warping
+
+Deforma el tiempo `t` en `t'` para que la velocidad varíe continuamente:
+```
+t' = t + (k·P/TAU) · (cos(φ) − cos(TAU·t/P + φ))
+```
+- Continua y monotónica (k < 1 → derivada > 0 siempre)
+- Período ~37s variado por phase → cambio gradual e imperceptible
+- `tempoVariation`: 0 = constante (ballena), 0.60 = muy variable (cangrejo)
+- tSwim (tiempo deformado) → capas de nado. tRaw → drift y microwobble.
+
+### Variación por instancia
+
+```kotlin
+fun instanceNoise(index: Int, seed: Int): Float  // [-1, 1] determinista
+fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float
+```
+Aplica ±12% sobre swimDuration, wobbleAmplitude, driftSpeed, tempoVariation.
 
 ### Posición X — continua sin saltos
 
-`rawProgress = (t * 12000f / cycleDuration) % 1f` — SIN phase.
-El phase solo afecta Y. Garantiza que X empieza y acaba en el mismo punto en cada loop.
+Márgenes simétricos basados en tamaño del emoji:
+```kotlin
+val halfIcon = iconSize / 2f
+val xMin = halfIcon + w * 0.01f
+val xMax = w - halfIcon - w * 0.01f
+x = (xMin + (xMax - xMin) * swimProgress + w * xPert).coerceIn(xMin, xMax)
+```
 Easing por especie: `applyEasing(localT, spec.easingType)`.
 
 ### Posición Y — cinco capas
@@ -131,21 +170,21 @@ Easing por especie: `applyEasing(localT, spec.easingType)`.
 personalY = zoneCenter + (personalYFraction - 0.5f) * zoneBand
 
 Y = personalY
-  + (primaryWave*(1-erraticness) + secondaryWave*erraticness) * zoneBand * wobbleAmplitude
-  + sin(t * TAU * driftSpeed + phase*TAU) * zoneBand * driftAmplitude
-  - sin(swimProgress * PI) * zoneBand * verticalCoupling   // arco acoplado a X
-  + sin(t * TAU * 18f + phase*TAU) * zoneBand * microWobble
+  + waveY (primaria + secundaria, con tSwim)
+  + drift (corriente ambiental, con tRaw)
+  + coupledArc (arco acoplado a X, con tSwim)
+  + micro (aleta/cola, con tRaw)
 ```
 
-- **Onda primaria**: `waveCount` entero → `sin(1·2π·N+φ) = sin(0·2π·N+φ)` → sin salto en loop.
-- **Onda secundaria**: frecuencia `waveCount·PHI` (irracional) → nunca se sincroniza con la primaria.
-- **Deriva**: `driftSpeed` fraccionario → aperiódica respecto al ciclo de 12s.
+- **Onda primaria**: `waveCount` entero → sin salto en loop.
+- **Onda secundaria**: frecuencia `waveCount·PHI` (irracional) → nunca se sincroniza.
+- **Deriva**: `driftSpeed` fraccionario → aperiódica. Usa tRaw.
 - **Coupling**: delfín/foca suben en el centro del recorrido (velocidad máxima).
-- **Microwobble**: ~1.5Hz, simula movimiento de aleta/cola.
+- **Microwobble**: ~1.5Hz, simula movimiento de aleta/cola. Usa tRaw.
 
 ### Hit-testing
 
-Un único `pointerInput` en el `Layout`. Compara offset contra `creaturePositions` (posiciones reales del último frame). Radio mínimo 60px.
+Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset contra `creaturePositions` (posiciones reales del último frame). Radio: `maxOf(iconSize * 2.5f, 75f)`.
 
 ---
 
@@ -163,7 +202,7 @@ Un único `pointerInput` en el `Layout`. Compara offset contra `creaturePosition
 
 - Ruta: `ROUTE_ECOSYSTEM = "ecosystem"` en `Navigation.kt`
 - Lee `uiState.ecosystemByCategory` y `uiState.creaturesData` del `MainViewModel` compartido
-- Grid 3 columnas con `IntrinsicSize.Max` por fila → altura uniforme entre cards desbloqueadas y bloqueadas
+- Grid 3 columnas con `IntrinsicSize.Max` por fila → altura uniforme
 - Cards bloqueadas: `progress = categoryLevel / spec.unlockLevel`
 
 ---
@@ -171,14 +210,14 @@ Un único `pointerInput` en el `Layout`. Compara offset contra `creaturePosition
 ## Flujo de desbloqueo de criaturas
 
 ```
-toggleTaskCompleted
+toggleTaskCompleted (si !hasBeenRewarded)
     → addXpForTask(categories)
         → addXp por categoría
             → detecta nivel cruzado → List<CreatureSpec>
             → reparte XP a criaturas existentes
     → si newUnlocks.isNotEmpty → pendingUnlocks en UiState
 
-NightSummaryProcessor.processDay
+NightSummaryProcessor.processDay(date, blockNames, blockCategories, summaryTime)
     → addNightBonus
         → mismo flujo
         → persiste emojis en DataStore
@@ -194,13 +233,28 @@ MainActivity.onCreate
 
 ## Resumen nocturno — evaluación selectiva
 
-Solo se evalúan tareas donde:
-- `TaskSchedule.OneTime` con `date <= fecha del resumen`, **o**
-- Sin fecha pero con `status == COMPLETED`
+`processDay` recibe `summaryTime: LocalTime?`.
 
-Se excluyen:
+Solo se evalúan:
+- Tareas con `status == COMPLETED` (siempre)
+- Tareas PENDING del día actual con `time != null && time <= summaryTime`
+
+Se ignoran:
 - `status == POSTPONED`
-- Tareas futuras no completadas (se evaluarán en su día)
+- Tareas sin hora (se evaluarán en el siguiente resumen)
+- Tareas con hora posterior al summaryTime
+- Tareas de otros días
+
+`NightSummaryWorker` lee la hora con `getNightSummaryTime().first()`.
+
+---
+
+## Inputs de fecha y hora
+
+`TimeInputField` y `DateInputField` son campos **readonly** (sin `BasicTextField`, sin emojis).
+Click sobre el campo abre el picker correspondiente.
+`TimePicker` usa `TimePickerDefaults.colors()` con paleta marina explícita.
+`DatePicker` usa `DatePickerDefaults.colors()` con la misma paleta.
 
 ---
 

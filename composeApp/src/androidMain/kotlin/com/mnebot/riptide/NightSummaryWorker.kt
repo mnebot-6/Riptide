@@ -18,6 +18,7 @@ import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.NightSummaryProcessor
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -59,7 +60,9 @@ class NightSummaryWorker(
         val today = Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-        processor.processDay(today, blockNames, blockCategories)
+        val summaryTime = userPreferencesRepository.getNightSummaryTime().first()
+
+        processor.processDay(today, blockNames, blockCategories, summaryTime)
         return Result.success()
     }
 

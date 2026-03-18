@@ -123,8 +123,7 @@ private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (Loca
             value = currentTime,
             onValueChange = { it?.let { t -> onTimeChanged(t) } },
             nullable = false,
-            compact = true,
-            showPickerIcon = true
+            compact = true
         )
     }
 }

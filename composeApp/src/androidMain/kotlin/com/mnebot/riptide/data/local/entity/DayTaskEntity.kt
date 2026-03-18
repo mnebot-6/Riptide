@@ -26,5 +26,6 @@ data class DayTaskEntity(
     val status: String,              // TaskStatus.name
     val completedAt: String?,        // LocalDateTime serializado
     val postponedTo: String?,        // LocalDateTime serializado
-    val sourceTaskId: String?
+    val sourceTaskId: String?,
+    val hasBeenRewarded: Boolean = false
 )

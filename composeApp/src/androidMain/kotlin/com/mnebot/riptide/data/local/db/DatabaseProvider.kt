@@ -2,9 +2,17 @@ package com.mnebot.riptide.data.local.db
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 object DatabaseProvider {
     private var instance: RiptideDatabase? = null
+
+    private val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE day_tasks ADD COLUMN hasBeenRewarded INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 
     fun getDatabase(context: Context): RiptideDatabase {
         return instance ?: synchronized(this) {
@@ -13,7 +21,7 @@ object DatabaseProvider {
                 RiptideDatabase::class.java,
                 "riptide.db"
             )
-                .fallbackToDestructiveMigration(true)
+                .addMigrations(MIGRATION_8_9)
                 .build().also { instance = it }
         }
     }

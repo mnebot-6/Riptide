@@ -28,7 +28,8 @@ fun DayTaskEntity.toDomain(): DayTask {
         status = TaskStatus.valueOf(status),
         completedAt = completedAt?.let { LocalDateTime.parse(it) },
         postponedTo = postponedTo?.let { LocalDateTime.parse(it) },
-        sourceTaskId = sourceTaskId
+        sourceTaskId = sourceTaskId,
+        hasBeenRewarded = hasBeenRewarded
     )
 }
 
@@ -64,6 +65,7 @@ fun DayTask.toEntity(): DayTaskEntity {
         status = status.name,
         completedAt = completedAt?.toString(),
         postponedTo = postponedTo?.toString(),
-        sourceTaskId = sourceTaskId
+        sourceTaskId = sourceTaskId,
+        hasBeenRewarded = hasBeenRewarded
     )
 }

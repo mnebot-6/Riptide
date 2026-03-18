@@ -163,8 +163,7 @@ fun TaskFormSheet(
                 TimeInputField(
                     value = recurringTime,
                     onValueChange = { recurringTime = it },
-                    nullable = true,
-                    showPickerIcon = true
+                    nullable = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

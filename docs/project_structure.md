@@ -20,7 +20,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `WorkBlock.kt` | Bloque + `Recurrence` sealed `@Serializable` + `WeeklySlot` |
 | `TaskStatus.kt` | PENDING, COMPLETED, EXPIRED, POSTPONED |
 | `TaskSchedule.kt` | `OneTime(date, time?)` / `Recurring(time, recurrence)` |
-| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes |
+| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP |
 | `RecurringTaskDef.kt` | `time: LocalTime?` nullable |
 | `DaySummary.kt` | Score interno + mensaje visible |
 | `BlockStreak.kt` | PK natural = `blockId` |
@@ -34,7 +34,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
-| `UserPreferencesRepository.kt` | nightSummaryTime, pendingUnlocks, **lastDismissedSummaryDate**, hasCompletedOnboarding |
+| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), pendingUnlocks, **lastDismissedSummaryDate**, hasCompletedOnboarding |
 | Resto | operaciones estándar |
 
 ### `domain/`
@@ -44,7 +44,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `MarineCategoryAssigner.kt` | Redistribuye entre categorías **desbloqueadas** (requiere `EcosystemStateRepository`) |
 | `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable |
 | `BlockStreakProcessor.kt` | Rachas por bloque |
-| `NightSummaryProcessor.kt` | Evaluación selectiva; excluye POSTPONED y futuras no completadas |
+| `NightSummaryProcessor.kt` | Recibe `summaryTime`; evalúa tareas completadas + PENDING con hora ≤ summaryTime |
 | `EcosystemProcessor.kt` | XP a categorías + XP a criaturas individuales; requiere `MarineCreatureRepository` |
 | `EcosystemLevelCalculator.kt` | Curva de niveles compartida para ecosistemas y criaturas |
 
@@ -53,7 +53,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | Archivo | Qué hace |
 |---|---|
 | `AquariumBackground.kt` | Canvas: degradado + plantas + burbujas |
-| `AquariumCreature.kt` | `CreatureSpec` (SwimZone, EasingType, personalYFraction, verticalCoupling, microWobble, xErraticness, fixedWobbleScale), `allCreatures` (24), `AquariumCreatures`, `CreatureFreezeState`, hit-testing por posición real de frame |
+| `AquariumCreature.kt` | `CreatureSpec` (SwimZone, EasingType, personalYFraction, verticalCoupling, microWobble, xErraticness, fixedWobbleScale, **tempoVariation**), `allCreatures` (24), `AquariumCreatures`, `CreatureFreezeState`, hit-testing por posición real de frame, **tempo warping**, **variación por instancia**, **márgenes simétricos** |
 | `CreatureDetailDialog.kt` | Dialog OceanMid: emoji, nombre, nickname editable, XpBar sin números, fecha desbloqueo |
 | `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos entre dialogs |
 | `EcosystemScreen.kt` | Pantalla "Mi ecosistema": grid 3 col por categoría, cards desbloqueadas/bloqueadas, IntrinsicSize.Max, CreatureDetailDialog |
@@ -63,10 +63,18 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | Archivo | Qué hace |
 |---|---|
 | `MainUiState.kt` | + `creaturesData: List<MarineCreature>` |
-| `MainViewModel.kt` | `loadDay` carga `creaturesData`; + `updateCreatureNickname` |
-| `MainScreen.kt` | Long press header → `onBlockHeaderLongPress`; tap criatura → `CreatureDetailDialog` |
+| `MainViewModel.kt` | `loadDay` carga `creaturesData`; `toggleTaskCompleted` con `hasBeenRewarded` y lógica EXPIRED; `updateCreatureNickname` |
+| `MainScreen.kt` | EXPIRED: ⌛ + checkbox completable; tap criatura → `CreatureDetailDialog` |
 | `WeekCalendar.kt` | Excluye POSTPONED |
 | `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES; scroll interno con `LocalWindowInfo` |
+
+### `presentation/components/`
+
+| Archivo | Qué hace |
+|---|---|
+| `TimeInputField.kt` | Campo readonly, click abre `TimePickerDialogWrapper` |
+| `DateInputField.kt` | Campo readonly, click abre `DatePickerDialogWrapper` |
+| `InputFieldDialogs.kt` | Declaraciones `expect` de pickers |
 
 ### `presentation/task/`
 
@@ -83,6 +91,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Entity | Cambios relevantes |
 |---|---|
+| `DayTaskEntity` | + `hasBeenRewarded: Boolean` (v9) |
 | `RecurringTaskDefEntity` | `time: String?` nullable |
 | `EcosystemStateEntity` | + `isUnlocked: Boolean` |
 
@@ -95,7 +104,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 ### `data/local/db/`
 
-`RiptideDatabase` — **versión 8**. `fallbackToDestructiveMigration(true)`.
+`RiptideDatabase` — **versión 9**. Migración real `MIGRATION_8_9`. Sin `fallbackToDestructiveMigration`.
 
 ### `presentation/`
 
@@ -104,8 +113,14 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `MainViewModelFactory.kt` | `EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo)` |
 | `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
 | `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
-| `NightSummaryWorker.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
+| `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay` |
 | `Navigation.kt` | + `ROUTE_ECOSYSTEM = "ecosystem"`; composable usa `MainViewModel` compartido |
+
+### `presentation/components/`
+
+| Archivo | Nota |
+|---|---|
+| `InputFieldDialogs.android.kt` | `TimePicker` con `TimePickerDefaults.colors()` explícitos; `DatePicker` con `DatePickerDefaults.colors()` |
 
 ### `DataSeeder.kt`
 
@@ -129,7 +144,7 @@ Todo pendiente para v6 excepto `UuidGenerator`, `CurrentDate` y `ParseColor`.
 Box (pointerInput gestos)
  ├── AquariumBackground()
  ├── AquariumCreatures(ecosystemByCategory, creatureLevelBySpecies, creaturesData,
- │                     freezeState, onCreatureLongPress)
+ │                     freezeState, onCreatureTap)
  ├── when(showAquarium)
  │    ├── true  → FAB ✕
  │    └── false → Column
@@ -138,7 +153,7 @@ Box (pointerInput gestos)
  │                 │    └── WeekCalendar
  │                 └── MainContent (LazyColumn)
  │                      ├── BlockSection (long press header → nueva tarea)
- │                      └── TaskCard (long press → menú contextual)
+ │                      └── TaskCard (EXPIRED: ⌛ + checkbox; long press → menú contextual)
  ├── AlertDialog contextMenu
  ├── AlertDialog deletingRecurring
  ├── AlertDialog editingScopeTask

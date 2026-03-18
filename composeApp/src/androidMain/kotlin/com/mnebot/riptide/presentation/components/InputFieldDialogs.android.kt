@@ -43,10 +43,10 @@ actual fun TimePickerDialogWrapper(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.95f)
                 .clip(RoundedCornerShape(20.dp))
                 .background(OceanMid)
-                .padding(24.dp)
+                .padding(16.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -57,24 +57,25 @@ actual fun TimePickerDialogWrapper(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Colorear el TimePicker con tema marino
-                MaterialTheme(
-                    colorScheme = MaterialTheme.colorScheme.copy(
-                        primary = Accent,
-                        onPrimary = OceanDeep,
-                        surface = Color(0x33FFFFFF),
-                        onSurface = TextPrimary,
-                        surfaceVariant = Color(0x22FFFFFF),
-                        onSurfaceVariant = TextSecondary,
-                        outline = Color(0x55FFFFFF),
-                        secondaryContainer = Color(0x44FFFFFF),
-                        onSecondaryContainer = TextPrimary,
-                        tertiaryContainer = Accent.copy(alpha = 0.2f),
-                        onTertiaryContainer = Accent
+                TimePicker(
+                    state = state,
+                    colors = TimePickerDefaults.colors(
+                        clockDialColor = Color(0x22FFFFFF),
+                        clockDialSelectedContentColor = OceanDeep,
+                        clockDialUnselectedContentColor = TextPrimary,
+                        selectorColor = Accent,
+                        containerColor = OceanMid,
+                        periodSelectorBorderColor = Color(0x55FFFFFF),
+                        periodSelectorSelectedContainerColor = Accent.copy(alpha = 0.2f),
+                        periodSelectorUnselectedContainerColor = Color.Transparent,
+                        periodSelectorSelectedContentColor = Accent,
+                        periodSelectorUnselectedContentColor = TextSecondary,
+                        timeSelectorSelectedContainerColor = Accent.copy(alpha = 0.2f),
+                        timeSelectorUnselectedContainerColor = Color(0x22FFFFFF),
+                        timeSelectorSelectedContentColor = Accent,
+                        timeSelectorUnselectedContentColor = TextPrimary
                     )
-                ) {
-                    TimePicker(state = state)
-                }
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

@@ -1,6 +1,5 @@
 package com.mnebot.riptide.presentation.aquarium
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -20,16 +19,42 @@ import kotlin.math.max
 import kotlin.math.abs
 
 // ── Constantes ────────────────────────────────────────────────────────────────
-private const val PI  = 3.14159f
-private const val TAU = 6.28318f
-private const val PHI = 1.61803f
+private const val PI  = 3.14159265f
+private const val TAU = 6.28318530f
+private const val PHI = 1.61803398f   // número áureo — frecuencia secundaria irracional
+
+// ── Oscilador base ────────────────────────────────────────────────────────────
+//
+// La clave matemática de que no haya teleportación jamás:
+//
+//   phase = (elapsedMs % periodMs).toFloat() / periodMs.toFloat()
+//
+// Esto significa:
+//   • El módulo se aplica en aritmética Long (sin pérdida de precisión, nunca).
+//   • phase ∈ [0, 1), su argumento a sin() ∈ [0, 2π). Float es exacto aquí.
+//   • En el wrap: sin(0 + offset·TAU) = sin(TAU + offset·TAU) por periodicidad del seno.
+//     → valor IDÉNTICO antes y después del wrap. Cero salto. Siempre.
+//   • Esto es cierto para CUALQUIER periodMs, incluso irracionales respecto a la pantalla.
+//
+// Cada oscilador tiene su propio período independiente.
+// No comparten ningún reloj global que reinicie.
+//
+private fun osc(elapsedMs: Long, periodMs: Long, phaseOffset: Float = 0f): Float {
+    if (periodMs <= 0L) return 0f
+    val phase = (elapsedMs % periodMs).toFloat() / periodMs.toFloat()
+    return sin(phase * TAU + phaseOffset * TAU)
+}
 
 // ── Curvas de aceleración horizontal ─────────────────────────────────────────
 //
-// SMOOTH — coseno estándar. Peces, tortugas, ballenas.
-// BURST  — 80% del camino en el primer 30% del tiempo, luego planea.
-//          Calamar, gamba, pulpo: propulsión a chorro.
-// CRAWL  — 95% lineal. Crustáceos que caminan.
+// SMOOTH — coseno. Desacelera suavemente en los extremos.
+//          Peces, tortugas, mamíferos, manta ray.
+//
+// BURST  — propulsión a chorro: 75% de la distancia en el primer 25% del tiempo,
+//          luego planeo decelerado. Calamar, gamba, pulpo.
+//
+// CRAWL  — 93% lineal + 7% coseno. Movimiento de caminata.
+//          Langosta, cangrejo ermitaño.
 //
 enum class EasingType { SMOOTH, BURST, CRAWL }
 
@@ -37,28 +62,27 @@ private fun applyEasing(t: Float, type: EasingType): Float {
     val tc = t.coerceIn(0f, 1f)
     return when (type) {
         EasingType.SMOOTH -> (1f - cos(tc * PI)) / 2f
-        EasingType.BURST  -> if (tc < 0.30f) {
-            ((1f - cos(tc / 0.30f * PI)) / 2f) * 0.80f
+        EasingType.BURST  -> if (tc < 0.25f) {
+            ((1f - cos(tc / 0.25f * PI)) / 2f) * 0.75f
         } else {
-            0.80f + ((1f - cos((tc - 0.30f) / 0.70f * PI)) / 2f) * 0.20f
+            0.75f + ((1f - cos((tc - 0.25f) / 0.75f * PI)) / 2f) * 0.25f
         }
-        EasingType.CRAWL  -> tc * 0.94f + ((1f - cos(tc * PI)) / 2f) * 0.06f
+        EasingType.CRAWL  -> tc * 0.93f + ((1f - cos(tc * PI)) / 2f) * 0.07f
     }
 }
 
 // ── Zona de nado ──────────────────────────────────────────────────────────────
 //
-// bandFraction define la altura total disponible para la zona.
-// Cada criatura tiene un personalYFraction [0..1] que distribuye su base Y
-// dentro de la banda, de modo que criaturas de la misma zona no estén
-// todas exactamente a la misma altura.
+// Cada especie tiene una banda vertical asignada (swimZone).
+// Dentro de esa banda, personalYFraction define su cota exacta.
+// Esto separa criaturas de la misma zona en alturas distintas.
 //
 enum class SwimZone(val centerFraction: Float, val bandFraction: Float) {
-    SURFACE(0.16f, 0.06f),
-    UPPER  (0.30f, 0.09f),
-    MID    (0.46f, 0.12f),
-    LOWER  (0.63f, 0.09f),
-    BOTTOM (0.81f, 0.05f),
+    SURFACE(0.16f, 0.07f),   // superficie — delfín, ballena azul
+    UPPER  (0.30f, 0.10f),   // zona alta — clownfish, medusa, foca
+    MID    (0.47f, 0.13f),   // zona media — mayoría
+    LOWER  (0.64f, 0.09f),   // zona baja — crustáceos, pulpo
+    BOTTOM (0.82f, 0.05f),   // fondo — flora, moluscos, decoración
 }
 
 val emojiToSpecies = mapOf(
@@ -90,27 +114,41 @@ val emojiToSpecies = mapOf(
 
 // ── CreatureSpec ──────────────────────────────────────────────────────────────
 //
-// swimDuration       ms por ciclo completo. Menor = más rápido.
+// swimDuration       ms por ciclo completo (izq→der→izq). Menor = más rápido.
 // wobbleAmplitude    amplitud onda Y primaria (fracción de banda).
-// speedScalePerLevel ajuste velocidad por nivel.
-// swimZone           banda vertical.
-// personalYFraction  [0..1] posición base dentro de la banda.
-//                    0 = parte alta de la banda. 1 = parte baja.
-//                    Permite que criaturas de la misma zona estén a distinta altura.
-// waveCount          entero → ondas Y primarias por ciclo (sin salto en loop).
-// erraticness        [0..1] peso onda secundaria PHI·waveCount (aperiódica).
-// driftSpeed         velocidad deriva lenta del eje Y (fraccionario → aperiódico).
-// driftAmplitude     fracción de banda usada por deriva.
-// pauseFraction      fracción del ciclo en pausa en cada extremo.
-// easingType         curva de aceleración horizontal.
+// speedScalePerLevel ajuste de velocidad al subir de nivel.
+// swimZone           banda vertical asignada a la especie.
+// personalYFraction  [0..1] cota personal dentro de la banda.
+//                    0 = parte alta. 1 = parte baja.
+//                    Separa especies en la misma zona en alturas distintas.
+// waveCount          Entero → primaryPeriod = cycleDuration / waveCount (ms).
+//                    Determina cuántas ondas Y completas por ciclo.
+//                    1 = arco suave. 4 = cuatro ondulaciones por cruce.
+// erraticness        [0..1] peso de la onda secundaria (periodo irracional PHI).
+//                    0 = movimiento periódico y predecible.
+//                    1 = la onda secundaria domina, nunca repite exactamente.
+// driftSpeed         Velocidad de la deriva lenta del eje Y.
+//                    Unidad: ciclos cada 12 segundos.
+//                    0.11 → un ciclo de deriva cada ~109s. Muy lento.
+//                    0.71 → un ciclo cada ~17s. Más activo.
+// driftAmplitude     Cuánto se desplaza el eje Y (fracción de banda).
+// pauseFraction      Fracción del ciclo en pausa en cada extremo.
+//                    0.00 → nado continuo. 0.30 → langosta (30% parada por lado).
+// easingType         Curva de aceleración horizontal.
 // verticalCoupling   [0..1] arco vertical acoplado a posición X.
-//                    El máximo de Y ocurre en el centro del recorrido.
-//                    Delfín sube al acelerar, baja al frenar — natural.
-// microWobble        amplitud oscilación alta frecuencia (aleta/cola).
-// xErraticness       [0..1] perturbación aperiódica de X (microaceleraciones).
-//                    Solo para peces pequeños y camarones. 0 en el resto.
-// fixedWobbleScale   para criaturas fijas: amplitud del ondeo de corriente.
-//                    0 = totalmente inmóvil. 1 = ondeo estándar.
+//                    El máximo de Y (sube en pantalla) ocurre en el centro del cruce.
+//                    Delfín (0.88): salta visiblemente al ir más rápido.
+// microWobble        Amplitud del movimiento de aleta/cola (~1.5Hz).
+//                    Sutil. Da sensación de vida incluso durante pausas.
+// xErraticness       [0..1] amplitud de microaceleraciones horizontales aperiódicas.
+//                    Solo para especies nerviosas: clownfish, gamba, medusa.
+// fixedWobbleScale   Solo criaturas fijas. 0=totalmente rígida. 1.8=anémona ondeante.
+// tempoVariation     [0..1) modulación de velocidad a lo largo del tiempo.
+//                    0 = velocidad constante (ballena, medusa).
+//                    0.3 = variación moderada (pez ángel).
+//                    0.6 = muy variable (cangrejo, pulpo).
+//                    Implementado como tiempo deformado (integral de 1+k·sin).
+//                    Siempre continuo y monotónico (k<1 → derivada > 0).
 //
 data class CreatureSpec(
     val emoji: String,
@@ -131,84 +169,97 @@ data class CreatureSpec(
     val verticalCoupling: Float    = 0.00f,
     val microWobble: Float         = 0.015f,
     val xErraticness: Float        = 0.00f,
-    val fixedWobbleScale: Float    = 1.0f
+    val fixedWobbleScale: Float    = 1.0f,
+    val tempoVariation: Float      = 0.0f
 )
 
 val allCreatures = listOf(
 
     // ── FISH ──────────────────────────────────────────────────────────────────
     //
-    // Clownfish — muy activo, zig-zag nervioso, nada en torno a la anemona.
-    //   4 ondas + alta erraticidad + xErraticness = nunca hace el mismo patrón dos veces.
-    //   personalYFraction 0.3 = tiende a la parte alta de su zona.
+    // Clownfish — nervioso y errático en X, pero contenido en Y.
+    // El zig-zag es horizontal (xErraticness + 3 waveCount cortas),
+    // no saltos verticales gigantes. tempoVar da variación de ritmo.
     CreatureSpec("🐟", CreatureSpecies.CLOWNFISH,
-        MarineCategory.FISH,      2,  4800, 0.88f, 0.05f, SwimZone.UPPER,
-        personalYFraction = 0.30f, waveCount = 4,  erraticness = 0.72f,
-        driftSpeed = 0.71f, driftAmplitude = 0.50f, pauseFraction = 0.02f,
+        MarineCategory.FISH,      2,  7500, 0.40f, 0.05f, SwimZone.UPPER,
+        personalYFraction = 0.30f, waveCount = 3,  erraticness = 0.65f,
+        driftSpeed = 0.61f, driftAmplitude = 0.40f, pauseFraction = 0.02f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.042f, xErraticness = 0.18f),
+        microWobble = 0.035f, xErraticness = 0.20f,
+        tempoVariation = 0.25f),
 
-    // Angelfish — elegante, barridos suaves, tiende al centro de su zona.
+    // Angelfish — elegante, barridos suaves. Referencia de "movimiento correcto".
     CreatureSpec("🐠", CreatureSpecies.ANGELFISH,
         MarineCategory.FISH,      4,  9000, 0.55f, 0.04f, SwimZone.MID,
         personalYFraction = 0.50f, waveCount = 2,  erraticness = 0.20f,
         driftSpeed = 0.29f, driftAmplitude = 0.36f, pauseFraction = 0.06f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.018f, xErraticness = 0.05f),
+        microWobble = 0.018f, xErraticness = 0.05f,
+        tempoVariation = 0.15f),
 
-    // Pufferfish — torpe, se propulsa en arco único, largas pausas. Parte baja de zona.
+    // Pufferfish — torpe, lentísimo, un arco único, pausas largas.
     CreatureSpec("🐡", CreatureSpecies.PUFFERFISH,
         MarineCategory.FISH,      7, 13000, 0.20f, 0.02f, SwimZone.MID,
         personalYFraction = 0.70f, waveCount = 1,  erraticness = 0.08f,
         driftSpeed = 0.17f, driftAmplitude = 0.16f, pauseFraction = 0.22f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.007f, xErraticness = 0.00f),
+        microWobble = 0.007f, xErraticness = 0.00f,
+        tempoVariation = 0.10f),
 
     // ── FLORA ─────────────────────────────────────────────────────────────────
     //
-    // Brain Coral — completamente rígido. Sin ondeo.
+    // Brain Coral — absolutamente rígido. fixedWobbleScale=0.
     CreatureSpec("🪸", CreatureSpecies.BRAIN_CORAL,
         MarineCategory.FLORA,     2,  0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f),
 
-    // Anemone — ondeante. Se mueve con la corriente. Alto wobble.
+    // Anemone — se mece con la corriente. fixedWobbleScale=1.80 → ondeo pronunciado.
     CreatureSpec("🌿", CreatureSpecies.ANEMONE,
         MarineCategory.FLORA,     4,  0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 1.80f),
 
-    // Kelp — meceo largo y lento, amplitud media.
+    // Kelp — meceo largo y suave. Menos que la anémona.
     CreatureSpec("🎋", CreatureSpecies.KELP,
         MarineCategory.FLORA,     6,  0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 1.20f),
 
     // ── CRUSTACEAN ────────────────────────────────────────────────────────────
     //
-    // Clave: personalYFraction distintos → cada uno en su "cota" del fondo.
-    // CRAWL easing + pausa larga + amplitud Y mínima → caminan, no nadan.
+    // CLAVE: tempoVariation alta → a veces avanzan decididamente, a veces tantean.
+    // verticalCoupling simula paso sobre irregularidades del fondo.
+    // CRAWL easing se mantiene — solo ganan dimensionalidad vertical y ritmo variable.
     //
-    // Lobster — en el fondo más bajo. Muy lento, pausa larga.
+    // Lobster — cota más baja (0.85). Lento con ritmo variable.
+    // verticalCoupling 0.15 = sube ligeramente al pasar "rocas" del fondo.
+    // tempoVar 0.55 = a veces camina decidido, a veces casi para.
     CreatureSpec("🦞", CreatureSpecies.LOBSTER,
-        MarineCategory.CRUSTACEAN, 2, 16000, 0.07f, 0.03f, SwimZone.LOWER,
-        personalYFraction = 0.85f, waveCount = 1,  erraticness = 0.05f,
-        driftSpeed = 0.11f, driftAmplitude = 0.06f, pauseFraction = 0.30f,
-        easingType = EasingType.CRAWL, verticalCoupling = 0.00f,
-        microWobble = 0.004f, xErraticness = 0.00f),
+        MarineCategory.CRUSTACEAN, 2, 16000, 0.18f, 0.03f, SwimZone.LOWER,
+        personalYFraction = 0.85f, waveCount = 1,  erraticness = 0.12f,
+        driftSpeed = 0.13f, driftAmplitude = 0.14f, pauseFraction = 0.28f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.15f,
+        microWobble = 0.012f, xErraticness = 0.00f,
+        tempoVariation = 0.55f),
 
-    // Hermit Crab — algo más arriba que la langosta. Más errático, paradas frecuentes.
+    // Hermit Crab — explorador errático. Avanza a trompicones, cambia de ritmo.
+    // verticalCoupling 0.20 = sube y baja al explorar. xErraticness 0.06 = tanteo lateral.
+    // tempoVar 0.60 = el más variable de los crustáceos.
     CreatureSpec("🦀", CreatureSpecies.HERMIT_CRAB,
-        MarineCategory.CRUSTACEAN, 4, 13000, 0.12f, 0.04f, SwimZone.LOWER,
-        personalYFraction = 0.55f, waveCount = 1,  erraticness = 0.42f,
-        driftSpeed = 0.19f, driftAmplitude = 0.10f, pauseFraction = 0.35f,
-        easingType = EasingType.CRAWL, verticalCoupling = 0.00f,
-        microWobble = 0.006f, xErraticness = 0.00f),
+        MarineCategory.CRUSTACEAN, 4, 13000, 0.22f, 0.04f, SwimZone.LOWER,
+        personalYFraction = 0.55f, waveCount = 1,  erraticness = 0.55f,
+        driftSpeed = 0.21f, driftAmplitude = 0.18f, pauseFraction = 0.32f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.20f,
+        microWobble = 0.014f, xErraticness = 0.06f,
+        tempoVariation = 0.60f),
 
-    // Shrimp — más arriba, nada en diagonal. BURST puro, alta erraticidad.
+    // Shrimp — BURST puro: propulsión a cola. Más pausada que antes
+    // pero mantiene su personalidad nerviosa y diagonal.
     CreatureSpec("🦐", CreatureSpecies.SHRIMP,
-        MarineCategory.CRUSTACEAN, 6,  3200, 0.68f, 0.05f, SwimZone.LOWER,
+        MarineCategory.CRUSTACEAN, 6,  5500, 0.55f, 0.05f, SwimZone.LOWER,
         personalYFraction = 0.20f, waveCount = 3,  erraticness = 0.70f,
-        driftSpeed = 0.41f, driftAmplitude = 0.50f, pauseFraction = 0.10f,
+        driftSpeed = 0.41f, driftAmplitude = 0.45f, pauseFraction = 0.10f,
         easingType = EasingType.BURST, verticalCoupling = 0.00f,
-        microWobble = 0.030f, xErraticness = 0.12f),
+        microWobble = 0.028f, xErraticness = 0.12f,
+        tempoVariation = 0.30f),
 
     // ── MOLLUSK (fijos) ───────────────────────────────────────────────────────
     CreatureSpec("🐚", CreatureSpecies.SEA_URCHIN,
@@ -225,92 +276,98 @@ val allCreatures = listOf(
 
     // ── PELAGIC ───────────────────────────────────────────────────────────────
     //
-    // Manta Ray — planeo grácil con coupling suave. Barridos amplios.
-    //   En una pecera de su tamaño: ocupa la capa media con movimientos lentos.
+    // Manta Ray — planeo grácil. verticalCoupling=0.30: sube ligeramente
+    // al cruzar el centro, como si planeara sobre una corriente ascendente.
     CreatureSpec("🦈", CreatureSpecies.MANTA_RAY,
         MarineCategory.PELAGIC,   2,  8500, 0.35f, 0.03f, SwimZone.MID,
         personalYFraction = 0.45f, waveCount = 1,  erraticness = 0.06f,
         driftSpeed = 0.23f, driftAmplitude = 0.26f, pauseFraction = 0.03f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.30f,
-        microWobble = 0.008f, xErraticness = 0.00f),
+        microWobble = 0.008f, xErraticness = 0.00f,
+        tempoVariation = 0.12f),
 
-    // Moon Jellyfish — deriva completamente pasiva. X también tiene componente aleatoria.
-    //   No "nada": es arrastrada por corrientes simuladas.
-    //   driftAmplitude muy alto = ocupa casi toda su banda.
+    // Moon Jellyfish — deriva completamente pasiva. erraticness=0.90 + xErraticness=0.22.
+    // No "nada": es arrastrada por corrientes simuladas. Nunca repite el mismo camino.
     CreatureSpec("🪼", CreatureSpecies.MOON_JELLYFISH,
         MarineCategory.PELAGIC,   4, 17000, 0.95f,-0.01f, SwimZone.UPPER,
         personalYFraction = 0.50f, waveCount = 2,  erraticness = 0.90f,
         driftSpeed = 0.61f, driftAmplitude = 0.95f, pauseFraction = 0.00f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.002f, xErraticness = 0.22f),
+        microWobble = 0.002f, xErraticness = 0.22f,
+        tempoVariation = 0.08f),
 
-    // Whale Shark — majestuosa, casi plana, predecible. La mayor del acuario.
+    // Whale Shark — majestuosa. Ciclo de 20s, casi plana, predecible.
     CreatureSpec("🐋", CreatureSpecies.WHALE_SHARK,
         MarineCategory.PELAGIC,   8, 20000, 0.08f,-0.03f, SwimZone.MID,
         personalYFraction = 0.50f, waveCount = 1,  erraticness = 0.04f,
         driftSpeed = 0.13f, driftAmplitude = 0.10f, pauseFraction = 0.04f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.003f, xErraticness = 0.00f),
+        microWobble = 0.003f, xErraticness = 0.00f,
+        tempoVariation = 0.06f),
 
     // ── CEPHALOPOD ────────────────────────────────────────────────────────────
     //
-    // Octopus — BURST + pausa muy larga. Se propulsa en ráfaga, para, observa.
-    //   En pecera: suele estar quieto en una esquina, luego se mueve de golpe.
+    // Octopus — BURST + pausa 28%. Se propulsa en chorro, para, observa.
+    // tempoVar 0.30 = ritmo variable entre propulsiones.
     CreatureSpec("🐙", CreatureSpecies.OCTOPUS,
         MarineCategory.CEPHALOPOD, 2,  8000, 0.72f, 0.04f, SwimZone.LOWER,
         personalYFraction = 0.35f, waveCount = 2,  erraticness = 0.62f,
         driftSpeed = 0.43f, driftAmplitude = 0.55f, pauseFraction = 0.28f,
         easingType = EasingType.BURST, verticalCoupling = 0.00f,
-        microWobble = 0.020f, xErraticness = 0.00f),
+        microWobble = 0.020f, xErraticness = 0.00f,
+        tempoVariation = 0.30f),
 
-    // Squid — el más rápido. BURST extremo. Ráfagas en diagonal muy marcadas.
+    // Squid — BURST rápido. Ráfagas en diagonal. Más pausado que antes
+    // pero tempoVar amplifica el contraste: a veces dispara, a veces planea.
     CreatureSpec("🦑", CreatureSpecies.SQUID,
-        MarineCategory.CEPHALOPOD, 5,  3000, 0.80f, 0.05f, SwimZone.MID,
+        MarineCategory.CEPHALOPOD, 5,  5000, 0.65f, 0.05f, SwimZone.MID,
         personalYFraction = 0.40f, waveCount = 3,  erraticness = 0.72f,
-        driftSpeed = 0.47f, driftAmplitude = 0.60f, pauseFraction = 0.10f,
+        driftSpeed = 0.47f, driftAmplitude = 0.55f, pauseFraction = 0.10f,
         easingType = EasingType.BURST, verticalCoupling = 0.00f,
-        microWobble = 0.026f, xErraticness = 0.08f),
+        microWobble = 0.024f, xErraticness = 0.08f,
+        tempoVariation = 0.25f),
 
     // ── REPTILE ───────────────────────────────────────────────────────────────
     //
-    // Sea Turtle — nado sereno con aletas grandes. Un arco limpio.
-    //   En pecera: nada de forma regular y predecible, ligeramente inclinada.
+    // Sea Turtle — nado sereno con aletas grandes. Un arco limpio y predecible.
     CreatureSpec("🐢", CreatureSpecies.SEA_TURTLE,
         MarineCategory.REPTILE,   2, 14000, 0.22f,-0.02f, SwimZone.MID,
         personalYFraction = 0.60f, waveCount = 1,  erraticness = 0.10f,
         driftSpeed = 0.31f, driftAmplitude = 0.26f, pauseFraction = 0.10f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.011f, xErraticness = 0.00f),
+        microWobble = 0.011f, xErraticness = 0.00f,
+        tempoVariation = 0.12f),
 
     // ── MAMMAL ────────────────────────────────────────────────────────────────
     //
-    // Dolphin — el más expresivo. coupling 0.88 = sube fuerte en el centro.
-    //   En pecera: traza arcos visibles, acelera al saltar, frena al sumergirse.
-    //   xErraticness pequeño = microaceleraciones que rompen la monotonía.
+    // Dolphin — el más expresivo. verticalCoupling=0.80.
+    // Más pausado que antes (6500ms) → los arcos de salto se aprecian mejor.
+    // tempoVar 0.20 = a veces salta vivo, a veces planea relajado.
     CreatureSpec("🐬", CreatureSpecies.DOLPHIN,
-        MarineCategory.MAMMAL,    2,  3800, 0.75f, 0.03f, SwimZone.SURFACE,
-        personalYFraction = 0.50f, waveCount = 3,  erraticness = 0.30f,
-        driftSpeed = 0.59f, driftAmplitude = 0.60f, pauseFraction = 0.02f,
-        easingType = EasingType.SMOOTH, verticalCoupling = 0.88f,
-        microWobble = 0.022f, xErraticness = 0.06f),
+        MarineCategory.MAMMAL,    2,  6500, 0.60f, 0.03f, SwimZone.SURFACE,
+        personalYFraction = 0.50f, waveCount = 2,  erraticness = 0.25f,
+        driftSpeed = 0.51f, driftAmplitude = 0.50f, pauseFraction = 0.03f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.80f,
+        microWobble = 0.020f, xErraticness = 0.06f,
+        tempoVariation = 0.20f),
 
-    // Seal — ondulante de todo el cuerpo. Más tranquilo que el delfín.
-    //   Coupling medio = arcos moderados.
+    // Seal — ondulante de todo el cuerpo. verticalCoupling=0.44: arcos moderados.
     CreatureSpec("🦭", CreatureSpecies.SEAL,
         MarineCategory.MAMMAL,    5, 10500, 0.55f,-0.02f, SwimZone.UPPER,
         personalYFraction = 0.50f, waveCount = 2,  erraticness = 0.20f,
         driftSpeed = 0.37f, driftAmplitude = 0.38f, pauseFraction = 0.08f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.44f,
-        microWobble = 0.015f, xErraticness = 0.03f),
+        microWobble = 0.015f, xErraticness = 0.03f,
+        tempoVariation = 0.15f),
 
     // Blue Whale — enorme, lentísima, casi plana. Ciclo de 22s.
-    //   En una pecera imaginaria a su escala sería un movimiento muy pausado.
     CreatureSpec("🐳", CreatureSpecies.BLUE_WHALE,
         MarineCategory.MAMMAL,    8, 22000, 0.07f,-0.03f, SwimZone.SURFACE,
         personalYFraction = 0.50f, waveCount = 1,  erraticness = 0.03f,
         driftSpeed = 0.11f, driftAmplitude = 0.09f, pauseFraction = 0.04f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
-        microWobble = 0.003f, xErraticness = 0.00f),
+        microWobble = 0.003f, xErraticness = 0.00f,
+        tempoVariation = 0.05f),
 
     // ── DECORATION (fijos) ────────────────────────────────────────────────────
     CreatureSpec("🪙", CreatureSpecies.TREASURE_CHEST,
@@ -326,13 +383,67 @@ val allCreatures = listOf(
         fixedWobbleScale = 0.00f),
 )
 
+// ── Posición X de criaturas fijas ─────────────────────────────────────────────
 private fun fixedX(fixedIndex: Int, totalFixed: Int): Float {
     val step = 0.80f / (totalFixed + 1).toFloat()
     return 0.10f + step * (fixedIndex + 1)
 }
 
-// Distribución Fibonacci para desfasar fases entre criaturas
+// Distribución Fibonacci → fases bien separadas, sin agrupamiento visible
 private fun phaseOffset(index: Int): Float = (index * 0.618f) % 1f
+
+// ── Variación por instancia ──────────────────────────────────────────────────
+//
+// Función determinista: dado un index y un seed, devuelve un valor en [-1, 1].
+// Cada (index, seed) produce un valor distinto pero estable entre frames.
+// Esto hace que dos criaturas de la misma especie nunca sean idénticas.
+//
+private fun instanceNoise(index: Int, seed: Int): Float {
+    return ((index * 7919 + seed * 104729) % 1000) / 500f - 1f
+}
+
+// Aplica variación ±pct sobre un valor base.
+// instanceNoise ∈ [-1,1], pct = 0.12 → resultado ∈ [base×0.88, base×1.12]
+private fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float {
+    return base * (1f + instanceNoise(index, seed) * pct)
+}
+
+// ── Tempo warping ────────────────────────────────────────────────────────────
+//
+// Deforma el tiempo para que la criatura nade a velocidad variable.
+//
+// Matemática:
+//   velocidad instantánea = 1 + k · sin(TAU · t / P + φ)
+//   tiempo deformado t' = ∫₀ᵗ velocidad(s) ds
+//                       = t + (k·P/TAU) · [cos(φ) − cos(TAU·t/P + φ)]
+//
+// Propiedades:
+//   • Continua: sin() y cos() son continuas → t' es continua.
+//   • Monotónica: k < 1 → derivada = 1 + k·sin(...) > 0 siempre.
+//   • Sin saltos en wrap: al usarla con osc(), el módulo opera sobre Long
+//     y sin() es periódica → continuidad garantizada.
+//
+// pacePeriodMs: período del modulador (~37s base, variado por phase).
+//   Largo para que el cambio de ritmo sea gradual e imperceptible como ciclo.
+//
+private fun warpTime(
+    t: Long,
+    tempoVar: Float,
+    pacePeriodMs: Long,
+    phaseOffset: Float
+): Long {
+    if (tempoVar <= 0f) return t
+    val k = tempoVar.coerceIn(0f, 0.95f)
+
+    // Módulo Long para precisión, luego Float para trigonometría
+    val phaseFrac = (t % pacePeriodMs).toFloat() / pacePeriodMs.toFloat()
+    val phi = phaseOffset * TAU
+    val cosInit = cos(phi)
+    val cosNow = cos(phaseFrac * TAU + phi)
+
+    val offset = (k * pacePeriodMs.toFloat() / TAU) * (cosInit - cosNow)
+    return t + offset.toLong()
+}
 
 expect fun DrawScope.drawEmoji(
     emoji: String,
@@ -341,6 +452,8 @@ expect fun DrawScope.drawEmoji(
     sizeSp: Float,
     mirrored: Boolean
 )
+
+// ── Hit-testing ───────────────────────────────────────────────────────────────
 
 data class CreaturePosition(
     val species: CreatureSpecies,
@@ -364,16 +477,15 @@ private fun findHitCreature(
     positions: List<CreaturePosition>
 ): CreatureSpecies? = positions
     .filter { pos ->
-        val dx = offset.x - pos.x
-        val dy = offset.y - pos.y
-        abs(dx) <= pos.hitRadius && abs(dy) <= pos.hitRadius
+        abs(offset.x - pos.x) <= pos.hitRadius && abs(offset.y - pos.y) <= pos.hitRadius
     }
     .minByOrNull { pos ->
-        val dx = offset.x - pos.x
-        val dy = offset.y - pos.y
+        val dx = offset.x - pos.x; val dy = offset.y - pos.y
         dx * dx + dy * dy
     }
     ?.species
+
+// ── Composable principal ──────────────────────────────────────────────────────
 
 @Composable
 fun AquariumCreatures(
@@ -381,7 +493,7 @@ fun AquariumCreatures(
     creatureLevelBySpecies: Map<CreatureSpecies, Int> = emptyMap(),
     creaturesData: List<MarineCreature> = emptyList(),
     freezeState: CreatureFreezeState = rememberCreatureFreezeState(),
-    onCreatureLongPress: (MarineCreature, CreatureSpec) -> Unit = { _, _ -> },
+    onCreatureTap: (MarineCreature, CreatureSpec) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val unlockedCreatures = remember(ecosystemByCategory) {
@@ -398,21 +510,31 @@ fun AquariumCreatures(
         unlockedCreatures.filter { it.swimDuration == 0 }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "creatures")
-    // Reloj global 0→1 en 12000ms, loop continuo
-    val timeMs by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "creatureTime"
-    )
+    // ── Reloj monotónico ──────────────────────────────────────────────────────
+    //
+    // `elapsedMs` es tiempo transcurrido en ms desde que el composable entró en
+    // composición. Monotónicamente creciente. NUNCA reinicia.
+    //
+    // Leer este state en drawWithContent crea observación solo en la fase de draw:
+    // los cambios de estado solo invalidan el canvas, NO provocan recomposición.
+    // Resultado: ~60 redraws/s en sincronía con el vsync. Sin overhead de composición.
+    //
+    val elapsedMs = remember { mutableStateOf(0L) }
 
+    LaunchedEffect(Unit) {
+        var startNs = 0L
+        withFrameNanos { startNs = it }
+        while (true) {
+            withFrameNanos { frameNs ->
+                elapsedMs.value = (frameNs - startNs) / 1_000_000L
+            }
+        }
+    }
+
+    // frozenTimeMap: guarda elapsedMs en Long en el momento del freeze.
+    // La criatura congelada usa este tiempo fijo → inmóvil hasta que se descongele.
+    val frozenTimeMap = remember { mutableStateMapOf<CreatureSpecies, Long>() }
     val creaturePositions = remember { mutableStateOf<List<CreaturePosition>>(emptyList()) }
-    val frozenTimeMap = remember { mutableStateMapOf<CreatureSpecies, Float>() }
-    val currentTimeMs by rememberUpdatedState(timeMs)
 
     Layout(
         content = {},
@@ -425,8 +547,8 @@ fun AquariumCreatures(
                         val spec = unlockedCreatures.find { it.species == hit } ?: return@detectTapGestures
                         val creature = creaturesData.find { it.species == hit } ?: return@detectTapGestures
                         freezeState.freeze(hit)
-                        frozenTimeMap[hit] = currentTimeMs
-                        onCreatureLongPress(creature, spec)
+                        frozenTimeMap[hit] = elapsedMs.value
+                        onCreatureTap(creature, spec)
                     }
                 )
             }
@@ -434,6 +556,9 @@ fun AquariumCreatures(
                 drawContent()
                 val positions = mutableListOf<CreaturePosition>()
                 var fixedIndex = 0
+
+                // Leer elapsedMs una sola vez por frame (state observation aquí)
+                val nowMs = elapsedMs.value
 
                 unlockedCreatures.forEachIndexed { index, spec ->
                     val w = size.width
@@ -444,49 +569,59 @@ fun AquariumCreatures(
                     val baseSize = 28f * (1 + spec.unlockLevel / 15f)
                     val iconSize = baseSize * sizeScale
 
-                    val isFrozen = freezeState.isFrozen(spec.species)
-                    val t = if (isFrozen) frozenTimeMap[spec.species] ?: timeMs else timeMs
+                    // Criatura congelada usa su tiempo fijo; si no, usa el reloj global
+                    val tRaw = if (freezeState.isFrozen(spec.species))
+                        frozenTimeMap[spec.species] ?: nowMs
+                    else nowMs
 
-                    // phase: desfasa ondas Y entre criaturas. NUNCA afecta X.
                     val phase = phaseOffset(index)
+                    val zoneCenter = h * spec.swimZone.centerFraction
+                    val zoneBand  = h * spec.swimZone.bandFraction
 
-                    // ── Base Y personal ──────────────────────────────────────
-                    // Cada criatura tiene su "cota" dentro de la banda, derivada de
-                    // personalYFraction. La distribución es determinista (no aleatoria),
-                    // por lo que no cambia entre recomposiciones.
-                    // personalYFraction 0 = parte alta de la banda, 1 = parte baja.
-                    val zoneCenter  = h * spec.swimZone.centerFraction
-                    val zoneBand    = h * spec.swimZone.bandFraction
-                    val personalY   = zoneCenter + (spec.personalYFraction - 0.5f) * zoneBand
+                    // Cota personal dentro de la banda. Determinista, no aleatoria.
+                    val personalY = zoneCenter + (spec.personalYFraction - 0.5f) * zoneBand
 
                     val x: Float
                     val y: Float
 
                     if (spec.swimDuration == 0) {
-                        // ── FIJA ────────────────────────────────────────────────
+                        // ── CRIATURA FIJA ─────────────────────────────────────────
                         x = w * fixedX(fixedIndex, fixedCreatures.size)
                         fixedIndex++
-
-                        // Ondeo de corriente: 1 ciclo exacto en 12s → sin salto en loop.
-                        // fixedWobbleScale permite ajustar por especie:
-                        //   0 = completamente inmóvil (coral, erizo, ostra)
-                        //   1.8 = anemona muy ondeante
-                        val wobble = sin(t * TAU + phase * TAU) * zoneBand * 0.18f * spec.fixedWobbleScale
+                        val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
                         y = personalY + wobble
                         drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
 
                     } else {
-                        // ── NADADORA ────────────────────────────────────────────
+                        // ── CRIATURA NADADORA ─────────────────────────────────────
+
+                        // Variación por instancia: ±12% sobre parámetros clave.
+                        // Cada criatura del mismo tipo tiene ritmo y amplitud ligeramente distintos.
+                        val variedDuration = vary(spec.swimDuration.toFloat(), index, 1).toLong()
+                        val variedWobble = vary(spec.wobbleAmplitude, index, 2)
+                        val variedDriftSpeed = vary(spec.driftSpeed, index, 3)
+                        val variedTempoVar = vary(spec.tempoVariation, index, 4, pct = 0.15f)
+
                         val speedMult = max(0.3f, 1f + (creatureLevel - 1) * spec.speedScalePerLevel)
-                        val cycleDuration = (spec.swimDuration / speedMult).toInt().coerceAtLeast(2000)
+                        val cycleDuration = (variedDuration / speedMult).toLong().coerceAtLeast(2000L)
 
-                        // rawProgress SIN phase → X siempre continua, sin salto.
-                        val rawProgress = (t * 12000f / cycleDuration) % 1f
+                        // ── Tempo warping ─────────────────────────────────────────
+                        // Período del modulador: ~37s base, variado por phase para
+                        // que cada criatura tenga su propio ciclo de aceleración.
+                        // Largo → el cambio de ritmo es gradual, nunca se percibe como repetición.
+                        val pacePeriodMs = (37000f * (1f + phase * 0.4f)).toLong()
+                        val tSwim = warpTime(tRaw, variedTempoVar, pacePeriodMs, phase)
 
-                        // ── Posición X ──────────────────────────────────────────
+                        // Phase offset en tiempo: desplaza el inicio del ciclo.
+                        val phaseMs = (phase * cycleDuration).toLong()
+
+                        // rawProgress: [0, 1) dentro del ciclo propio.
+                        // Modulo Long → sin pérdida de precisión. Continuo en wrap. ✓
+                        val rawProgress = ((tSwim + phaseMs) % cycleDuration).toFloat() / cycleDuration.toFloat()
+
+                        // ── Posición X ────────────────────────────────────────────
                         val pf = spec.pauseFraction
                         val swimFraction = (0.5f - pf).coerceAtLeast(0.01f)
-
                         val goingRight: Boolean
                         val swimProgress: Float
 
@@ -511,57 +646,63 @@ fun AquariumCreatures(
                             }
                         }
 
-                        // Perturbación aperiódica de X para peces nerviosos y medusas.
-                        // Frecuencia PHI·5 ≈ irracional → microaceleraciones impredecibles.
-                        // Amplitud pequeña para no distorsionar el recorrido principal.
-                        val xPerturbation = if (spec.xErraticness > 0f)
-                            sin(rawProgress * TAU * 5f * PHI + phase * TAU) *
-                                    spec.xErraticness * 0.04f
-                        else 0f
+                        // Microaceleración horizontal aperiódica.
+                        // Usa tSwim → las perturbaciones también se modulan con el tempo.
+                        val xPert = if (spec.xErraticness > 0f) {
+                            val xPertPeriod = (cycleDuration.toFloat() / (5f * PHI)).toLong().coerceAtLeast(200L)
+                            osc(tSwim + phaseMs, xPertPeriod, phase * PHI) * spec.xErraticness * 0.05f
+                        } else 0f
 
-                        x = (w * 0.05f + w * 0.90f * swimProgress + w * xPerturbation)
-                            .coerceIn(w * 0.02f, w * 0.98f)
+                        // ── Márgenes simétricos basados en tamaño del emoji ──────
+                        // El centro del emoji nunca se acerca a menos de halfIcon del borde.
+                        // Resultado: el emoji siempre está completamente visible en ambos extremos.
+                        val halfIcon = iconSize / 2f
+                        val xMin = halfIcon + w * 0.01f
+                        val xMax = w - halfIcon - w * 0.01f
+                        x = (xMin + (xMax - xMin) * swimProgress + w * xPert)
+                            .coerceIn(xMin, xMax)
 
-                        // ── Posición Y: cinco capas ────────────────────────────
+                        // ── Posición Y: cinco capas continuas ─────────────────────
                         //
-                        // Todas las oscilaciones usan `personalY` como base,
-                        // no `zoneCenter`. Así cada criatura gravita hacia su
-                        // cota personal, y criaturas de la misma zona están
-                        // naturalmente separadas en altura.
+                        // Capas 1-2 (ondas de nado) y 4 (coupling) usan tSwim → se modulan
+                        // con el tempo. Capas 3 (drift) y 5 (microwobble) usan tRaw →
+                        // son independientes del ritmo de nado (corriente ambiental y biología).
                         //
-                        // 1. ONDA PRIMARIA — entero → sin salto en loop
-                        val primaryWave = sin(rawProgress * TAU * spec.waveCount + phase * TAU)
+                        // 1. ONDA PRIMARIA
+                        val primaryPeriod = (cycleDuration / spec.waveCount.toLong().coerceAtLeast(1L))
+                            .coerceAtLeast(200L)
+                        val primaryWave = osc(tSwim + phaseMs, primaryPeriod, phase)
 
-                        // 2. ONDA SECUNDARIA — PHI·waveCount (irracional, aperiódica)
-                        val secondaryWave = sin(rawProgress * TAU * spec.waveCount * PHI + phase * TAU * PHI)
+                        // 2. ONDA SECUNDARIA (irracional respecto a la primaria)
+                        val secPeriod = (cycleDuration.toFloat() / (spec.waveCount.toFloat() * PHI))
+                            .toLong().coerceAtLeast(200L)
+                        val secondaryWave = osc(tSwim + phaseMs, secPeriod, phase * PHI)
 
                         val waveY = (primaryWave * (1f - spec.erraticness) +
                                 secondaryWave * spec.erraticness) *
-                                zoneBand * spec.wobbleAmplitude
+                                zoneBand * variedWobble
 
-                        // 3. DERIVA LENTA — driftSpeed fraccionario → aperiódico vs ciclo 12s
-                        //    La criatura nunca está en la misma altura en dos ciclos seguidos.
-                        val drift = sin(t * TAU * spec.driftSpeed + phase * TAU) *
-                                zoneBand * spec.driftAmplitude
+                        // 3. DERIVA LENTA DEL EJE Y (corriente ambiental — usa tRaw)
+                        val driftPeriod = (12000f / variedDriftSpeed.coerceAtLeast(0.01f))
+                            .toLong().coerceAtLeast(1000L)
+                        val drift = osc(tRaw, driftPeriod, phase) * zoneBand * spec.driftAmplitude
 
-                        // 4. ACOPLAMIENTO VERTICAL — arco ligado a posición X.
-                        //    La criatura sube al centro del recorrido (máxima velocidad)
-                        //    y baja en los extremos. Delfín: arcos de salto realistas.
-                        //    Signo negativo: "arriba" en pantalla es Y menor.
+                        // 4. ACOPLAMIENTO VERTICAL (usa swimProgress de tSwim)
                         val coupledArc = -sin(swimProgress * PI) * zoneBand * spec.verticalCoupling
 
-                        // 5. MICROWOBBLE — alta frecuencia (~1.5Hz). Aleta/cola.
-                        val micro = sin(t * TAU * 18f + phase * TAU) * zoneBand * spec.microWobble
+                        // 5. MICROWOBBLE (biológico — usa tRaw)
+                        val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
 
                         y = (personalY + waveY + drift + coupledArc + micro).coerceIn(
-                            personalY - zoneBand * 1.10f,
-                            personalY + zoneBand * 1.10f
+                            personalY - zoneBand * 1.15f,
+                            personalY + zoneBand * 1.15f
                         )
 
                         drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight)
                     }
 
-                    positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2f, 60f)))
+                    // Hitbox: radio ampliado para facilitar tap en criaturas en movimiento
+                    positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2.5f, 75f)))
                 }
 
                 creaturePositions.value = positions

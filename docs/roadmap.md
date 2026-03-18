@@ -75,12 +75,30 @@
 
 ---
 
+## ✅ Sprint bugfixes
+
+- **Resumen nocturno corregido**: `processDay` recibe `summaryTime`. Solo evalúa tareas COMPLETED o PENDING del día con hora ≤ summaryTime. Tareas sin hora o con hora posterior se ignoran (se evaluarán en el siguiente resumen). `NightSummaryWorker` lee la hora con `.first()`.
+- **Tareas EXPIRED completables**: muestran ⌛ + checkbox. Siguen siendo completables. Al desmarcar, vuelven a EXPIRED si existe DaySummary para esa fecha, o a PENDING si no.
+- **XP duplicado resuelto**: campo `hasBeenRewarded: Boolean` en `DayTask` y `DayTaskEntity`. Se marca `true` al completar por primera vez. No se resetea nunca. Controlado en `toggleTaskCompleted`.
+- **Migración real Room**: `MIGRATION_8_9` (ALTER TABLE `day_tasks` ADD COLUMN `hasBeenRewarded`). Eliminado `fallbackToDestructiveMigration`. RiptideDatabase v9.
+- **TimePicker mejorado**: `TimePickerDefaults.colors()` con paleta marina explícita (OceanMid, Accent, etc.), consistente con el DatePicker.
+- **Inputs fecha/hora simplificados**: `TimeInputField` y `DateInputField` ahora son campos readonly. Click abre el picker. Eliminados `BasicTextField`, emojis 📅 y 🕐, y validación de input manual.
+- **Patrones de nado mejorados**:
+  - **Tempo warping**: nueva capa 0 que deforma el tiempo para velocidad variable continua y monotónica. `tempoVariation`: 0 = constante (ballena), 0.60 = muy variable (cangrejo).
+  - **Variación por instancia**: ±12% determinista sobre swimDuration, wobbleAmplitude, driftSpeed y tempoVariation. Dos criaturas de la misma especie nunca son idénticas.
+  - **Márgenes simétricos**: basados en tamaño del emoji. El emoji siempre está completamente visible en ambos extremos.
+  - **Velocidades ajustadas**: Clownfish 4800→7500ms (wobble 0.88→0.40), Shrimp 3200→5500ms, Dolphin 3800→6500ms, Squid 3000→5000ms.
+  - **Crustáceos con profundidad**: verticalCoupling (0.15-0.20), tempoVariation alta (0.55-0.60), microWobble y driftAmplitude aumentados.
+  - **Hitbox ampliado**: radio `maxOf(iconSize * 2.5f, 75f)`.
+  - **Tap en vez de long press**: `onCreatureTap` reemplaza `onCreatureLongPress`.
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales
 - Animación de entrada de criatura al desbloquearse (nada desde el borde)
 - Revisión de gestos, formularios y edge cases del resumen nocturno
-- Migrar `fallbackToDestructiveMigration` a migraciones reales de Room
 - Preparar firma de la app para distribución
 - Tutorial de primera vez (onboarding al primer inicio)
   - `hasCompletedOnboarding` en `UserPreferencesRepository` (DataStore)

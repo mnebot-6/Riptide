@@ -199,7 +199,7 @@ fun MainScreen(
             creatureLevelBySpecies = uiState.creatureLevelBySpecies,
             creaturesData = uiState.creaturesData,
             freezeState = creatureFreezeState,
-            onCreatureLongPress = { creature, spec ->
+            onCreatureTap = { creature, spec ->
                 selectedCreature = creature to spec
             }
         )
@@ -942,17 +942,23 @@ private fun TaskCard(
             }
         }
         when {
-            isExpired -> Text("⌛", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
             isPostponed -> Text("⏰", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
-            else -> Checkbox(
-                checked = isCompleted,
-                onCheckedChange = { onToggle() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = blockColor,
-                    uncheckedColor = TextSecondary,
-                    checkmarkColor = TextPrimary
-                )
-            )
+            else -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isExpired) {
+                        Text("⌛", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+                    }
+                    Checkbox(
+                        checked = isCompleted,
+                        onCheckedChange = { onToggle() },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = blockColor,
+                            uncheckedColor = TextSecondary,
+                            checkmarkColor = TextPrimary
+                        )
+                    )
+                }
+            }
         }
     }
 }

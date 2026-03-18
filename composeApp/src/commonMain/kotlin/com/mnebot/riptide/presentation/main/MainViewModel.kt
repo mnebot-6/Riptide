@@ -64,14 +64,29 @@ class MainViewModel(
 
     fun toggleTaskCompleted(task: DayTask) {
         viewModelScope.launch {
-            val newStatus = if (task.status == TaskStatus.COMPLETED)
-                TaskStatus.PENDING else TaskStatus.COMPLETED
-            val completedAt = if (newStatus == TaskStatus.COMPLETED)
-                Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-            else null
-            dayTaskRepository.update(task.copy(status = newStatus, completedAt = completedAt))
+            val newStatus: TaskStatus
+            val completedAt: LocalDateTime?
 
-            if (newStatus == TaskStatus.COMPLETED) {
+            if (task.status == TaskStatus.COMPLETED) {
+                // Si el resumen nocturno ya procesó esta fecha → EXPIRED, si no → PENDING
+                val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date
+                val summaryExists = taskDate != null && daySummaryRepository.getByDate(taskDate) != null
+                newStatus = if (summaryExists) TaskStatus.EXPIRED else TaskStatus.PENDING
+                completedAt = null
+            } else {
+                newStatus = TaskStatus.COMPLETED
+                completedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            }
+
+            dayTaskRepository.update(
+                task.copy(
+                    status = newStatus,
+                    completedAt = completedAt,
+                    hasBeenRewarded = if (newStatus == TaskStatus.COMPLETED) true else task.hasBeenRewarded
+                )
+            )
+
+            if (newStatus == TaskStatus.COMPLETED && !task.hasBeenRewarded) {
                 val block = uiState.value.blocks.find { it.id == task.blockId }
                 val categories = block?.marineCategories ?: emptyList()
                 val newUnlocks = ecosystemProcessor.addXpForTask(categories)

@@ -18,7 +18,7 @@ Inspirado en **Forest**, pero más profundo y personal — orientado a la sensac
 
 **Cada mañana** asignas tareas concretas a los bloques del día. Cada tarea pertenece a un bloque (Trabajo, Salud, Ocio...).
 
-**Durante el día** simplemente marcas tareas como completadas. Sin valoraciones, sin números visibles.
+**Durante el día** simplemente marcas tareas como completadas. Sin valoraciones, sin números visibles. Si se te pasa la hora, la tarea queda marcada como fuera de plazo pero sigue siendo completable.
 
 **Por la noche** recibes un resumen emocional a la hora que configures:
 - 0% → *"Las corrientes cambian. Mañana el mar sigue ahí."*
@@ -46,6 +46,8 @@ Cada bloque tiene asignada automáticamente una **categoría marina**. La consta
 
 Al alcanzar ciertos niveles, nuevos habitantes aparecen en el estanque. Tú les pones el nombre. Con el tiempo crecen — cambian de tamaño y velocidad.
 
+Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean nerviosos, los delfines saltan en arcos gráciles, los cangrejos exploran el fondo a ritmo variable, las medusas derivan con la corriente. No hay dos criaturas exactamente iguales.
+
 ---
 
 ## Stack técnico
@@ -54,7 +56,7 @@ Al alcanzar ciertos niveles, nuevos habitantes aparecen en el estanque. Tú les 
 |---|---|
 | Multiplataforma | Kotlin Multiplatform (KMP) |
 | UI | Compose Multiplatform |
-| Persistencia | Room 2.8.4 (offline-first, v8) |
+| Persistencia | Room 2.8.4 (offline-first, v9 con migraciones reales) |
 | Serialización | kotlinx-serialization-json 1.7.3 |
 | Arquitectura | MVVM |
 | Navegación | Navigation Compose (multiplatform) |
@@ -73,8 +75,9 @@ Al alcanzar ciertos niveles, nuevos habitantes aparecen en el estanque. Tú les 
 | v2.1 — Inputs, fixes, curva XP | ✅ |
 | Sprint fixes — Header, drawer, resumen | ✅ |
 | Sprint v2 ampliado — 9 categorías, 24 especies, XP individual | ✅ |
-| Testing + pulido pre-v3 | 🔄 |
-| v3 — Onboarding, animaciones, migraciones Room | ⬜ |
+| Sprint pre-v3 — Detalle criatura, ecosistema, nado orgánico | ✅ |
+| Sprint bugfixes — Resumen nocturno, XP, nado, inputs | ✅ |
+| v3 — Onboarding, animaciones, testing | ⬜ |
 | v4 — Fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social | ⬜ |
 | v6 — iOS completo | ⬜ |

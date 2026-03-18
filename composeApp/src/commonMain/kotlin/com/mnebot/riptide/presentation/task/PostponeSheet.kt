@@ -96,8 +96,7 @@ fun PostponeSheet(
                 value = time,
                 onValueChange = { time = it },
                 nullable = true,
-                compact = false,
-                showPickerIcon = true
+                compact = false
             )
 
             if (error != null) {

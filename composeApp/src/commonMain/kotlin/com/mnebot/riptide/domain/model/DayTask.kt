@@ -20,11 +20,12 @@ sealed class TaskSchedule {
 
 data class DayTask(
     val id: String,
-    val blockId: String?,             // null = tarea suelta
+    val blockId: String?,
     val title: String,
     val schedule: TaskSchedule,
     val status: TaskStatus,
     val completedAt: LocalDateTime?,
-    val postponedTo: LocalDateTime?,  // solo puntuales pospuestas
-    val sourceTaskId: String?         // para instancias recurrentes, apunta a la definición
+    val postponedTo: LocalDateTime?,
+    val sourceTaskId: String?,
+    val hasBeenRewarded: Boolean = false
 )

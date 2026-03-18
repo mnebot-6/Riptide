@@ -10,6 +10,7 @@ import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 
 class NightSummaryProcessor(
     private val dayTaskRepository: DayTaskRepository,
@@ -18,10 +19,12 @@ class NightSummaryProcessor(
     private val ecosystemProcessor: EcosystemProcessor? = null,
     private val userPreferencesRepository: UserPreferencesRepository? = null,
 ) {
+    // En la firma de processDay, añadir summaryTime:
     suspend fun processDay(
         date: LocalDate,
         blockNames: Map<String, String> = emptyMap(),
-        blockCategories: Map<String, List<MarineCategory>> = emptyMap()
+        blockCategories: Map<String, List<MarineCategory>> = emptyMap(),
+        summaryTime: LocalTime? = null
     ) {
         if (daySummaryRepository.getByDate(date) != null) return
 
@@ -34,17 +37,18 @@ class NightSummaryProcessor(
         // Tareas evaluables: las que tienen fecha <= fecha del resumen, o las que no tienen
         // fecha pero ya están completadas. Las sin fecha y sin completar se ignoran hoy.
         val evaluable = nonPostponed.filter { task ->
+            // Ya completada → siempre evaluable
+            if (task.status == TaskStatus.COMPLETED) return@filter true
+
             when (val schedule = task.schedule) {
                 is TaskSchedule.OneTime -> {
-                    val taskDate = schedule.date
-                    // Tiene fecha vencida, o no tiene fecha pero está completada
-                    taskDate <= date || (schedule.time == null && task.status == TaskStatus.COMPLETED)
+                    // Solo tareas de HOY (no futuras ni pasadas sin resolver)
+                    if (schedule.date != date) return@filter false
+                    val taskTime = schedule.time
+                    // Tiene hora y es anterior o igual al resumen → evaluable
+                    taskTime != null && summaryTime != null && taskTime <= summaryTime
                 }
-                is TaskSchedule.Recurring -> {
-                    // Las recurrentes generadas como instancias OneTime ya están filtradas arriba.
-                    // Si por algún motivo llega una Recurring directamente, solo si está completada.
-                    task.status == TaskStatus.COMPLETED
-                }
+                is TaskSchedule.Recurring -> false
             }
         }
 

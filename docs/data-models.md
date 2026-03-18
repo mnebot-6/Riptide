@@ -48,8 +48,8 @@ enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 | Estado | Descripción |
 |--------|-------------|
 | PENDING | Estado por defecto |
-| COMPLETED | Da 10 XP al ecosistema y a criaturas individuales |
-| EXPIRED | Pendiente evaluable al hacer el resumen nocturno |
+| COMPLETED | Da 10 XP al ecosistema (solo la primera vez, controlado por `hasBeenRewarded`) |
+| EXPIRED | Marcada por resumen nocturno. Sigue siendo completable (⌛ + checkbox) |
 | POSTPONED | No cuenta en resumen ni barra de progreso |
 
 ---
@@ -76,9 +76,12 @@ data class DayTask(
     val status: TaskStatus,
     val completedAt: LocalDateTime?,
     val postponedTo: LocalDateTime?,
-    val sourceTaskId: String?
+    val sourceTaskId: String?,
+    val hasBeenRewarded: Boolean = false
 )
 ```
+
+`hasBeenRewarded`: se pone a `true` al completar la tarea por primera vez. Evita dar XP duplicado al desmarcar y volver a marcar. Una vez `true`, nunca se resetea.
 
 ---
 
@@ -245,10 +248,11 @@ data class CreatureSpec(
     val driftAmplitude: Float,      // cuánto se desplaza el centro de nado
     val pauseFraction: Float,       // fracción del ciclo en pausa en cada extremo
     val easingType: EasingType,     // SMOOTH / BURST / CRAWL
-    val verticalCoupling: Float,    // [0..1] arco vertical acoplado a X (delfín salta)
+    val verticalCoupling: Float,    // [0..1] arco vertical acoplado a X
     val microWobble: Float,         // amplitud oscilación alta frecuencia (aleta/cola)
     val xErraticness: Float,        // perturbación aperiódica de X
-    val fixedWobbleScale: Float     // para criaturas fijas: escala de ondeo de corriente
+    val fixedWobbleScale: Float,    // para criaturas fijas: escala de ondeo de corriente
+    val tempoVariation: Float       // [0..1) modulación de velocidad continua
 )
 ```
 
@@ -256,19 +260,19 @@ data class CreatureSpec(
 
 | Zona | centerFraction | bandFraction | Especies |
 |---|---|---|---|
-| SURFACE | 0.17 | 0.06 | Delfín, Ballena azul |
-| UPPER | 0.31 | 0.09 | Clownfish, Medusa luna, Foca |
-| MID | 0.46 | 0.12 | Angelfish, Pufferfish, Manta ray, Calamar, Tortuga, Tiburón ballena |
-| LOWER | 0.63 | 0.09 | Langosta, Cangrejo, Gamba, Pulpo |
-| BOTTOM | 0.81 | 0.05 | Flora, Moluscos, Decoración |
+| SURFACE | 0.16 | 0.07 | Delfín, Ballena azul |
+| UPPER | 0.30 | 0.10 | Clownfish, Medusa luna, Foca |
+| MID | 0.47 | 0.13 | Angelfish, Pufferfish, Manta ray, Calamar, Tortuga, Tiburón ballena |
+| LOWER | 0.64 | 0.09 | Langosta, Cangrejo, Gamba, Pulpo |
+| BOTTOM | 0.82 | 0.05 | Flora, Moluscos, Decoración |
 
 ### EasingType
 
 | Tipo | Comportamiento | Especies |
 |---|---|---|
 | SMOOTH | Coseno estándar — entrada y salida suaves | Peces, tortuga, mamíferos, manta |
-| BURST | 80% en el primer 30%, luego planea | Gamba, calamar, pulpo |
-| CRAWL | 95% lineal | Langosta, cangrejo ermitaño |
+| BURST | 75% en el primer 25%, luego planea | Gamba, calamar, pulpo |
+| CRAWL | 93% lineal | Langosta, cangrejo ermitaño |
 
 ### Efectos visuales por `creatureLevel`
 
@@ -277,15 +281,21 @@ data class CreatureSpec(
 
 ---
 
-## Room — androidMain (v8)
+## Room — androidMain (v9)
 
 | Entity | Tabla |
 |--------|-------|
 | `WorkBlockEntity` | `work_blocks` |
 | `BlockCategoryEntity` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity` | `day_tasks` |
+| `DayTaskEntity` | `day_tasks` — + `hasBeenRewarded: Boolean` |
 | `RecurringTaskDefEntity` | `recurring_task_defs` — `time String?` nullable |
 | `DaySummaryEntity` | `day_summaries` |
 | `BlockStreakEntity` | `block_streaks` — PK `blockId` |
 | `EcosystemStateEntity` | `ecosystem_states` — `isUnlocked Boolean` |
 | `MarineCreatureEntity` | `marine_creatures` |
+
+### Migraciones
+
+| Migración | SQL |
+|---|---|
+| 8 → 9 | `ALTER TABLE day_tasks ADD COLUMN hasBeenRewarded INTEGER NOT NULL DEFAULT 0` |

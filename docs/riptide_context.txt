@@ -19,7 +19,7 @@ STACK TÉCNICO
 - La estructura no tiene carpeta shared: todo vive en composeApp/src/
 - commonMain: lógica de negocio, modelos, repositorios, ViewModels, UI
 - androidMain / iosMain: implementaciones específicas de plataforma
-- Persistencia: Room (local, offline-first), versión 8
+- Persistencia: Room (local, offline-first), versión 9
 - IDs String (UUID) desde el primer día para facilitar sincronización futura
 - Capa repositorio que abstrae el origen de datos (fácil migración a Ktor en v5)
 - Patrón MVVM
@@ -52,7 +52,8 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     MarineCategoryAssigner.kt   (redistribuye entre categorías desbloqueadas; requiere EcosystemStateRepository)
     RecurringTaskGenerator.kt
     BlockStreakProcessor.kt
-    NightSummaryProcessor.kt
+    NightSummaryProcessor.kt    (processDay recibe summaryTime; solo evalúa tareas completadas
+                                 o con hora <= summaryTime; EXPIRED sigue siendo completable)
     EcosystemProcessor.kt       (addXpForTask, addNightBonus, unlockCategory;
                                  reparte XP entre criaturas desbloqueadas de la categoría;
                                  requiere MarineCreatureRepository)
@@ -63,7 +64,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       WorkBlock.kt
       TaskStatus.kt
       TaskSchedule.kt
-      DayTask.kt
+      DayTask.kt                (+ hasBeenRewarded: Boolean — evita XP duplicado al marcar/desmarcar)
       RecurringTaskDef.kt       (time: LocalTime? — hora opcional)
       DaySummary.kt
       BlockStreak.kt
@@ -79,7 +80,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       DaySummaryRepository.kt
       EcosystemStateRepository.kt   (getByCategory, getAll, getUnlocked, insert, update)
       MarineCreatureRepository.kt   (getByEcosystem, getByCategory, insert, update)
-      UserPreferencesRepository.kt  (getNightSummaryTime, setNightSummaryTime,
+      UserPreferencesRepository.kt  (getNightSummaryTime(Flow), setNightSummaryTime,
                                      getPendingUnlocks, setPendingUnlocks,
                                      getLastDismissedSummaryDate, setLastDismissedSummaryDate,
                                      hasCompletedOnboarding, setOnboardingCompleted)
@@ -87,10 +88,12 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     aquarium/
       AquariumBackground.kt
       AquariumCreature.kt       (CreatureSpec con SwimZone, EasingType, personalYFraction,
-                                 verticalCoupling, microWobble, xErraticness, fixedWobbleScale;
-                                 24 especies en allCreatures; AquariumCreatures recibe
-                                 ecosystemByCategory + creatureLevelBySpecies + creaturesData;
-                                 hit-testing por posición real de frame; freeze on press)
+                                 verticalCoupling, microWobble, xErraticness, fixedWobbleScale,
+                                 tempoVariation; 24 especies en allCreatures;
+                                 tempo warping + variación por instancia + márgenes simétricos;
+                                 AquariumCreatures recibe ecosystemByCategory +
+                                 creatureLevelBySpecies + creaturesData;
+                                 hit-testing con radio ampliado; tap → freeze + onCreatureTap)
       CreatureDetailDialog.kt   (dialog OceanMid: emoji, displayName, nickname editable,
                                  XpBar visual, fecha de desbloqueo)
       CreatureExtensions.kt     (displayName: String, xpRequiredForLevel(level): Int —
@@ -103,15 +106,18 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       BlockFormScreen.kt
       BlockFormViewModel.kt
     components/
-      TimeInputField.kt
-      DateInputField.kt
+      TimeInputField.kt         (readonly, click abre picker, sin emoji, sin BasicTextField)
+      DateInputField.kt         (readonly, click abre picker, sin emoji, sin BasicTextField)
       InputFieldDialogs.kt
     main/
       CurrentDate.kt
       ParseColor.kt
       MainUiState.kt            (+ creaturesData: List<MarineCreature>)
-      MainViewModel.kt          (+ updateCreatureNickname(creatureId, nickname))
-      MainScreen.kt
+      MainViewModel.kt          (+ updateCreatureNickname(creatureId, nickname);
+                                 toggleTaskCompleted: hasBeenRewarded evita XP duplicado,
+                                 desmarcar vuelve a EXPIRED si DaySummary existe para esa fecha)
+      MainScreen.kt             (EXPIRED muestra ⌛ + checkbox completable;
+                                 onCreatureTap en vez de onCreatureLongPress)
       WeekCalendar.kt
       MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen)
     task/
@@ -123,14 +129,14 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
   App.kt
   MainActivity.kt
   DataSeeder.kt                 (5 bloques genéricos; crea EcosystemStates ANTES del reassign)
-  NightSummaryWorker.kt
+  NightSummaryWorker.kt         (lee summaryTime con .first() y lo pasa a processDay)
   NightSummarySchedulerImpl.android.kt
   UuidGenerator.android.kt
   data/local/
     entity/
       WorkBlockEntity.kt
       BlockCategoryEntity.kt
-      DayTaskEntity.kt
+      DayTaskEntity.kt          (+ hasBeenRewarded: Boolean)
       RecurringTaskDefEntity.kt (time String? nullable)
       DaySummaryEntity.kt
       BlockStreakEntity.kt
@@ -140,8 +146,8 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       EcosystemStateDao.kt      (getByCategory, getAll, getUnlocked, insert, update)
       MarineCreatureDao.kt      (getByEcosystem, getByCategory, insert, update)
     db/
-      RiptideDatabase.kt        (versión 8, fallbackToDestructiveMigration en desarrollo)
-      DatabaseProvider.kt
+      RiptideDatabase.kt        (versión 9, migración real MIGRATION_8_9)
+      DatabaseProvider.kt       (addMigrations en vez de fallbackToDestructiveMigration)
     mapper/
   data/repository/
     UserPreferencesRepositoryImpl.kt
@@ -153,7 +159,7 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
     block/
       BlockFormViewModelFactory.kt  (pasa EcosystemStateRepository a MarineCategoryAssigner)
     components/
-      InputFieldDialogs.android.kt
+      InputFieldDialogs.android.kt  (TimePicker con TimePickerDefaults.colors explícitos)
     main/
       CurrentDate.android.kt
       ParseColor.android.kt
@@ -186,7 +192,8 @@ TaskStatus enum: PENDING, COMPLETED, EXPIRED, POSTPONED
 TaskSchedule sealed: OneTime(date, time?) / Recurring(time, recurrence)
 
 DayTask: id, blockId(String?), title, schedule, status,
-  completedAt(LocalDateTime?), postponedTo(LocalDateTime?), sourceTaskId(String?)
+  completedAt(LocalDateTime?), postponedTo(LocalDateTime?), sourceTaskId(String?),
+  hasBeenRewarded(Boolean)
 
 RecurringTaskDef: id, blockId, title, time(LocalTime?), recurrence, isActive
 
@@ -223,16 +230,16 @@ CreatureSpec (presentation/aquarium):
   wobbleAmplitude, speedScalePerLevel, swimZone(SwimZone),
   personalYFraction, waveCount, erraticness, driftSpeed, driftAmplitude,
   pauseFraction, easingType(EasingType), verticalCoupling, microWobble,
-  xErraticness, fixedWobbleScale
+  xErraticness, fixedWobbleScale, tempoVariation
 
-SwimZone enum: SURFACE(0.17, 0.06) | UPPER(0.31, 0.09) | MID(0.46, 0.12)
-               LOWER(0.63, 0.09) | BOTTOM(0.81, 0.05)
+SwimZone enum: SURFACE(0.16, 0.07) | UPPER(0.30, 0.10) | MID(0.47, 0.13)
+               LOWER(0.64, 0.09) | BOTTOM(0.82, 0.05)
   (centerFraction, bandFraction)
 
 EasingType enum: SMOOTH | BURST | CRAWL
   SMOOTH: coseno estándar (peces, tortugas, ballenas)
-  BURST:  80% en el primer 30% — propulsión a chorro (calamar, gamba, pulpo)
-  CRAWL:  95% lineal (crustáceos que caminan)
+  BURST:  75% en el primer 25% — propulsión a chorro (calamar, gamba, pulpo)
+  CRAWL:  93% lineal (crustáceos que caminan)
 
 ---
 
@@ -269,6 +276,7 @@ EcosystemProcessor(ecosystemStateRepository, marineCreatureRepository):
   addXpForTask(categories):
     — si categories vacío → reparte entre todas las categorías desbloqueadas (no DECORATION)
     — xpEach = 10 / targets.size (floor, sobrante se pierde)
+    — solo da XP si !task.hasBeenRewarded (controlado en MainViewModel)
   addNightBonus(score, bestStreak, categories): igual con bonus nocturno
   addXp(category, xp):
     — oldLevel = 1 si estado no existía, si no existing.currentLevel
@@ -288,7 +296,7 @@ Nivel de criatura individual:
 
 FLUJO DE DESBLOQUEO DE CRIATURAS
 
-Al completar tarea → addXpForTask → List<CreatureSpec> nuevas → pendingUnlocks en UiState
+Al completar tarea (si !hasBeenRewarded) → addXpForTask → List<CreatureSpec> nuevas → pendingUnlocks en UiState
 Al resumen nocturno → addNightBonus → List<CreatureSpec> → DataStore
 Al arrancar → checkPendingUnlocks → DataStore → UiState
 Orden diálogos: pendingSummary → pendingUnlocks
@@ -304,7 +312,7 @@ AquariumCreatures recibe:
   creatureLevelBySpecies: Map<CreatureSpecies, Int>
   creaturesData: List<MarineCreature>
   freezeState: CreatureFreezeState
-  onCreatureLongPress: (MarineCreature, CreatureSpec) -> Unit
+  onCreatureTap: (MarineCreature, CreatureSpec) -> Unit
 
 Filtro: state.isUnlocked && state.currentLevel >= spec.unlockLevel
 
@@ -315,23 +323,38 @@ Zona de nado: asignada por especie (SwimZone). personalYFraction distribuye la b
 dentro de la banda, evitando que criaturas de la misma zona estén a la misma altura.
 
 Sistema de movimiento por capas (criaturas nadadoras):
+  0. Tempo warping — deforma t para velocidad variable continua y monotónica.
+     tempoVariation: [0..1) controla la amplitud. Período ~37s variado por phase.
+     t' = t + (k·P/TAU)·(cos(φ) − cos(TAU·t/P + φ)). Derivada > 0 siempre (k<1).
+     Crustáceos (0.55-0.60): ritmo muy variable. Ballenas (0.05): casi constante.
   1. Onda primaria — waveCount (entero) → sin salto en loop
   2. Onda secundaria — waveCount·PHI (irracional) → patrón aperiódico
   3. Deriva lenta — driftSpeed fraccionario → eje Y siempre diferente entre ciclos
   4. Acoplamiento vertical — verticalCoupling: arco ligado a posición X (delfín salta)
   5. Microwobble — alta frecuencia (~1.5Hz), simula aleta/cola
-  6. Perturbación X — xErraticness: microaceleraciones horizontales (clownfish, medusa)
+
+Capas 1-2 y 4 usan tiempo deformado (tSwim). Capas 3 y 5 usan tiempo real (tRaw).
+
+Variación por instancia: función determinista instanceNoise(index, seed) aplica ±12%
+sobre swimDuration, wobbleAmplitude, driftSpeed y tempoVariation. Dos criaturas de
+la misma especie nunca son idénticas.
+
+Márgenes simétricos: el margen X depende del tamaño del emoji (halfIcon + 1%).
+El emoji siempre está completamente visible en ambos extremos. Sin mini-teletransportaciones.
+
+Perturbación X — xErraticness: microaceleraciones horizontales (clownfish, gamba, medusa).
 
 Criaturas fijas: ondeo de corriente escalado por fixedWobbleScale (0=rígido, 1.8=anemona).
 Hit-testing: `findHitCreature` compara offset del toque contra posiciones reales del último
 frame dibujado (creaturePositions). Un único pointerInput en el Layout — no Boxes superpuestos.
-Freeze on tap: la criatura se congela en su posición al pulsar; se descongela en onDismiss.
+Radio de hit ampliado: maxOf(iconSize * 2.5f, 75f).
+Tap: la criatura se congela en su posición al pulsar; se descongela en onDismiss.
 
 ---
 
 DETALLE DE CRIATURA (CreatureDetailDialog)
 
-Trigger: tap en AquariumCreatures → freezeState.freeze + onCreatureLongPress
+Trigger: tap en AquariumCreatures → freezeState.freeze + onCreatureTap
 Dialog OceanMid con:
   - Emoji (56sp)
   - displayName (de CreatureExtensions.kt)
@@ -365,8 +388,8 @@ MainUiState:
   pendingSummary, pendingUnlocks, isLoading, error
 
 MainViewModel funciones:
-  selectDate, toggleTaskCompleted, addOneTimeTask,
-  addRecurringTask(title, blockId, time?, recurrence),
+  selectDate, toggleTaskCompleted (hasBeenRewarded + EXPIRED↔COMPLETED),
+  addOneTimeTask, addRecurringTask(title, blockId, time?, recurrence),
   updateOneTimeTask, updateRecurringTask(sourceId, title, blockId, time?, recurrence),
   deleteTask, deleteRecurringTaskInstance, deleteRecurringTaskFromDate, deleteRecurringTaskAll,
   postponeTask(task, date, time?),
@@ -398,20 +421,36 @@ Long press en cabecera del bloque → TaskFormSheet(initialBlockId=block.id)
 Long press en tarea → menú contextual: Editar / Posponer / Eliminar
   Editar recurrente → diálogo scope (solo esta / futuras / todas)
   Eliminar recurrente → diálogo scope
+  Posponer: disponible para PENDING y EXPIRED (no para COMPLETED ni POSTPONED)
 
 Drawer: BLOQUES + ECOSISTEMA + AJUSTES; scroll interno (85% pantalla con LocalWindowInfo).
   Sección ECOSISTEMA: botón "Mi ecosistema 🐠" → navega a EcosystemScreen.
 FAB 🐟: AquariumFullScreen.
 Resumen nocturno: no reaparece si ya fue cerrado (fecha en DataStore).
 
+Tareas EXPIRED: muestran ⌛ + checkbox. Siguen siendo completables (fuera de plazo).
+
 ---
 
 RESUMEN NOCTURNO
 
-NightSummaryProcessor.processDay (idempotente):
-  Evalúa: OneTime con date<=fecha resumen O completadas sin fecha.
-  Excluye: POSTPONED, tareas futuras no completadas.
+NightSummaryProcessor.processDay(date, blockNames, blockCategories, summaryTime):
+  Idempotente: si ya existe DaySummary para esa fecha, no hace nada.
+  Evalúa: tareas COMPLETED (siempre) + tareas PENDING del día con hora <= summaryTime.
+  Ignora: tareas sin hora, tareas con hora posterior al summaryTime, tareas futuras.
+  Las tareas ignoradas se evaluarán en el siguiente resumen.
   Expira PENDING evaluables → score → streaks → bonus XP → unlocks → DaySummary.
+
+NightSummaryWorker: lee summaryTime con getNightSummaryTime().first() y lo pasa a processDay.
+
+---
+
+INPUTS DE FECHA Y HORA
+
+TimeInputField y DateInputField son campos readonly (sin BasicTextField, sin emojis).
+Click sobre el campo abre el picker correspondiente.
+TimePicker usa TimePickerDefaults.colors() con paleta marina (OceanMid, Accent, etc.).
+DatePicker usa DatePickerDefaults.colors() con la misma paleta.
 
 ---
 
@@ -428,23 +467,24 @@ Orden correcto:
 
 ROADMAP
 
-MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅
+MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅ | Sprint bugfixes ✅
 
-Sprint pre-v3 completado:
-✅ Tap en criatura → CreatureDetailDialog (nickname editable, XpBar, fecha desbloqueo)
-✅ EcosystemScreen — pantalla "Mi ecosistema" con grid por categoría
-✅ Drawer: sección ECOSISTEMA con navegación a EcosystemScreen
-✅ Patrón de nado orgánico: SwimZone, EasingType, personalYFraction, verticalCoupling,
-   microWobble, xErraticness, fixedWobbleScale, waveCount, erraticness, driftSpeed
-✅ CreatureExtensions.kt — displayName y xpRequiredForLevel compartidos
-✅ Fix PostponeSheet: se cierra correctamente tras posponer
-✅ Fix hit-testing criaturas: un único pointerInput con posiciones reales de frame
+Sprint bugfixes completado:
+✅ Resumen nocturno: filtrado por summaryTime, no evalúa tareas futuras ni sin hora
+✅ Tareas EXPIRED completables: ⌛ + checkbox, desmarcar vuelve a EXPIRED si DaySummary existe
+✅ XP duplicado: hasBeenRewarded en DayTask, migración real Room v8→v9
+✅ Migración real Room: MIGRATION_8_9, eliminado fallbackToDestructiveMigration
+✅ TimePicker: colores explícitos con TimePickerDefaults.colors()
+✅ Inputs fecha/hora: readonly, click abre picker, eliminados emojis y BasicTextField
+✅ Patrones de nado: tempo warping, variación por instancia, márgenes simétricos,
+   velocidades ajustadas (clownfish, shrimp, dolphin, squid), crustáceos con profundidad
+   (verticalCoupling, tempoVariation), hitbox ampliado
+✅ Tap en criatura (en vez de long press): onCreatureTap
 
 v3 — Revisión, pulido y onboarding:
 ⬜ Testing automatizado (dominio) + manual
 ⬜ Animación entrada criatura al desbloquearse
 ⬜ Revisión gestos y edge cases
-⬜ Migrar a migraciones reales Room
 ⬜ Preparar firma de la app
 ⬜ Tutorial de primera vez (onboarding)
 
