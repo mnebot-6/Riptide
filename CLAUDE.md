@@ -81,6 +81,14 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - Tareas EXPIRED completables con checkbox
 - TimePicker y DatePicker con paleta marina
 - Inputs de fecha/hora readonly (click abre picker)
+- Superficie del agua animada (olas con `Path` + `quadraticTo`, cresta doble)
+- Fondo marino elaborado (arena con textura, 11 rocas en 3 estilos)
+- Cielo dinámico por hora del día (7 periodos: noche, amanecer, mañana, día, atardecer, crepúsculo)
+- Flora Canvas: BrainCoral, Anemone, Kelp — crecimiento visual por nivel, múltiples instancias
+- `CreatureIcon` composable reutilizable (Canvas animado para flora, emoji para el resto)
+- Crustáceos diferenciados en altura (Lobster pegado al suelo, Hermit Crab algo más arriba)
+- EcosystemScreen con botón de retroceso y `CreatureIcon` en cards
+- Mayor opacidad en tarjetas de tarea para legibilidad
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
@@ -93,19 +101,23 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 
 ```
 composeApp/src/
-├── commonMain/kotlin/com/nmarsollier/riptide/
+├── commonMain/kotlin/com/mnebot/riptide/
 │   ├── domain/
 │   │   ├── model/          # WorkBlock, DayTask, RecurringTaskDef, MarineCreature, etc.
 │   │   ├── repository/     # Interfaces de repositorios
 │   │   └── processor/      # EcosystemProcessor, NightSummaryProcessor, RecurringTaskGenerator, MarineCategoryAssigner
 │   └── presentation/
-│       ├── MainViewModel.kt           # ViewModel principal
-│       ├── main/MainScreen.kt         # Pantalla principal (Box con capas)
-│       ├── aquarium/AquariumCreatures.kt  # Sistema de animación de criaturas
-│       ├── ecosystem/EcosystemScreen.kt   # Grid de criaturas desbloqueadas
-│       └── theme/Theme.kt             # Paleta de colores marina
-└── androidMain/kotlin/com/nmarsollier/riptide/
+│       ├── main/MainScreen.kt              # Pantalla principal (Box con capas)
+│       ├── main/MainViewModel.kt           # ViewModel principal
+│       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino
+│       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
+│       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación 60fps, hit-testing
+│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() + CreatureIcon composable
+│       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
+│       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer
+│       └── theme/Theme.kt                  # Paleta de colores marina
+└── androidMain/kotlin/com/mnebot/riptide/
     └── data/local/
-        ├── AppDatabase.kt             # Room DB, versión actual y migraciones
-        └── dao/                       # DAOs para cada entidad
+        ├── db/RiptideDatabase.kt       # Room DB v9, migraciones reales
+        └── dao/                        # DAOs para cada entidad
 ```

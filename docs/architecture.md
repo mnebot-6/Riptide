@@ -188,10 +188,30 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 
 ---
 
+## AquariumBackground — cielo, superficie y fondo marino
+
+- **Cielo dinámico**: `skyForHour(hour)` → 7 periodos (noche, amanecer, mañana dorada, día, atardecer, crepúsculo, noche tardía). Usa `kotlin.time.Clock.System.now()`.
+- **Superficie del agua**: ola animada con `Path` + `quadraticTo` (8 segmentos, 9.dp amplitud). Cresta principal + cresta secundaria (60% amplitud) para efecto de profundidad.
+- **Fondo marino**: banda de arena con gradiente + 4 líneas de textura ondulada. 11 rocas (3 grandes, 4 medianas, 4 pequeñas) en 3 estilos: suave, anguloso, irregular. Sombra de transición agua→arena.
+- **AquariumBounds**: `SURFACE_FRACTION = 0.08f`, `FLOOR_FRACTION = 0.88f`, compartidas entre background y criaturas.
+
+---
+
+## CreatureRenderer + CreatureIcon
+
+- `CreatureRenderer`: interfaz con `fun DrawScope.render(x, y, size, level, animTimeMs, mirrored)`.
+- `rendererFor(species)`: despacha entre Canvas renderers y `null` (emoji fallback).
+- Renderers actuales: `BrainCoralRenderer`, `AnemoneRenderer`, `KelpRenderer` (en `flora/`).
+- `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para flora, emoji escalado a la caja para el resto.
+- Usado en `EcosystemScreen` (52.dp) y `CreatureDetailDialog` (80.dp).
+
+---
+
 ## CreatureDetailDialog
 
 - Trigger: tap → `freezeState.freeze(species)` + `frozenTimeMap[species] = currentTimeMs`
 - La criatura queda congelada en su posición hasta que el dialog llama `onDismiss` → `unfreeze`
+- Muestra `CreatureIcon` (80.dp) — Canvas animado para flora, emoji para el resto.
 - Nickname: `BasicTextField` con overlay de placeholder. Permite guardar vacío → `null`.
 - `XpBar`: progreso al siguiente nivel sin números. Puntos de nivel (máx 10).
 - Persistencia: `viewModel.updateCreatureNickname` → `marineCreatureRepository.update`
@@ -201,8 +221,10 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 ## EcosystemScreen
 
 - Ruta: `ROUTE_ECOSYSTEM = "ecosystem"` en `Navigation.kt`
+- Botón de retroceso `←` en el header con `onNavigateBack` → `navController.popBackStack()`
 - Lee `uiState.ecosystemByCategory` y `uiState.creaturesData` del `MainViewModel` compartido
 - Grid 3 columnas con `IntrinsicSize.Max` por fila → altura uniforme
+- Cards desbloqueadas: `CreatureIcon` (52.dp) en lugar de emoji text
 - Cards bloqueadas: `progress = categoryLevel / spec.unlockLevel`
 
 ---

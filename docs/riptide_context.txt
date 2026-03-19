@@ -86,22 +86,31 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                      hasCompletedOnboarding, setOnboardingCompleted)
   presentation/
     aquarium/
-      AquariumBackground.kt
-      AquariumCreature.kt       (CreatureSpec con SwimZone, EasingType, personalYFraction,
-                                 verticalCoupling, microWobble, xErraticness, fixedWobbleScale,
-                                 tempoVariation; 24 especies en allCreatures;
+      AquariumBackground.kt    (Canvas: cielo dinámico 7 periodos via kotlin.time.Clock.System,
+                                 superficie con olas animadas cresta doble 9dp,
+                                 fondo marino arena+textura 11 rocas 3 estilos, burbujas)
+      AquariumBounds.kt        (SURFACE_FRACTION=0.08, FLOOR_FRACTION=0.88, surfaceY/floorY)
+      AquariumCreature.kt       (CreatureSpec +sizeMultiplier +instanceCount; SwimZone, EasingType,
+                                 personalYFraction, verticalCoupling, microWobble, xErraticness,
+                                 fixedWobbleScale, tempoVariation; 24 especies en allCreatures;
                                  tempo warping + variación por instancia + márgenes simétricos;
-                                 AquariumCreatures recibe ecosystemByCategory +
-                                 creatureLevelBySpecies + creaturesData;
+                                 múltiples instancias flora Canvas; crustáceos BOTTOM diferenciados;
                                  hit-testing con radio ampliado; tap → freeze + onCreatureTap)
-      CreatureDetailDialog.kt   (dialog OceanMid: emoji, displayName, nickname editable,
+      CreatureRenderer.kt       (CreatureRenderer interface + rendererFor(species) dispatch +
+                                 CreatureIcon @Composable: Canvas animado para flora, emoji fallback)
+      CreatureDetailDialog.kt   (dialog OceanMid: CreatureIcon 80dp, displayName, nickname editable,
                                  XpBar visual, fecha de desbloqueo)
       CreatureExtensions.kt     (displayName: String, xpRequiredForLevel(level): Int —
                                  compartido por CreatureDetailDialog y EcosystemScreen)
-      EcosystemScreen.kt        (pantalla nueva: grid 3 col por categoría; cards desbloqueadas
-                                 con nick/nivel, cards bloqueadas con silueta + barra progreso;
-                                 IntrinsicSize.Max para altura uniforme en cada fila;
+      EcosystemScreen.kt        (pantalla "Mi ecosistema": botón ← retroceso onNavigateBack,
+                                 grid 3 col por categoría; CreatureIcon 52dp en cards desbloqueadas,
+                                 cards bloqueadas con silueta + barra progreso;
+                                 IntrinsicSize.Max para altura uniforme;
                                  abre CreatureDetailDialog al pulsar)
+      flora/
+        BrainCoralRenderer.kt  (Canvas: domos con crestas, cluster multi-domo nivel 6+)
+        AnemoneRenderer.kt     (Canvas: tentáculos animados, 5→14 según nivel)
+        KelpRenderer.kt        (Canvas: tallos con hojas alternas, bosque multi-tallo nivel 6+)
     block/
       BlockFormScreen.kt
       BlockFormViewModel.kt

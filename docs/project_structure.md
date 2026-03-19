@@ -52,11 +52,16 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Archivo | Qué hace |
 |---|---|
-| `AquariumBackground.kt` | Canvas: degradado + plantas + burbujas |
-| `AquariumCreature.kt` | `CreatureSpec` (SwimZone, EasingType, personalYFraction, verticalCoupling, microWobble, xErraticness, fixedWobbleScale, **tempoVariation**), `allCreatures` (24), `AquariumCreatures`, `CreatureFreezeState`, hit-testing por posición real de frame, **tempo warping**, **variación por instancia**, **márgenes simétricos** |
-| `CreatureDetailDialog.kt` | Dialog OceanMid: emoji, nombre, nickname editable, XpBar sin números, fecha desbloqueo |
+| `AquariumBackground.kt` | Canvas: cielo dinámico por hora (7 periodos), superficie con olas animadas (cresta doble), fondo marino (arena con textura, 11 rocas 3 estilos), burbujas |
+| `AquariumBounds.kt` | `SURFACE_FRACTION=0.08`, `FLOOR_FRACTION=0.88`, `surfaceY(h)`, `floorY(h)` — compartidas entre background y criaturas |
+| `AquariumCreature.kt` | `CreatureSpec` (+`sizeMultiplier`, `instanceCount`), SwimZone, EasingType, 24 especies, `AquariumCreatures`, `CreatureFreezeState`, hit-testing, tempo warping, variación por instancia, múltiples instancias de flora Canvas, crustáceos en BOTTOM diferenciados |
+| `CreatureRenderer.kt` | `CreatureRenderer` interface + `rendererFor(species)` dispatch + `CreatureIcon` @Composable (Canvas animado para flora, emoji fallback) |
+| `CreatureDetailDialog.kt` | Dialog OceanMid: `CreatureIcon(80dp)`, nombre, nickname editable, XpBar sin números, fecha desbloqueo |
 | `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos entre dialogs |
-| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": grid 3 col por categoría, cards desbloqueadas/bloqueadas, IntrinsicSize.Max, CreatureDetailDialog |
+| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": botón ← retroceso, grid 3 col, `CreatureIcon(52dp)` en cards desbloqueadas, cards bloqueadas con barra progreso |
+| `flora/BrainCoralRenderer.kt` | Canvas: domos con crestas, cluster multi-domo nivel 6+, colores coral/rosa |
+| `flora/AnemoneRenderer.kt` | Canvas: tentáculos con `quadraticTo`, ondulación interna animada, 5→14 tentáculos según nivel |
+| `flora/KelpRenderer.kt` | Canvas: tallos con hojas alternas, ondulación creciente, bosque multi-tallo nivel 6+ |
 
 ### `presentation/main/`
 

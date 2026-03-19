@@ -77,6 +77,9 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint v2 ampliado — 9 categorías, 24 especies, XP individual | ✅ |
 | Sprint pre-v3 — Detalle criatura, ecosistema, nado orgánico | ✅ |
 | Sprint bugfixes — Resumen nocturno, XP, nado, inputs | ✅ |
+| Sprint bugfixes 2 — Emoji centrado, fecha resumen, summaryTime | ✅ |
+| Sprint visual — Superficie, fondo marino, flora Canvas | ✅ |
+| Sprint visual 2 — Cielo dinámico, CreatureIcon, UI pulida | ✅ |
 | v3 — Onboarding, animaciones, testing | ⬜ |
 | v4 — Fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social | ⬜ |
