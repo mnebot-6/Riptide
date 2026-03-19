@@ -102,6 +102,25 @@
 
 ---
 
+## ✅ Sprint visual — Superficie, fondo marino y flora Canvas
+
+- **Superficie del agua**: ola animada en la parte superior (8% pantalla) con `Path` + `quadraticTo`. Zona sobre la ola con tono más claro. Cresta blanca sutil animada con `swayAngle`.
+- **Fondo marino**: banda de arena con gradiente en la parte inferior (88% pantalla). 5 rocas decorativas con `Path`. Línea de transición agua→arena.
+- **Gradiente invertido**: más claro arriba (luz del sol) → más oscuro en la profundidad. Color stops alineados con superficie y suelo.
+- **AquariumBounds**: constantes compartidas `SURFACE_FRACTION` y `FLOOR_FRACTION` usadas por background y criaturas.
+- **CreatureRenderer**: interfaz de renderizado extensible. `rendererFor(species)` despacha entre Canvas y emoji. Preparado para migrar todas las especies progresivamente.
+- **Flora Canvas** (3 renderers):
+  - **BrainCoralRenderer**: domos con crestas, cluster multi-domo a nivel 6+. Colores coral/rosa.
+  - **AnemoneRenderer**: tentáculos con `quadraticTo`, ondulación interna con `animTimeMs`. 5→14 tentáculos según nivel. Puntos brillantes en puntas.
+  - **KelpRenderer**: tallos con hojas alternas, ondulación creciente hacia la punta. Bosque multi-tallo a nivel 6+.
+- **Anclaje al suelo**: flora, moluscos y decoraciones se anclan a `floorY`. Renderers dibujan hacia arriba desde la base.
+- **Crustáceos en el suelo**: Lobster y Hermit Crab pasan de `SwimZone.LOWER` a `SwimZone.BOTTOM`. Shrimp se mantiene nadando en LOWER.
+- **Y clamping global**: ninguna criatura nadadora atraviesa superficie ni suelo. Excepción: `SwimZone.SURFACE` (delfín, ballena azul) pueden saltar por encima de la línea de agua.
+- **Plantas decorativas eliminadas**: las 8 plantas hardcodeadas del AquariumBackground se eliminan — la flora Canvas las reemplaza con vida y crecimiento.
+- **Burbujas ajustadas**: nacen desde `floorY`, se desvanecen antes de `surfaceY`.
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales

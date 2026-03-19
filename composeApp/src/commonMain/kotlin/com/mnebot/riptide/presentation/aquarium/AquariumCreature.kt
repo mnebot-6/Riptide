@@ -229,11 +229,11 @@ val allCreatures = listOf(
     // verticalCoupling simula paso sobre irregularidades del fondo.
     // CRAWL easing se mantiene — solo ganan dimensionalidad vertical y ritmo variable.
     //
-    // Lobster — cota más baja (0.85). Lento con ritmo variable.
+    // Lobster — cota más baja. Lento con ritmo variable.
     // verticalCoupling 0.15 = sube ligeramente al pasar "rocas" del fondo.
     // tempoVar 0.55 = a veces camina decidido, a veces casi para.
     CreatureSpec("🦞", CreatureSpecies.LOBSTER,
-        MarineCategory.CRUSTACEAN, 2, 16000, 0.18f, 0.03f, SwimZone.LOWER,
+        MarineCategory.CRUSTACEAN, 2, 16000, 0.18f, 0.03f, SwimZone.BOTTOM,
         personalYFraction = 0.85f, waveCount = 1,  erraticness = 0.12f,
         driftSpeed = 0.13f, driftAmplitude = 0.14f, pauseFraction = 0.28f,
         easingType = EasingType.CRAWL, verticalCoupling = 0.15f,
@@ -244,7 +244,7 @@ val allCreatures = listOf(
     // verticalCoupling 0.20 = sube y baja al explorar. xErraticness 0.06 = tanteo lateral.
     // tempoVar 0.60 = el más variable de los crustáceos.
     CreatureSpec("🦀", CreatureSpecies.HERMIT_CRAB,
-        MarineCategory.CRUSTACEAN, 4, 13000, 0.22f, 0.04f, SwimZone.LOWER,
+        MarineCategory.CRUSTACEAN, 4, 13000, 0.22f, 0.04f, SwimZone.BOTTOM,
         personalYFraction = 0.55f, waveCount = 1,  erraticness = 0.55f,
         driftSpeed = 0.21f, driftAmplitude = 0.18f, pauseFraction = 0.32f,
         easingType = EasingType.CRAWL, verticalCoupling = 0.20f,
@@ -585,12 +585,22 @@ fun AquariumCreatures(
                     val y: Float
 
                     if (spec.swimDuration == 0) {
-                        // ── CRIATURA FIJA ─────────────────────────────────────────
+                        // ── CRIATURA FIJA — anclada al suelo ────────────────────
                         x = w * fixedX(fixedIndex, fixedCreatures.size)
                         fixedIndex++
+                        val floorY = AquariumBounds.floorY(h)
                         val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
-                        y = personalY + wobble
-                        drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
+                        val renderer = rendererFor(spec.species)
+                        y = if (renderer != null) {
+                            floorY + wobble  // renderer dibuja hacia arriba desde la base
+                        } else {
+                            floorY - iconSize * 0.3f + wobble  // emoji se eleva un poco
+                        }
+                        if (renderer != null) {
+                            with(renderer) { render(x, y, iconSize, creatureLevel, tRaw, false) }
+                        } else {
+                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
+                        }
 
                     } else {
                         // ── CRIATURA NADADORA ─────────────────────────────────────
@@ -693,12 +703,33 @@ fun AquariumCreatures(
                         // 5. MICROWOBBLE (biológico — usa tRaw)
                         val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
 
-                        y = (personalY + waveY + drift + coupledArc + micro).coerceIn(
-                            personalY - zoneBand * 1.15f,
-                            personalY + zoneBand * 1.15f
-                        )
+                        // Y base según zona
+                        val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
+                            // Crustáceos en el suelo: anclar a floorY
+                            val floorY = AquariumBounds.floorY(h)
+                            floorY - iconSize * 0.3f + coupledArc + micro
+                        } else {
+                            (personalY + waveY + drift + coupledArc + micro).coerceIn(
+                                personalY - zoneBand * 1.15f,
+                                personalY + zoneBand * 1.15f
+                            )
+                        }
 
-                        drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight)
+                        // Y clamping global: no atravesar superficie ni suelo
+                        val surfaceLimit = if (spec.swimZone == SwimZone.SURFACE) {
+                            halfIcon  // delfín/ballena pueden saltar fuera del agua
+                        } else {
+                            AquariumBounds.surfaceY(h) + halfIcon
+                        }
+                        val floorLimit = AquariumBounds.floorY(h) - halfIcon
+                        y = rawY.coerceIn(surfaceLimit, floorLimit)
+
+                        val renderer = rendererFor(spec.species)
+                        if (renderer != null) {
+                            with(renderer) { render(x, y, iconSize, creatureLevel, tRaw, goingRight) }
+                        } else {
+                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight)
+                        }
                     }
 
                     // Hitbox: radio ampliado para facilitar tap en criaturas en movimiento
