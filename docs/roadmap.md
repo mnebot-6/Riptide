@@ -94,6 +94,14 @@
 
 ---
 
+## ✅ Sprint bugfixes 2
+
+- **Emoji centrado**: `drawText` en Android Canvas dibujaba el emoji con el borde izquierdo en `x` y la baseline en `y`, desalineado respecto al hitbox y al punto de mirror. Fix: `textAlign = CENTER` + `drawY = y - (ascent + descent) / 2f`. Hitbox y flip de mirror ahora coinciden con el centro visual real.
+- **Resumen nocturno con fecha correcta**: `NightSummaryWorker` usaba `Clock.System.now().date` en el momento de ejecución. Si el móvil estaba apagado a las 23:59, el Worker ejecutaba al día siguiente y procesaba el día incorrecto. Fix: la fecha objetivo se calcula en `schedule()` y se pasa como `InputData("targetDate")`. El Worker la lee al ejecutar.
+- **summaryTime en processDay de inicio**: `MainActivity` llamaba `processDay(yesterday)` sin `summaryTime`, por lo que ninguna tarea OneTime era evaluable (filtro `summaryTime != null` fallaba) y el resumen de ayer contaba 0 tareas. Fix: se lee `nightTime` antes de la llamada y se pasa como `summaryTime`.
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales

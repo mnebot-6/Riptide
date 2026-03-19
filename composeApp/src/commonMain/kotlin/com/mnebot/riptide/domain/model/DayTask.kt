@@ -4,7 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
-enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
+enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED, CANCELLED }
 
 sealed class TaskSchedule {
     data class OneTime(

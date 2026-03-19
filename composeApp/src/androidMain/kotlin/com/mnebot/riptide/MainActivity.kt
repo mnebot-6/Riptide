@@ -77,9 +77,8 @@ class MainActivity : ComponentActivity() {
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
                 .minus(1, DateTimeUnit.DAY)
 
-            processor.processDay(yesterday, blockNames, blockCategories)
-
             val nightTime = scheduler.getNightSummaryTime().first()
+            processor.processDay(yesterday, blockNames, blockCategories, nightTime)
             scheduler.scheduleWorker(nightTime)
 
             viewModel.reload()

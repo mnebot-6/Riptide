@@ -192,6 +192,7 @@ class MainViewModel(
             try {
                 val blocks = loadBlocksWithCategories()
                 val tasks = dayTaskRepository.getByDate(date)
+                    .filter { it.status != TaskStatus.CANCELLED }
                 val tasksByBlock: Map<String?, List<DayTask>> = tasks.groupBy { it.blockId }
 
                 val streaksByBlock = blocks.associate { block ->
@@ -302,7 +303,7 @@ class MainViewModel(
 
     fun deleteRecurringTaskInstance(task: DayTask) {
         viewModelScope.launch {
-            dayTaskRepository.delete(task.id)
+            dayTaskRepository.update(task.copy(status = TaskStatus.CANCELLED))
             loadDay(_uiState.value.selectedDate)
         }
     }

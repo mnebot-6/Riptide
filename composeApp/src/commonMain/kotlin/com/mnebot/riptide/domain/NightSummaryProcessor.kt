@@ -32,7 +32,9 @@ class NightSummaryProcessor(
         if (allTasks.isEmpty()) return
 
         // Excluir pospuestas
-        val nonPostponed = allTasks.filter { it.status != TaskStatus.POSTPONED }
+        val nonPostponed = allTasks.filter {
+            it.status != TaskStatus.POSTPONED && it.status != TaskStatus.CANCELLED
+        }
 
         // Tareas evaluables: las que tienen fecha <= fecha del resumen, o las que no tienen
         // fecha pero ya están completadas. Las sin fecha y sin completar se ignoran hoy.

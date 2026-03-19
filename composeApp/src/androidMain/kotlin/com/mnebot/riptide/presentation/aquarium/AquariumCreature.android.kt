@@ -16,13 +16,16 @@ actual fun DrawScope.drawEmoji(
         val paint = android.graphics.Paint().apply {
             isAntiAlias = true
             textSize = sizeSp.sp.toPx()
+            textAlign = android.graphics.Paint.Align.CENTER
         }
+        val fm = paint.fontMetrics
+        val drawY = y - (fm.ascent + fm.descent) / 2f
         val native = canvas.nativeCanvas
         native.save()
         if (mirrored) {
             native.scale(-1f, 1f, x, y)
         }
-        native.drawText(emoji, x, y, paint)
+        native.drawText(emoji, x, drawY, paint)
         native.restore()
     }
 }
