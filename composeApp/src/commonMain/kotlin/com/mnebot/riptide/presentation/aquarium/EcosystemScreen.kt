@@ -44,7 +44,8 @@ private fun MarineCategory.displayName(): String = when (this) {
 fun EcosystemScreen(
     ecosystemByCategory: Map<MarineCategory, EcosystemState>,
     creaturesData: List<MarineCreature>,
-    onCreatureNicknameChanged: (String, String) -> Unit
+    onCreatureNicknameChanged: (String, String) -> Unit,
+    onNavigateBack: () -> Unit = {}
 ) {
     var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
 
@@ -63,6 +64,15 @@ fun EcosystemScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
+                Text(
+                    text = "←",
+                    color = Accent,
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .clickable { onNavigateBack() }
+                        .padding(4.dp)
+                )
                 Text(
                     text = "Mi ecosistema",
                     color = TextPrimary,
@@ -206,7 +216,7 @@ private fun UnlockedCreatureCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(spec.emoji, fontSize = 32.sp)
+        CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(52.dp))
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = creature.nickname ?: spec.displayName,

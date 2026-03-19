@@ -170,7 +170,11 @@ data class CreatureSpec(
     val microWobble: Float         = 0.015f,
     val xErraticness: Float        = 0.00f,
     val fixedWobbleScale: Float    = 1.0f,
-    val tempoVariation: Float      = 0.0f
+    val tempoVariation: Float      = 0.0f,
+    // sizeMultiplier: ajuste manual de tamaño relativo al cálculo base
+    val sizeMultiplier: Float      = 1.0f,
+    // instanceCount: criaturas fijas con Canvas se renderizan este número de veces
+    val instanceCount: Int         = 1
 )
 
 val allCreatures = listOf(
@@ -186,7 +190,7 @@ val allCreatures = listOf(
         driftSpeed = 0.61f, driftAmplitude = 0.40f, pauseFraction = 0.02f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
         microWobble = 0.035f, xErraticness = 0.20f,
-        tempoVariation = 0.25f),
+        tempoVariation = 0.25f, sizeMultiplier = 0.72f),
 
     // Angelfish — elegante, barridos suaves. Referencia de "movimiento correcto".
     CreatureSpec("🐠", CreatureSpecies.ANGELFISH,
@@ -195,7 +199,7 @@ val allCreatures = listOf(
         driftSpeed = 0.29f, driftAmplitude = 0.36f, pauseFraction = 0.06f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
         microWobble = 0.018f, xErraticness = 0.05f,
-        tempoVariation = 0.15f),
+        tempoVariation = 0.15f, sizeMultiplier = 0.74f),
 
     // Pufferfish — torpe, lentísimo, un arco único, pausas largas.
     CreatureSpec("🐡", CreatureSpecies.PUFFERFISH,
@@ -208,20 +212,20 @@ val allCreatures = listOf(
 
     // ── FLORA ─────────────────────────────────────────────────────────────────
     //
-    // Brain Coral — absolutamente rígido. fixedWobbleScale=0.
+    // Brain Coral — absolutamente rígido. fixedWobbleScale=0. 4 instancias en el suelo.
     CreatureSpec("🪸", CreatureSpecies.BRAIN_CORAL,
         MarineCategory.FLORA,     2,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f),
+        fixedWobbleScale = 0.00f, instanceCount = 4),
 
-    // Anemone — se mece con la corriente. fixedWobbleScale=1.80 → ondeo pronunciado.
+    // Anemone — se mece con la corriente internamente vía animTimeMs.
     CreatureSpec("🌿", CreatureSpecies.ANEMONE,
         MarineCategory.FLORA,     4,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 1.80f),
+        fixedWobbleScale = 0.00f, instanceCount = 3),
 
-    // Kelp — meceo largo y suave. Menos que la anémona.
+    // Kelp — meceo largo y suave. Bosque de tallos.
     CreatureSpec("🎋", CreatureSpecies.KELP,
         MarineCategory.FLORA,     6,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 1.20f),
+        fixedWobbleScale = 0.00f, instanceCount = 4),
 
     // ── CRUSTACEAN ────────────────────────────────────────────────────────────
     //
@@ -232,22 +236,23 @@ val allCreatures = listOf(
     // Lobster — cota más baja. Lento con ritmo variable.
     // verticalCoupling 0.15 = sube ligeramente al pasar "rocas" del fondo.
     // tempoVar 0.55 = a veces camina decidido, a veces casi para.
+    // Lobster — pegado al suelo (personalYFraction=0.95). Se arrastra lentamente.
+    // verticalCoupling 0.25 = sube ligeramente al pasar sobre rocas del fondo.
     CreatureSpec("🦞", CreatureSpecies.LOBSTER,
         MarineCategory.CRUSTACEAN, 2, 16000, 0.18f, 0.03f, SwimZone.BOTTOM,
-        personalYFraction = 0.85f, waveCount = 1,  erraticness = 0.12f,
+        personalYFraction = 0.95f, waveCount = 1,  erraticness = 0.12f,
         driftSpeed = 0.13f, driftAmplitude = 0.14f, pauseFraction = 0.28f,
-        easingType = EasingType.CRAWL, verticalCoupling = 0.15f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.25f,
         microWobble = 0.012f, xErraticness = 0.00f,
         tempoVariation = 0.55f),
 
-    // Hermit Crab — explorador errático. Avanza a trompicones, cambia de ritmo.
-    // verticalCoupling 0.20 = sube y baja al explorar. xErraticness 0.06 = tanteo lateral.
-    // tempoVar 0.60 = el más variable de los crustáceos.
+    // Hermit Crab — explorador errático. Algo más alto que la langosta (personalYFraction=0.30).
+    // Avanza a trompicones y escala pequeñas rocas (verticalCoupling más alto).
     CreatureSpec("🦀", CreatureSpecies.HERMIT_CRAB,
         MarineCategory.CRUSTACEAN, 4, 13000, 0.22f, 0.04f, SwimZone.BOTTOM,
-        personalYFraction = 0.55f, waveCount = 1,  erraticness = 0.55f,
+        personalYFraction = 0.30f, waveCount = 1,  erraticness = 0.55f,
         driftSpeed = 0.21f, driftAmplitude = 0.18f, pauseFraction = 0.32f,
-        easingType = EasingType.CRAWL, verticalCoupling = 0.20f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.35f,
         microWobble = 0.014f, xErraticness = 0.06f,
         tempoVariation = 0.60f),
 
@@ -259,7 +264,7 @@ val allCreatures = listOf(
         driftSpeed = 0.41f, driftAmplitude = 0.45f, pauseFraction = 0.10f,
         easingType = EasingType.BURST, verticalCoupling = 0.00f,
         microWobble = 0.028f, xErraticness = 0.12f,
-        tempoVariation = 0.30f),
+        tempoVariation = 0.30f, sizeMultiplier = 0.72f),
 
     // ── MOLLUSK (fijos) ───────────────────────────────────────────────────────
     CreatureSpec("🐚", CreatureSpecies.SEA_URCHIN,
@@ -284,7 +289,7 @@ val allCreatures = listOf(
         driftSpeed = 0.23f, driftAmplitude = 0.26f, pauseFraction = 0.03f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.30f,
         microWobble = 0.008f, xErraticness = 0.00f,
-        tempoVariation = 0.12f),
+        tempoVariation = 0.12f, sizeMultiplier = 1.45f),
 
     // Moon Jellyfish — deriva completamente pasiva. erraticness=0.90 + xErraticness=0.22.
     // No "nada": es arrastrada por corrientes simuladas. Nunca repite el mismo camino.
@@ -555,10 +560,14 @@ fun AquariumCreatures(
             .drawWithContent {
                 drawContent()
                 val positions = mutableListOf<CreaturePosition>()
-                var fixedIndex = 0
 
                 // Leer elapsedMs una sola vez por frame (state observation aquí)
                 val nowMs = elapsedMs.value
+
+                // Pre-calcular distribución de flora Canvas (múltiples instancias)
+                val fixedEmojiCreatures = fixedCreatures.filter { rendererFor(it.species) == null }
+                val fixedCanvasCreatures = fixedCreatures.filter { rendererFor(it.species) != null }
+                val totalFloraSlots = fixedCanvasCreatures.sumOf { it.instanceCount }
 
                 unlockedCreatures.forEachIndexed { index, spec ->
                     val w = size.width
@@ -567,7 +576,7 @@ fun AquariumCreatures(
                     val creatureLevel = creatureLevelBySpecies[spec.species] ?: 1
                     val sizeScale = 0.8f + (creatureLevel - 1) * 0.10f
                     val baseSize = 28f * (1 + spec.unlockLevel / 15f)
-                    val iconSize = baseSize * sizeScale
+                    val iconSize = baseSize * sizeScale * spec.sizeMultiplier
 
                     // Criatura congelada usa su tiempo fijo; si no, usa el reloj global
                     val tRaw = if (freezeState.isFrozen(spec.species))
@@ -581,24 +590,38 @@ fun AquariumCreatures(
                     // Cota personal dentro de la banda. Determinista, no aleatoria.
                     val personalY = zoneCenter + (spec.personalYFraction - 0.5f) * zoneBand
 
-                    val x: Float
-                    val y: Float
+                    var x: Float = 0f
+                    var y: Float = 0f
+                    var hitboxAdded = false
 
                     if (spec.swimDuration == 0) {
-                        // ── CRIATURA FIJA — anclada al suelo ────────────────────
-                        x = w * fixedX(fixedIndex, fixedCreatures.size)
-                        fixedIndex++
                         val floorY = AquariumBounds.floorY(h)
-                        val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
                         val renderer = rendererFor(spec.species)
-                        y = if (renderer != null) {
-                            floorY + wobble  // renderer dibuja hacia arriba desde la base
-                        } else {
-                            floorY - iconSize * 0.3f + wobble  // emoji se eleva un poco
-                        }
+
                         if (renderer != null) {
-                            with(renderer) { render(x, y, iconSize, creatureLevel, tRaw, false) }
+                            // ── FLORA CANVAS — múltiples instancias en el suelo ──
+                            val canvasIdx = fixedCanvasCreatures.indexOf(spec)
+                            val slotsBefore = fixedCanvasCreatures.take(canvasIdx).sumOf { it.instanceCount }
+                            val renderSize = iconSize * 3.2f
+
+                            for (i in 0 until spec.instanceCount) {
+                                val slotIndex = slotsBefore + i
+                                val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
+                                val instanceAnim = tRaw + i * 5000L  // desfase de animación por instancia
+                                with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
+                                // Hitbox solo para la primera instancia
+                                if (i == 0) {
+                                    positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
+                                    hitboxAdded = true
+                                }
+                            }
+
                         } else {
+                            // ── CRIATURA FIJA EMOJI — posición en eje X distribuido ──
+                            val emojiIdx = fixedEmojiCreatures.indexOf(spec)
+                            x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
+                            val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
+                            y = floorY - iconSize * 0.3f + wobble
                             drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
                         }
 
@@ -705,9 +728,13 @@ fun AquariumCreatures(
 
                         // Y base según zona
                         val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
-                            // Crustáceos en el suelo: anclar a floorY
+                            // Crustáceos en el suelo: anclar a floorY con offset vertical por especie.
+                            // personalYFraction 0.95=pegado al suelo, 0.30=algo más arriba (cangrejo).
                             val floorY = AquariumBounds.floorY(h)
-                            floorY - iconSize * 0.3f + coupledArc + micro
+                            val bottomCoupling = h * 0.10f  // banda efectiva más grande para coupling
+                            val heightOffset = (1f - spec.personalYFraction) * h * 0.06f
+                            val coupledArcBottom = -sin(swimProgress * PI) * bottomCoupling * spec.verticalCoupling
+                            floorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
                         } else {
                             (personalY + waveY + drift + coupledArc + micro).coerceIn(
                                 personalY - zoneBand * 1.15f,
@@ -732,8 +759,10 @@ fun AquariumCreatures(
                         }
                     }
 
-                    // Hitbox: radio ampliado para facilitar tap en criaturas en movimiento
-                    positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2.5f, 75f)))
+                    // Hitbox (solo si no se añadió ya en el bloque de flora Canvas)
+                    if (!hitboxAdded) {
+                        positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2.5f, 75f)))
+                    }
                 }
 
                 creaturePositions.value = positions

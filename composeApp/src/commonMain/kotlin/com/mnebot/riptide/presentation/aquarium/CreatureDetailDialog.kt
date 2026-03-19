@@ -43,7 +43,7 @@ fun CreatureDetailDialog(
                 .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = spec.emoji, fontSize = 56.sp)
+            CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(80.dp))
 
             Spacer(Modifier.height(8.dp))
 

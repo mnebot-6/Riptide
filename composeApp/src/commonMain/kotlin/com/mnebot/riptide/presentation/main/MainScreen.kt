@@ -52,7 +52,7 @@ import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
 private val OceanLight = Color(0xFF2E5F9E)
-private val CardBackground = Color(0x33FFFFFF)
+private val CardBackground = Color(0x55FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 

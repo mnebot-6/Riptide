@@ -121,6 +121,23 @@
 
 ---
 
+## ✅ Sprint visual 2 — Mejoras de ecosistema
+
+- **Cielo dinámico por hora del día**: `skyForHour(hour)` devuelve `SkyColors(top, horizon)` para 7 periodos (noche, amanecer, mañana dorada, día, atardecer, crepúsculo, noche tardía). Usa `kotlin.time.Clock.System.now()`.
+- **Olas más animadas**: amplitud aumentada a 9.dp, cresta secundaria a 60% de amplitud para efecto de profundidad, 8 segmentos con fase variable.
+- **Fondo marino elaborado**: 11 rocas (3 grandes, 4 medianas, 4 pequeñas) con 3 estilos distintos (suave, anguloso, irregular). Líneas de textura de arena con `quadraticTo`. Sombra de transición agua→arena.
+- **Tamaños de peces ajustados**: `sizeMultiplier` por especie (Clownfish 0.72, Angelfish 0.74, MantaRay 1.45).
+- **Flora con múltiples instancias**: `instanceCount` por especie (BrainCoral=4, Anemone=3, Kelp=4). Distribuidas uniformemente en 5-95% del ancho. Animación desfasada por instancia (+5000ms).
+- **Anémona anclada al suelo**: flora Canvas usa `y = floorY` como base fija; el renderer dibuja hacia arriba con animación interna.
+- **Tamaño de flora escalado**: Canvas renderers usan `iconSize * 3.2f` como tamaño efectivo.
+- **Crustáceos diferenciados en altura**: Lobster en `personalYFraction=0.95` (pegado al suelo), Hermit Crab en `personalYFraction=0.30` (algo más arriba). Heightoffset calculado sobre banda de 6% de pantalla.
+- **`CreatureIcon` composable**: reutilizable para EcosystemScreen y CreatureDetailDialog. Canvas animado para flora (anemone ondeante, kelp meciéndose, coral estático). Emoji escalado al tamaño de caja para otras especies.
+- **EcosystemScreen**: botón de retroceso `←` en el header. Usa `CreatureIcon(52.dp)` en cards desbloqueadas.
+- **CreatureDetailDialog**: usa `CreatureIcon(80.dp)` en lugar de emoji estático `56.sp`.
+- **Opacidad de tarjetas de tarea**: `CardBackground` de `0x33` → `0x55` para mayor legibilidad sobre el fondo marino.
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales

@@ -94,7 +94,8 @@ fun NavGraphBuilder.mainGraph(
             creaturesData = uiState.creaturesData,
             onCreatureNicknameChanged = { creatureId, nickname ->
                 mainViewModel.updateCreatureNickname(creatureId, nickname)
-            }
+            },
+            onNavigateBack = { navController.popBackStack() }
         )
     }
 }
