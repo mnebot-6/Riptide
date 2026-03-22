@@ -26,10 +26,13 @@ import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.presentation.components.DateInputField
 import com.mnebot.riptide.presentation.components.TimeInputField
+import com.mnebot.riptide.presentation.localizedDays
 import com.mnebot.riptide.presentation.main.currentDate
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
@@ -38,11 +41,6 @@ private val CardBorder = Color(0x55FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
-
-private val days = listOf(
-    1 to "L", 2 to "M", 3 to "X", 4 to "J",
-    5 to "V", 6 to "S", 7 to "D"
-)
 
 @Composable
 fun TaskFormSheet(
@@ -72,6 +70,7 @@ fun TaskFormSheet(
             slots?.forEach { map[it.dayOfWeek] = Unit }
         }
     }
+    val days = localizedDays()
 
     Box(
         modifier = Modifier
@@ -101,7 +100,7 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                if (existingTask == null) "Nueva tarea" else "Editar tarea",
+                stringResource(if (existingTask == null) Res.string.title_new_task else Res.string.title_edit_task),
                 color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -109,12 +108,12 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            SheetSectionLabel("NOMBRE")
+            SheetSectionLabel(stringResource(Res.string.label_name))
             Spacer(modifier = Modifier.height(8.dp))
             SheetTextField(
                 value = title,
                 onValueChange = { title = it },
-                placeholder = "¿Qué tienes que hacer?"
+                placeholder = stringResource(Res.string.placeholder_task_title)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -124,7 +123,7 @@ fun TaskFormSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("¿Es una tarea recurrente?", color = TextSecondary, fontSize = 14.sp)
+                Text(stringResource(Res.string.label_recurring_toggle), color = TextSecondary, fontSize = 14.sp)
                 Switch(
                     checked = isRecurring,
                     onCheckedChange = { if (!forceRecurring) isRecurring = it },
@@ -139,7 +138,7 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (!isRecurring) {
-                SheetSectionLabel("FECHA")
+                SheetSectionLabel(stringResource(Res.string.label_date))
                 Spacer(modifier = Modifier.height(8.dp))
                 DateInputField(
                     value = selectedDate,
@@ -150,7 +149,7 @@ fun TaskFormSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                SheetSectionLabel("HORA (opcional)")
+                SheetSectionLabel(stringResource(Res.string.label_time_optional))
                 Spacer(modifier = Modifier.height(8.dp))
                 TimeInputField(
                     value = selectedTime,
@@ -158,7 +157,7 @@ fun TaskFormSheet(
                     nullable = true
                 )
             } else {
-                SheetSectionLabel("HORA (opcional)")
+                SheetSectionLabel(stringResource(Res.string.label_time_optional))
                 Spacer(modifier = Modifier.height(8.dp))
                 TimeInputField(
                     value = recurringTime,
@@ -168,7 +167,7 @@ fun TaskFormSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                SheetSectionLabel("DÍAS")
+                SheetSectionLabel(stringResource(Res.string.label_days))
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -196,12 +195,12 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            SheetSectionLabel(if (isRecurring) "BLOQUE" else "BLOQUE (opcional)")
+            SheetSectionLabel(stringResource(if (isRecurring) Res.string.label_block else Res.string.label_block_optional))
             Spacer(modifier = Modifier.height(8.dp))
 
             if (!isRecurring) {
                 BlockChip(
-                    label = "Sin bloque",
+                    label = stringResource(Res.string.chip_no_block),
                     color = Color(0x44FFFFFF),
                     isSelected = selectedBlockId == null,
                     onClick = { selectedBlockId = null }
@@ -235,7 +234,7 @@ fun TaskFormSheet(
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Cancelar", color = TextSecondary, fontSize = 15.sp)
+                    Text(stringResource(Res.string.btn_cancel), color = TextSecondary, fontSize = 15.sp)
                 }
 
                 Box(
@@ -258,7 +257,7 @@ fun TaskFormSheet(
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Guardar", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.btn_save), color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -273,7 +272,7 @@ fun TaskFormSheet(
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Eliminar tarea", color = Color(0xFFEA4335), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.btn_delete_task), color = Color(0xFFEA4335), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

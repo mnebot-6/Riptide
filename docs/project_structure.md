@@ -65,6 +65,20 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `flora/BrainCoralRenderer.kt` | Canvas: domos con crestas, cluster multi-domo nivel 6+, colores coral/rosa |
 | `flora/AnemoneRenderer.kt` | Canvas: tentáculos con `quadraticTo`, ondulación interna animada, 5→14 tentáculos según nivel |
 | `flora/KelpRenderer.kt` | Canvas: tallos con hojas alternas, ondulación creciente, bosque multi-tallo nivel 6+ |
+| `flora/PosidoniaRenderer.kt` | Canvas: cintas de hierba marina ancladas, oscilación por fase por hoja, matte de fibras nivel 5+ |
+| `flora/FanCoralRenderer.kt` | Canvas: árbol bifurcado recursivo, balanceo suave, malla nivel 3+, pólipos blancos nivel 5+ |
+| `fauna/MantaRayRenderer.kt` | Canvas: aleteo con onda progresiva, aletas cefálicas, cola ondulante, manchas ventrales nivel 3+ |
+| `fauna/SurgeonfishRenderer.kt` | Canvas: cuerpo azul cobalto, cola amarilla en media luna, máscara negra, escalpelo blanco |
+| `fauna/LionfishRenderer.kt` | Canvas: 11-13 espinas dorsales en abanico con membrana, aletas pectorales enormes, cuerpo rayado |
+| `fauna/SunfishRenderer.kt` | Canvas: disco circular, aletas dorsal/ventral enormes, clavus ondulado, parches de piel nivel 3+ |
+| `fauna/HammerheadRenderer.kt` | Canvas: cabeza en T con ojos en los extremos, contrasombreado, hendiduras branquiales nivel 3+ |
+| `fauna/BarracudaRenderer.kt` | Canvas: cuerpo 3× elongado, mandíbula prominente con dientes, dos aletas dorsales, cola bifurcada |
+| `fauna/ManateeRenderer.kt` | Canvas: cuerpo redondeado, cola paleta horizontal, aletas frontales, arrugas, bigotes |
+| `fauna/SpiderCrabRenderer.kt` | Canvas: caparazón pequeño, 10 patas larguísimas articuladas con animación por fase |
+| `fauna/CuttlefishRenderer.kt` | Canvas: falda de aletas ondulantes a lo largo del cuerpo, pupila en W, 8 brazos + 2 tentáculos |
+| `fauna/BlueRingedOctopusRenderer.kt` | Canvas: 8 brazos con ventosas, 16 anillos azules eléctricos pulsantes con `sin(t)` |
+| `fauna/SeaUrchinRenderer.kt` | Canvas: semiesfera con ~30 espinas radiales de longitud variable, 5 bandas de simetría |
+| `fauna/BarnacleRenderer.kt` | Canvas: cluster de 7 volcanes/conos con placas, cirros alimenticios animados nivel 3+ |
 
 ### `presentation/main/`
 

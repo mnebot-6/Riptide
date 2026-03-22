@@ -164,6 +164,18 @@
 
 ---
 
+## ✅ Sprint i18n + renderers — Traducciones y fauna Canvas
+
+- **Sistema de traducciones (i18n)**: `composeResources/values/strings.xml` (inglés, por defecto) + `values-es/strings.xml` (español). Todos los textos hardcodeados de la UI reemplazados por `stringResource(Res.string.key)`. El idioma se detecta automáticamente del dispositivo.
+- **`LocalizationExtensions.kt`**: `localizedDays()` @Composable (días de la semana localizados), `CreatureSpecies.displayNameRes()`, `MarineCategory.displayNameRes()`, `CreatureRarity.displayNameRes()` — extension functions que devuelven `StringResource`.
+- **13 nuevos renderers Canvas** para especies con emoji inadecuado o compartido:
+  - **Swimmers** (`fauna/`): `SurgeonfishRenderer` (azul cobalto, cola amarilla, escalpelo), `LionfishRenderer` (espinas dorsales en abanico, aletas pectorales enormes), `SunfishRenderer` (disco circular, clavus ondulado, aletas enormes), `HammerheadRenderer` (cabeza en T, ojos en los extremos), `BarracudaRenderer` (cuerpo 3× elongado, mandíbula prominente), `ManateeRenderer` (cuerpo patata, cola paleta, arrugas), `SpiderCrabRenderer` (caparazón pequeño, 10 patas larguísimas articuladas), `CuttlefishRenderer` (falda de aletas ondulantes, pupila en W), `BlueRingedOctopusRenderer` (16 anillos azules pulsantes)
+  - **Fondo fijo** (`fauna/`): `SeaUrchinRenderer` (semiesfera con 30 espinas radiales, 5 bandas), `BarnacleRenderer` (cluster de volcanes, cirros animados nivel 3+)
+  - **Flora** (`flora/`): `PosidoniaRenderer` (cintas de hierba marina oscilantes), `FanCoralRenderer` (árbol bifurcado recursivo, malla nivel 3+, pólipos nivel 5+)
+- **Emojis actualizados** en `AquariumCreature.kt`: SURGEONFISH 🐟→🐠, HAMMERHEAD 🔨→🦈, SEA_URCHIN 🐚→🌑
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales

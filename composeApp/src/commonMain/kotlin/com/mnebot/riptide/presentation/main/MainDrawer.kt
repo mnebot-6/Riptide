@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.components.TimeInputField
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xD90A1628)
 private val OceanMid = Color(0xD91B3A6B)
@@ -56,7 +58,7 @@ fun MainDrawer(
         ) {
             Text("🌊", fontSize = 28.sp)
             Spacer(modifier = Modifier.width(12.dp))
-            Text("Riptide", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.app_name), color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -69,26 +71,26 @@ fun MainDrawer(
                 .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState())
         ) {
-            SectionTitle("BLOQUES")
+            SectionTitle(stringResource(Res.string.section_blocks))
             Spacer(modifier = Modifier.height(8.dp))
             blocks.forEach { block ->
                 DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
             }
-            DrawerItem(icon = "➕", label = "Añadir bloque", onClick = onAddBlock)
+            DrawerItem(icon = "➕", label = stringResource(Res.string.btn_add_block), onClick = onAddBlock)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)
             Spacer(modifier = Modifier.height(20.dp))
 
-            SectionTitle("ECOSISTEMA")
+            SectionTitle(stringResource(Res.string.section_ecosystem))
             Spacer(modifier = Modifier.height(8.dp))
-            DrawerItem(icon = "🐠", label = "Mi ecosistema", onClick = onNavigateToEcosystem)
+            DrawerItem(icon = "🐠", label = stringResource(Res.string.btn_my_ecosystem), onClick = onNavigateToEcosystem)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)
             Spacer(modifier = Modifier.height(20.dp))
 
-            SectionTitle("AJUSTES")
+            SectionTitle(stringResource(Res.string.section_settings))
             Spacer(modifier = Modifier.height(12.dp))
             NightSummaryTimeSetting(
                 currentTime = nightSummaryTime,
@@ -118,7 +120,7 @@ private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (Loca
     ) {
         Text("🌙", fontSize = 18.sp)
         Spacer(modifier = Modifier.width(12.dp))
-        Text("Resumen nocturno", color = TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(stringResource(Res.string.label_night_summary), color = TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         TimeInputField(
             value = currentTime,
             onValueChange = { it?.let { t -> onTimeChanged(t) } },

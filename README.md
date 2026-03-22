@@ -81,6 +81,7 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint visual — Superficie, fondo marino, flora Canvas | ✅ |
 | Sprint visual 2 — Cielo dinámico, CreatureIcon, UI pulida | ✅ |
 | Sprint lootbox — Rareza, 40 especies, lootbox, EcosystemScreen overhaul | ✅ |
+| Sprint i18n + renderers — Traducciones EN/ES, 13 nuevos renderers Canvas | ✅ |
 | v3 — Onboarding, animaciones, testing | ⬜ |
 | v4 — Fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social | ⬜ |

@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.mnebot.riptide.domain.model.CreatureRarity
 import com.mnebot.riptide.domain.model.MarineCreature
+import com.mnebot.riptide.presentation.displayNameRes
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanMid = Color(0xFF1B3A6B)
 private val Accent = Color(0xFF7EC8E3)
@@ -48,9 +51,9 @@ fun CreatureDetailDialog(
 
             Spacer(Modifier.height(8.dp))
 
-            // displayName viene de CreatureExtensions.kt
+            // displayName via localized string resource
             Text(
-                text = spec.displayName,
+                text = stringResource(spec.species.displayNameRes()),
                 color = TextPrimary,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.SemiBold
@@ -66,7 +69,7 @@ fun CreatureDetailDialog(
                 CreatureRarity.LEGENDARY -> Color(0xFFFF9800)
             }
             Text(
-                text = spec.rarity.displayName,
+                text = stringResource(spec.rarity.displayNameRes()),
                 color = rarityColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
@@ -96,7 +99,7 @@ fun CreatureDetailDialog(
                     ) {
                         if (nickname.isEmpty()) {
                             Text(
-                                text = "Nombre...",
+                                text = stringResource(Res.string.placeholder_nickname),
                                 color = TextSecondary,
                                 fontSize = 15.sp,
                                 textAlign = TextAlign.Center,
@@ -129,7 +132,7 @@ fun CreatureDetailDialog(
             val month = date.monthNumber.toString().padStart(2, '0')
             val year = date.year
             Text(
-                text = "En el estanque desde el $day/$month/$year",
+                text = stringResource(Res.string.msg_in_tank_since, "$day/$month/$year"),
                 color = TextSecondary,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center
@@ -144,7 +147,7 @@ fun CreatureDetailDialog(
                 }
             ) {
                 Text(
-                    text = "Guardar",
+                    text = stringResource(Res.string.btn_save),
                     color = Accent,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
@@ -166,7 +169,7 @@ private fun XpBar(creature: MarineCreature) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Nivel ${creature.creatureLevel}",
+            text = stringResource(Res.string.label_level_full, creature.creatureLevel),
             color = Accent,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold

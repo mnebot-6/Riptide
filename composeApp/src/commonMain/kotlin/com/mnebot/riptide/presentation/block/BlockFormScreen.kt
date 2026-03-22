@@ -28,8 +28,11 @@ import com.mnebot.riptide.domain.model.WeeklySlot
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.generateUUID
 import com.mnebot.riptide.presentation.components.TimeInputField
+import com.mnebot.riptide.presentation.localizedDays
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
@@ -44,11 +47,6 @@ private val colorPalette = listOf(
     "#1A73E8", "#E8711A", "#34A853", "#EA4335",
     "#9C27B0", "#00BCD4", "#FF9800", "#607D8B",
     "#E91E63", "#795548", "#009688", "#F5C842"
-)
-
-private val days = listOf(
-    1 to "L", 2 to "M", 3 to "X", 4 to "J",
-    5 to "V", 6 to "S", 7 to "D"
 )
 
 @Composable
@@ -103,11 +101,11 @@ fun BlockFormScreen(
                         .clickable { onBack() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("←", color = TextPrimary, fontSize = 18.sp)
+                    Text(stringResource(Res.string.btn_back), color = TextPrimary, fontSize = 18.sp)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = if (existingBlock == null) "Nuevo bloque" else "Editar bloque",
+                    text = stringResource(if (existingBlock == null) Res.string.title_new_block else Res.string.title_edit_block),
                     color = TextPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -134,7 +132,7 @@ fun BlockFormScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "Guardar",
+                        stringResource(Res.string.btn_save),
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
@@ -145,31 +143,31 @@ fun BlockFormScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Nombre
-            SectionTitle("NOMBRE", horizontalPadding = true)
+            SectionTitle(stringResource(Res.string.label_name), horizontalPadding = true)
             Spacer(modifier = Modifier.height(8.dp))
             FormTextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = "Ej: Trabajo, Deporte, Lectura...",
+                placeholder = stringResource(Res.string.placeholder_block_name),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Icono
-            SectionTitle("ICONO", horizontalPadding = true)
+            SectionTitle(stringResource(Res.string.label_icon), horizontalPadding = true)
             Spacer(modifier = Modifier.height(8.dp))
             FormTextField(
                 value = icon,
                 onValueChange = { if (it.length <= 2) icon = it },
-                placeholder = "Escribe un emoji",
+                placeholder = stringResource(Res.string.placeholder_icon),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Color
-            SectionTitle("COLOR", horizontalPadding = true)
+            SectionTitle(stringResource(Res.string.label_color), horizontalPadding = true)
             Spacer(modifier = Modifier.height(8.dp))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -195,7 +193,7 @@ fun BlockFormScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Horario
-            SectionTitle("HORARIO", horizontalPadding = true)
+            SectionTitle(stringResource(Res.string.label_schedule), horizontalPadding = true)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -205,7 +203,7 @@ fun BlockFormScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("¿Tiene días y horario fijo?", color = TextSecondary, fontSize = 14.sp)
+                Text(stringResource(Res.string.label_schedule_toggle), color = TextSecondary, fontSize = 14.sp)
                 Switch(
                     checked = hasSchedule,
                     onCheckedChange = {
@@ -239,7 +237,7 @@ fun BlockFormScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Eliminar bloque",
+                        stringResource(Res.string.btn_delete_block),
                         color = Color(0xFFEA4335),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
@@ -257,9 +255,10 @@ private fun ScheduleSection(
     var sameTimeForAll by remember { mutableStateOf(false) }
     var sharedStart by remember { mutableStateOf<LocalTime?>(null) }
     var sharedEnd by remember { mutableStateOf<LocalTime?>(null) }
+    val days = localizedDays()
 
     // Selector de días
-    SectionTitle("DÍAS", horizontalPadding = true)
+    SectionTitle(stringResource(Res.string.label_days), horizontalPadding = true)
     Spacer(modifier = Modifier.height(8.dp))
     Row(
         modifier = Modifier
@@ -305,7 +304,7 @@ private fun ScheduleSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Mismo horario todos los días", color = Color(0xB3FFFFFF), fontSize = 13.sp)
+            Text(stringResource(Res.string.label_same_schedule), color = Color(0xB3FFFFFF), fontSize = 13.sp)
             Switch(
                 checked = sameTimeForAll,
                 onCheckedChange = { sameTimeForAll = it },
@@ -367,11 +366,11 @@ private fun SharedTimeRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text("Inicio", color = TextSecondary, fontSize = 13.sp)
+        Text(stringResource(Res.string.label_start_time), color = TextSecondary, fontSize = 13.sp)
         Spacer(modifier = Modifier.width(6.dp))
         TimeInputField(value = start, onValueChange = onStartChange, nullable = true, compact = true)
         Spacer(modifier = Modifier.width(16.dp))
-        Text("Fin", color = TextSecondary, fontSize = 13.sp)
+        Text(stringResource(Res.string.label_end_time), color = TextSecondary, fontSize = 13.sp)
         Spacer(modifier = Modifier.width(6.dp))
         TimeInputField(value = end, onValueChange = onEndChange, nullable = true, compact = true)
     }
@@ -402,11 +401,11 @@ private fun DayTimeRow(
             modifier = Modifier.width(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text("Inicio", color = TextSecondary, fontSize = 12.sp)
+        Text(stringResource(Res.string.label_start_time), color = TextSecondary, fontSize = 12.sp)
         Spacer(modifier = Modifier.width(6.dp))
         TimeInputField(value = startTime, onValueChange = onStartChange, nullable = true, compact = true)
         Spacer(modifier = Modifier.width(12.dp))
-        Text("Fin", color = TextSecondary, fontSize = 12.sp)
+        Text(stringResource(Res.string.label_end_time), color = TextSecondary, fontSize = 12.sp)
         Spacer(modifier = Modifier.width(6.dp))
         TimeInputField(value = endTime, onValueChange = onEndChange, nullable = true, compact = true)
     }

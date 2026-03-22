@@ -21,6 +21,9 @@ import com.mnebot.riptide.domain.model.CreatureRarity
 import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
+import com.mnebot.riptide.presentation.displayNameRes
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xFF0A1628)
 private val TextPrimary = Color(0xFFFFFFFF)
@@ -28,18 +31,6 @@ private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
 private val Accent = Color(0xFF7EC8E3)
 private val DividerColor = Color(0x33FFFFFF)
-
-private fun MarineCategory.displayName(): String = when (this) {
-    MarineCategory.FISH       -> "Peces"
-    MarineCategory.FLORA      -> "Flora"
-    MarineCategory.CRUSTACEAN -> "Crustáceos"
-    MarineCategory.MOLLUSK    -> "Moluscos"
-    MarineCategory.PELAGIC    -> "Pelágicos"
-    MarineCategory.CEPHALOPOD -> "Cefalópodos"
-    MarineCategory.REPTILE    -> "Reptiles"
-    MarineCategory.MAMMAL     -> "Mamíferos"
-    MarineCategory.DECORATION -> "Decoración"
-}
 
 private fun rarityColor(rarity: CreatureRarity): Color = when (rarity) {
     CreatureRarity.COMMON    -> Color(0xFF9E9E9E)
@@ -74,7 +65,7 @@ fun EcosystemScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 Text(
-                    text = "←",
+                    text = stringResource(Res.string.btn_back),
                     color = Accent,
                     fontSize = 22.sp,
                     modifier = Modifier
@@ -83,7 +74,7 @@ fun EcosystemScreen(
                         .padding(4.dp)
                 )
                 Text(
-                    text = "Mi ecosistema",
+                    text = stringResource(Res.string.title_ecosystem),
                     color = TextPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -173,7 +164,7 @@ private fun EcosystemCategorySection(
                 .padding(bottom = 4.dp)
         ) {
             Text(
-                text = category.displayName().uppercase(),
+                text = stringResource(category.displayNameRes()).uppercase(),
                 color = if (isUnlocked) TextSecondary else SectionLabel,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -184,7 +175,7 @@ private fun EcosystemCategorySection(
                 Text("🔒", fontSize = 11.sp)
             } else {
                 Text(
-                    text = "Nv. $categoryLevel",
+                    text = stringResource(Res.string.label_category_level, categoryLevel),
                     color = SectionLabel,
                     fontSize = 10.sp
                 )
@@ -284,7 +275,7 @@ private fun UnlockedCreatureCard(
         CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(52.dp))
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = creature.nickname ?: spec.displayName,
+            text = creature.nickname ?: stringResource(spec.species.displayNameRes()),
             color = TextPrimary,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
@@ -292,7 +283,7 @@ private fun UnlockedCreatureCard(
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "Nv. ${creature.creatureLevel}",
+            text = stringResource(Res.string.label_creature_level, creature.creatureLevel),
             color = Accent,
             fontSize = 10.sp
         )
@@ -325,7 +316,7 @@ private fun LockedCreatureCard(spec: CreatureSpec) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "???",
+            text = stringResource(Res.string.label_locked_creature),
             color = SectionLabel,
             fontSize = 10.sp,
             textAlign = TextAlign.Center

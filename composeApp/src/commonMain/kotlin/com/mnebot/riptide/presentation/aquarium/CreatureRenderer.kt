@@ -12,10 +12,23 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.CreatureSpecies
+import com.mnebot.riptide.presentation.aquarium.fauna.BarracudaRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.BarnacleRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.BlueRingedOctopusRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.CuttlefishRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.HammerheadRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.LionfishRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.ManateeRenderer
 import com.mnebot.riptide.presentation.aquarium.fauna.MantaRayRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.SeaUrchinRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.SpiderCrabRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.SunfishRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.SurgeonfishRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.AnemoneRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.BrainCoralRenderer
+import com.mnebot.riptide.presentation.aquarium.flora.FanCoralRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.KelpRenderer
+import com.mnebot.riptide.presentation.aquarium.flora.PosidoniaRenderer
 
 interface CreatureRenderer {
     fun DrawScope.render(
@@ -33,6 +46,19 @@ private val renderers = mapOf<CreatureSpecies, CreatureRenderer>(
     CreatureSpecies.ANEMONE to AnemoneRenderer,
     CreatureSpecies.KELP to KelpRenderer,
     CreatureSpecies.MANTA_RAY to MantaRayRenderer,
+    CreatureSpecies.SURGEONFISH to SurgeonfishRenderer,
+    CreatureSpecies.LIONFISH to LionfishRenderer,
+    CreatureSpecies.SUNFISH to SunfishRenderer,
+    CreatureSpecies.HAMMERHEAD to HammerheadRenderer,
+    CreatureSpecies.BARRACUDA to BarracudaRenderer,
+    CreatureSpecies.MANATEE to ManateeRenderer,
+    CreatureSpecies.SPIDER_CRAB to SpiderCrabRenderer,
+    CreatureSpecies.CUTTLEFISH to CuttlefishRenderer,
+    CreatureSpecies.BLUE_RINGED_OCTOPUS to BlueRingedOctopusRenderer,
+    CreatureSpecies.SEA_URCHIN to SeaUrchinRenderer,
+    CreatureSpecies.BARNACLE to BarnacleRenderer,
+    CreatureSpecies.POSIDONIA to PosidoniaRenderer,
+    CreatureSpecies.FAN_CORAL to FanCoralRenderer,
 )
 
 fun rendererFor(species: CreatureSpecies): CreatureRenderer? = renderers[species]

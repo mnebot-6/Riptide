@@ -221,8 +221,12 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 
 - `CreatureRenderer`: interfaz con `fun DrawScope.render(x, y, size, level, animTimeMs, mirrored)`.
 - `rendererFor(species)`: despacha entre Canvas renderers y `null` (emoji fallback).
-- Renderers actuales: `BrainCoralRenderer`, `AnemoneRenderer`, `KelpRenderer` (en `flora/`).
-- `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para flora, emoji escalado a la caja para el resto.
+- **17 renderers** registrados en el mapa de `CreatureRenderer.kt`:
+  - **`flora/`** (fijos, sin mirror): `BrainCoralRenderer`, `AnemoneRenderer`, `KelpRenderer`, `PosidoniaRenderer`, `FanCoralRenderer`
+  - **`fauna/`** (nadadores, con mirror): `MantaRayRenderer`, `SurgeonfishRenderer`, `LionfishRenderer`, `SunfishRenderer`, `HammerheadRenderer`, `BarracudaRenderer`, `ManateeRenderer`, `SpiderCrabRenderer`, `CuttlefishRenderer`, `BlueRingedOctopusRenderer`
+  - **`fauna/`** (fijos, sin mirror): `SeaUrchinRenderer`, `BarnacleRenderer`
+- Las criaturas con renderer nunca muestran emoji en el acuario ni en dialogs — solo en EcosystemScreen (locked cards al 10% opacity).
+- `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para cualquier especie con renderer, emoji escalado a la caja para el resto.
 - Usado en `EcosystemScreen` (52.dp) y `CreatureDetailDialog` (80.dp).
 
 ---

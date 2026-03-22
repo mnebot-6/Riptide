@@ -48,6 +48,9 @@ import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
 import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
+import com.mnebot.riptide.presentation.displayNameRes
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
@@ -269,7 +272,7 @@ fun MainScreen(
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ContextMenuItem("✏️ Editar") {
+                        ContextMenuItem(stringResource(Res.string.menu_edit)) {
                             if (task.sourceTaskId != null) {
                                 editingScopeTask = task
                             } else {
@@ -278,12 +281,12 @@ fun MainScreen(
                             contextMenuTask = null
                         }
                         if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
-                            ContextMenuItem("⏰ Posponer") {
+                            ContextMenuItem(stringResource(Res.string.menu_postpone)) {
                                 postponingTask = task
                                 contextMenuTask = null
                             }
                         }
-                        ContextMenuItem("🗑️ Eliminar", tint = Color(0xFFEA4335)) {
+                        ContextMenuItem(stringResource(Res.string.menu_delete), tint = Color(0xFFEA4335)) {
                             if (task.sourceTaskId != null) {
                                 deletingRecurringTask = task
                             } else {
@@ -317,21 +320,21 @@ fun MainScreen(
                 onDismissRequest = { editingScopeTask = null },
                 containerColor = OceanMid,
                 title = {
-                    Text("¿Qué quieres editar?", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.dialog_edit_scope_title), color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ContextMenuItem("Solo esta ocurrencia") {
+                        ContextMenuItem(stringResource(Res.string.dialog_edit_one)) {
                             editingTask = task
                             editingScopeTask = null
                         }
-                        ContextMenuItem("Esta y las futuras") {
+                        ContextMenuItem(stringResource(Res.string.dialog_edit_future)) {
                             // Marcamos con una convención: guardamos en editingTask pero
                             // el onSaveRecurring usará updateRecurringTask
                             editingTask = task.copy(sourceTaskId = task.sourceTaskId + "_future")
                             editingScopeTask = null
                         }
-                        ContextMenuItem("Todas las ocurrencias") {
+                        ContextMenuItem(stringResource(Res.string.dialog_edit_all)) {
                             editingTask = task.copy(sourceTaskId = task.sourceTaskId + "_all")
                             editingScopeTask = null
                         }
@@ -346,19 +349,19 @@ fun MainScreen(
                 onDismissRequest = { deletingRecurringTask = null },
                 containerColor = OceanMid,
                 title = {
-                    Text("¿Qué quieres eliminar?", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.dialog_delete_scope_title), color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ContextMenuItem("Solo esta ocurrencia") {
+                        ContextMenuItem(stringResource(Res.string.dialog_delete_one)) {
                             viewModel.deleteRecurringTaskInstance(task)
                             deletingRecurringTask = null
                         }
-                        ContextMenuItem("Esta y las futuras") {
+                        ContextMenuItem(stringResource(Res.string.dialog_delete_future)) {
                             viewModel.deleteRecurringTaskFromDate(task)
                             deletingRecurringTask = null
                         }
-                        ContextMenuItem("Todas las ocurrencias") {
+                        ContextMenuItem(stringResource(Res.string.dialog_delete_all)) {
                             viewModel.deleteRecurringTaskAll(task)
                             deletingRecurringTask = null
                         }
@@ -374,13 +377,13 @@ fun MainScreen(
                 onDismissRequest = { viewModel.dismissSummary() },
                 containerColor = OceanMid,
                 title = {
-                    Text("Resumen de ayer", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.title_night_summary), color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(summary.feedbackMessage, color = TextPrimary, fontSize = 15.sp)
                         Text(
-                            "${summary.tasksCompleted} de ${summary.tasksTotal} tareas completadas",
+                            stringResource(Res.string.msg_tasks_completed, summary.tasksCompleted, summary.tasksTotal),
                             color = TextSecondary,
                             fontSize = 13.sp
                         )
@@ -388,7 +391,7 @@ fun MainScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.dismissSummary() }) {
-                        Text("Cerrar", color = Color(0xFF7EC8E3))
+                        Text(stringResource(Res.string.btn_close), color = Color(0xFF7EC8E3))
                     }
                 }
             )
@@ -400,12 +403,13 @@ fun MainScreen(
         if (currentLootbox != null && uiState.pendingSummary == null) {
             if (revealedSpecies == null) {
                 // Estado 1: Lootbox cerrada
+                val categoryName = stringResource(currentLootbox.category.displayNameRes())
                 AlertDialog(
                     onDismissRequest = {},
                     containerColor = OceanMid,
                     title = {
                         Text(
-                            "¡Lootbox de ${currentLootbox.category.name.lowercase().replaceFirstChar { it.uppercase() }}!",
+                            stringResource(Res.string.title_lootbox, categoryName),
                             color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
                         )
                     },
@@ -417,7 +421,7 @@ fun MainScreen(
                         ) {
                             Text("🎁", fontSize = 56.sp)
                             Text(
-                                "Has alcanzado el nivel ${currentLootbox.categoryLevel}.\n¡Una nueva criatura espera!",
+                                stringResource(Res.string.msg_lootbox_level, currentLootbox.categoryLevel),
                                 color = TextSecondary,
                                 fontSize = 14.sp,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -426,7 +430,7 @@ fun MainScreen(
                     },
                     confirmButton = {
                         TextButton(onClick = { viewModel.openLootbox() }) {
-                            Text("Abrir 🎁", color = Color(0xFF7EC8E3))
+                            Text(stringResource(Res.string.btn_open_lootbox), color = Color(0xFF7EC8E3))
                         }
                     }
                 )
@@ -444,7 +448,7 @@ fun MainScreen(
                     onDismissRequest = {},
                     containerColor = OceanMid,
                     title = {
-                        Text("¡Algo nuevo en el estanque!", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(Res.string.title_creature_unlock), color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     },
                     text = {
                         Column(
@@ -454,15 +458,15 @@ fun MainScreen(
                         ) {
                             Text(revealedSpecies.emoji, fontSize = 48.sp)
                             Text(
-                                revealedSpecies.species.displayName,
+                                stringResource(revealedSpecies.species.displayNameRes()),
                                 color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                revealedSpecies.rarity.displayName,
+                                stringResource(revealedSpecies.rarity.displayNameRes()),
                                 color = rarityColor, fontSize = 12.sp, fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "¿Cómo quieres llamarle?",
+                                stringResource(Res.string.msg_creature_name_prompt),
                                 color = TextSecondary,
                                 fontSize = 14.sp,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -470,7 +474,7 @@ fun MainScreen(
                             OutlinedTextField(
                                 value = nickname,
                                 onValueChange = { nickname = it },
-                                placeholder = { Text("Nombre...", color = TextSecondary) },
+                                placeholder = { Text(stringResource(Res.string.placeholder_nickname), color = TextSecondary) },
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = TextPrimary,
@@ -486,7 +490,7 @@ fun MainScreen(
                             onClick = { viewModel.confirmUnlock(revealedSpecies, nickname) },
                             enabled = nickname.isNotBlank()
                         ) {
-                            Text("Bienvenido al estanque 🌊", color = Color(0xFF7EC8E3))
+                            Text(stringResource(Res.string.btn_welcome_creature), color = Color(0xFF7EC8E3))
                         }
                     }
                 )
@@ -728,7 +732,7 @@ private fun MainHeader(
             Text("🌊", fontSize = 22.sp)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                "Riptide",
+                stringResource(Res.string.app_name),
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -799,12 +803,12 @@ private fun MainContent(
                 CircularProgressIndicator(color = TextPrimary)
             }
             error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Error: $error", color = TextPrimary)
+                Text(stringResource(Res.string.msg_error, error), color = TextPrimary)
             }
             blocksWithTasks.isEmpty() && tasksByBlock[null].isNullOrEmpty() -> Box(
                 Modifier.fillMaxSize(), Alignment.Center
             ) {
-                Text("No hay tareas para hoy 🌊", color = TextSecondary, fontSize = 16.sp)
+                Text(stringResource(Res.string.msg_no_tasks), color = TextSecondary, fontSize = 16.sp)
             }
             else -> LazyColumn(
                 state = listState,
@@ -924,7 +928,7 @@ private fun BlockHeader(
             }
             if (streak >= 2) {
                 Text(
-                    text = "🔥 $streak días",
+                    text = stringResource(Res.string.msg_streak, streak),
                     color = Color(0xFFFFB347),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
@@ -1034,7 +1038,7 @@ private fun UnassignedSection(
                 contentAlignment = Alignment.Center
             ) { Text("📋", fontSize = 18.sp) }
             Spacer(modifier = Modifier.width(10.dp))
-            Text("Sin bloque", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(stringResource(Res.string.section_no_block), color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->

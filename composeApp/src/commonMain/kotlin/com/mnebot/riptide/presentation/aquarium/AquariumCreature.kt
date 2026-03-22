@@ -205,7 +205,7 @@ val allCreatures = listOf(
         tempoVariation = 0.10f),
 
     // Surgeonfish — rápido, zig-zag horizontal.
-    CreatureSpec("🐟", CreatureSpecies.SURGEONFISH,
+    CreatureSpec("🐠", CreatureSpecies.SURGEONFISH,
         MarineCategory.FISH, CreatureRarity.COMMON, 6500, 0.35f, 0.05f, SwimZone.UPPER,
         personalYFraction = 0.60f, waveCount = 3, erraticness = 0.50f,
         driftSpeed = 0.55f, driftAmplitude = 0.35f, pauseFraction = 0.02f,
@@ -302,7 +302,7 @@ val allCreatures = listOf(
         fixedWobbleScale = 0.00f),
 
     // ── MOLLUSK (fijos) ───────────────────────────────────────────────────────
-    CreatureSpec("🐚", CreatureSpecies.SEA_URCHIN,
+    CreatureSpec("🌑", CreatureSpecies.SEA_URCHIN,
         MarineCategory.MOLLUSK, CreatureRarity.COMMON,  0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f),
 
@@ -358,7 +358,7 @@ val allCreatures = listOf(
         tempoVariation = 0.06f),
 
     // Hammerhead — nado decidido, ligeramente errático.
-    CreatureSpec("🔨", CreatureSpecies.HAMMERHEAD,
+    CreatureSpec("🦈", CreatureSpecies.HAMMERHEAD,
         MarineCategory.PELAGIC, CreatureRarity.EPIC, 9000, 0.40f, 0.04f, SwimZone.MID,
         personalYFraction = 0.35f, waveCount = 2, erraticness = 0.25f,
         driftSpeed = 0.35f, driftAmplitude = 0.30f, pauseFraction = 0.04f,

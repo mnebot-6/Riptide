@@ -95,6 +95,8 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - EcosystemScreen: ordenamiento por rareza, barra de progreso por categoría, badges de rareza
 - CreatureDetailDialog: niveles numéricos, badge de rareza con color
 - Diálogo lootbox bifásico: cerrada (🎁 + categoría) → abierta (especie + rareza + nombre)
+- **i18n**: `composeResources/values/` (EN) + `values-es/` (ES), `LocalizationExtensions.kt` con extension functions para enums
+- **17 renderers Canvas**: 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
@@ -119,9 +121,10 @@ composeApp/src/
 │       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino
 │       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
 │       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación 60fps, hit-testing
-│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() + CreatureIcon composable
+│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (17 renderers) + CreatureIcon composable
 │       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
-│       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer
+│       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer, PosidoniaRenderer, FanCoralRenderer
+│       ├── aquarium/fauna/                 # MantaRayRenderer + 10 nuevos renderers (Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle)
 │       └── theme/Theme.kt                  # Paleta de colores marina
 └── androidMain/kotlin/com/mnebot/riptide/
     └── data/local/

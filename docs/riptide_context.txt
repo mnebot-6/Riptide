@@ -103,8 +103,8 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                  tempo warping + variación por instancia + márgenes simétricos;
                                  múltiples instancias flora Canvas; crustáceos BOTTOM diferenciados;
                                  hit-testing con radio ampliado; tap → freeze + onCreatureTap)
-      CreatureRenderer.kt       (CreatureRenderer interface + rendererFor(species) dispatch +
-                                 CreatureIcon @Composable: Canvas animado para flora, emoji fallback)
+      CreatureRenderer.kt       (CreatureRenderer interface + rendererFor(species) dispatch — 17 renderers;
+                                 CreatureIcon @Composable: Canvas animado si hay renderer, emoji fallback)
       CreatureDetailDialog.kt   (dialog OceanMid: CreatureIcon 80dp, displayName, badge rareza,
                                  nickname editable, XpBar con nivel numérico, fecha de desbloqueo)
       CreatureExtensions.kt     (displayName: String, xpRequiredForLevel(level): Int —
@@ -120,6 +120,22 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
         BrainCoralRenderer.kt  (Canvas: domos con crestas, cluster multi-domo nivel 6+)
         AnemoneRenderer.kt     (Canvas: tentáculos animados, 5→14 según nivel)
         KelpRenderer.kt        (Canvas: tallos con hojas alternas, bosque multi-tallo nivel 6+)
+        PosidoniaRenderer.kt   (Canvas: cintas de hierba marina ancladas, oscilación por fase, matte nivel 5+)
+        FanCoralRenderer.kt    (Canvas: árbol bifurcado recursivo, balanceo suave, malla nivel 3+, pólipos nivel 5+)
+      fauna/
+        MantaRayRenderer.kt    (Canvas: aleteo con onda progresiva, aletas cefálicas, cola ondulante)
+        SurgeonfishRenderer.kt (Canvas: azul cobalto, cola amarilla, máscara negra, escalpelo)
+        LionfishRenderer.kt    (Canvas: espinas dorsales en abanico con membrana, aletas pectorales enormes)
+        SunfishRenderer.kt     (Canvas: disco circular, aletas enormes, clavus ondulado)
+        HammerheadRenderer.kt  (Canvas: cabeza en T, ojos en extremos, gill slits nivel 3+)
+        BarracudaRenderer.kt   (Canvas: cuerpo 3× elongado, mandíbula prominente, dos dorsales)
+        ManateeRenderer.kt     (Canvas: cuerpo patata, cola paleta, arrugas, bigotes)
+        SpiderCrabRenderer.kt  (Canvas: 10 patas larguísimas articuladas con animación por fase)
+        CuttlefishRenderer.kt  (Canvas: falda de aletas ondulantes, pupila en W, brazos + tentáculos)
+        BlueRingedOctopusRenderer.kt (Canvas: 16 anillos azules pulsantes con sin(t))
+        SeaUrchinRenderer.kt   (Canvas: semiesfera con 30 espinas radiales, 5 bandas simetría)
+        BarnacleRenderer.kt    (Canvas: cluster volcanes/conos, placas, cirros nivel 3+)
+    LocalizationExtensions.kt  (localizedDays() @Composable; displayNameRes() para CreatureSpecies/MarineCategory/CreatureRarity)
     block/
       BlockFormScreen.kt
       BlockFormViewModel.kt

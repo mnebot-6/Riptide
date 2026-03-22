@@ -21,6 +21,8 @@ import com.mnebot.riptide.presentation.components.TimeInputField
 import com.mnebot.riptide.presentation.main.currentDate
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.stringResource
+import riptide.composeapp.generated.resources.*
 
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
@@ -38,6 +40,7 @@ fun PostponeSheet(
     var date by remember { mutableStateOf<LocalDate?>(currentDate()) }
     var time by remember { mutableStateOf<LocalTime?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    val dateRequiredMsg = stringResource(Res.string.msg_date_required)
 
     Box(
         modifier = Modifier
@@ -63,13 +66,13 @@ fun PostponeSheet(
                     .align(Alignment.CenterHorizontally)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Posponer tarea", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.title_postpone_task), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(task.title, color = TextSecondary, fontSize = 14.sp)
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "NUEVA FECHA",
+                stringResource(Res.string.label_new_date),
                 color = SectionLabel,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -85,7 +88,7 @@ fun PostponeSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "NUEVA HORA (opcional)",
+                stringResource(Res.string.label_new_time_optional),
                 color = SectionLabel,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -115,7 +118,7 @@ fun PostponeSheet(
                         .clickable { onDismiss() }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
-                ) { Text("Cancelar", color = TextSecondary, fontSize = 15.sp) }
+                ) { Text(stringResource(Res.string.btn_cancel), color = TextSecondary, fontSize = 15.sp) }
 
                 Box(
                     modifier = Modifier
@@ -124,7 +127,7 @@ fun PostponeSheet(
                         .background(Color(0xFF1A73E8))
                         .clickable {
                             if (date == null) {
-                                error = "La fecha es obligatoria"
+                                error = dateRequiredMsg
                                 return@clickable
                             }
                             onPostpone(date!!, time)
@@ -133,7 +136,7 @@ fun PostponeSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Posponer",
+                        stringResource(Res.string.btn_postpone),
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
