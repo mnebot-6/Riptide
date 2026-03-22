@@ -97,6 +97,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - Diálogo lootbox bifásico: cerrada (🎁 + categoría) → abierta (especie + rareza + nombre)
 - **i18n**: `composeResources/values/` (EN) + `values-es/` (ES), `LocalizationExtensions.kt` con extension functions para enums
 - **17 renderers Canvas**: 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
+- **Conversión de densidad para Canvas swimmers**: `renderSize = iconSize * density` iguala tamaño visual con emojis; `sizeMultiplier` recalibrado por especie según extensión visual del renderer
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
