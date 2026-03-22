@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import kotlin.time.Clock
+import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.sin
@@ -23,17 +24,53 @@ private val OceanShallow = Color(0xFF2E5F9E)
 private val OceanMid = Color(0xFF1B3A6B)
 private val OceanDeep = Color(0xFF0A1628)
 
-// ── Paleta del cielo según hora ────────────────────────────────────────────────
-private data class SkyColors(val top: Color, val horizon: Color)
+// ── Cielo con interpolación continua ─────────────────────────────────────────
+private data class SkyColors(val top: Color, val mid: Color, val horizon: Color)
 
-private fun skyForHour(hour: Int): SkyColors = when {
-    hour < 5 || hour >= 23  -> SkyColors(Color(0xFF060B1A), Color(0xFF0D1B3A))        // noche
-    hour < 7                 -> SkyColors(Color(0xFFB85C2A), Color(0xFFE8A048))        // amanecer
-    hour < 9                 -> SkyColors(Color(0xFFD4824A), Color(0xFFF0C060))        // mañana dorada
-    hour < 17                -> SkyColors(Color(0xFF4A90D9), Color(0xFF88C8F0))        // día
-    hour < 19                -> SkyColors(Color(0xFFCC5530), Color(0xFFE88840))        // atardecer
-    hour < 21                -> SkyColors(Color(0xFF6A2878), Color(0xFF9A5098))        // crepúsculo
-    else                     -> SkyColors(Color(0xFF0D0820), Color(0xFF1A1040))        // noche tardía
+private data class SkyKeyframe(val hour: Float, val top: Color, val mid: Color, val horizon: Color)
+
+private val skyKeyframes = listOf(
+    //                            hour    top (zenith)            mid                      horizon
+    SkyKeyframe( 0.0f, Color(0xFF060B1A), Color(0xFF0A1228), Color(0xFF0D1B3A)),  // medianoche
+    SkyKeyframe( 5.0f, Color(0xFF0A1030), Color(0xFF1A1840), Color(0xFF2A2050)),  // pre-amanecer
+    SkyKeyframe( 6.0f, Color(0xFF4A3060), Color(0xFFB85C2A), Color(0xFFE8A048)),  // amanecer pico
+    SkyKeyframe( 7.0f, Color(0xFF6A80C0), Color(0xFFD4824A), Color(0xFFF0C060)),  // mañana dorada
+    SkyKeyframe(10.0f, Color(0xFF3A78CC), Color(0xFF4A90D9), Color(0xFF88C8F0)),  // día pleno
+    SkyKeyframe(17.5f, Color(0xFF4A88D0), Color(0xFF7090C0), Color(0xFFA0B0D0)),  // pre-atardecer
+    SkyKeyframe(18.5f, Color(0xFF6A3050), Color(0xFFCC5530), Color(0xFFE88840)),  // atardecer pico
+    SkyKeyframe(19.5f, Color(0xFF3A1848), Color(0xFF6A2878), Color(0xFF9A5098)),  // crepúsculo
+    SkyKeyframe(21.0f, Color(0xFF0D0820), Color(0xFF121030), Color(0xFF1A1040)),  // noche temprana
+    SkyKeyframe(24.0f, Color(0xFF060B1A), Color(0xFF0A1228), Color(0xFF0D1B3A)),  // = medianoche
+)
+
+private fun lerpColor(a: Color, b: Color, t: Float): Color {
+    val f = t.coerceIn(0f, 1f)
+    return Color(
+        red = a.red + (b.red - a.red) * f,
+        green = a.green + (b.green - a.green) * f,
+        blue = a.blue + (b.blue - a.blue) * f,
+        alpha = a.alpha + (b.alpha - a.alpha) * f
+    )
+}
+
+private fun interpolateSky(hourFraction: Float): SkyColors {
+    val h = hourFraction.coerceIn(0f, 24f)
+    // Encontrar los dos keyframes adyacentes
+    var lo = skyKeyframes.last { it.hour <= h }
+    var hi = skyKeyframes.first { it.hour > h }
+    // Caso borde: si estamos exactamente en 24.0
+    if (lo.hour == hi.hour) return SkyColors(lo.top, lo.mid, lo.horizon)
+    val t = (h - lo.hour) / (hi.hour - lo.hour)
+    return SkyColors(
+        top = lerpColor(lo.top, hi.top, t),
+        mid = lerpColor(lo.mid, hi.mid, t),
+        horizon = lerpColor(lo.horizon, hi.horizon, t)
+    )
+}
+
+private fun getCurrentHourFraction(): Float {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return now.hour + now.minute / 60f
 }
 
 // ── Fondo marino ───────────────────────────────────────────────────────────────
@@ -81,18 +118,22 @@ private val bubbles = listOf(
 
 @Composable
 fun AquariumBackground(modifier: Modifier = Modifier) {
-    // Hora actual para cielo dinámico
-    val currentHour = remember {
-        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour
+    // Hora fraccionaria con actualización cada 60s
+    var hourFraction by remember { mutableFloatStateOf(getCurrentHourFraction()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L)
+            hourFraction = getCurrentHourFraction()
+        }
     }
-    val sky = remember(currentHour) { skyForHour(currentHour) }
+    val sky = remember(hourFraction) { interpolateSky(hourFraction) }
 
     val swayAnim = rememberInfiniteTransition(label = "sway")
     val swayAngle by swayAnim.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
+            animation = tween(3000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "swayAngle"
@@ -127,10 +168,14 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
             )
         )
 
-        // 2. Cielo sobre la superficie (gradiente dinámico por hora del día)
+        // 2. Cielo sobre la superficie (gradiente dinámico de 3 colores)
         drawRect(
             brush = Brush.verticalGradient(
-                listOf(sky.top, sky.horizon),
+                colorStops = arrayOf(
+                    0.00f to sky.top,
+                    0.45f to sky.mid,
+                    1.00f to sky.horizon
+                ),
                 startY = 0f,
                 endY = surfaceY
             )
@@ -139,7 +184,7 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
         // 3. Fondo marino elaborado
         drawSeaFloor(floorY)
 
-        // 4. Superficie del agua (olas más animadas)
+        // 4. Superficie del agua (ola sutil)
         drawWaterSurface(surfaceY, swayAngle, sky.horizon)
 
         // 5. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
@@ -170,7 +215,6 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
         val path = Path().apply {
             moveTo(0f, lineY)
             for (seg in 0 until 8) {
-                val x0 = w * seg / 8f
                 val x1 = w * (seg + 0.5f) / 8f
                 val x2 = w * (seg + 1f) / 8f
                 val offset = if (seg % 2 == 0) 2.dp.toPx() else -2.dp.toPx()
@@ -244,8 +288,8 @@ private fun DrawScope.drawRock(cx: Float, floorY: Float, rw: Float, rh: Float, s
 
 private fun DrawScope.drawWaterSurface(surfaceY: Float, swayAngle: Float, skyHorizon: Color) {
     val w = size.width
-    val waveAmplitude = 9.dp.toPx()   // olas más animadas
-    val segments = 8
+    val waveAmplitude = 4.dp.toPx()
+    val segments = 6
 
     // Área sobre la ola (cielo reflejado)
     val wavePath = Path().apply {
@@ -255,43 +299,28 @@ private fun DrawScope.drawWaterSurface(surfaceY: Float, swayAngle: Float, skyHor
         for (i in 0 until segments) {
             val x1 = segWidth * (i + 0.5f)
             val x2 = segWidth * (i + 1)
-            val phase = i * 0.7f
-            val offset = swayAngle * waveAmplitude * sin(phase + 1f)
+            val dir = if (i % 2 == 0) 1f else -0.7f
+            val offset = swayAngle * waveAmplitude * dir
             quadraticTo(x1, surfaceY + offset, x2, surfaceY)
         }
         lineTo(w, 0f)
         close()
     }
-    drawPath(wavePath, skyHorizon.copy(alpha = 0.55f))
+    drawPath(wavePath, skyHorizon.copy(alpha = 0.35f))
 
-    // Cresta de ola principal (blanco más pronunciado)
+    // Cresta de ola (blanco suave)
     val crestPath = Path().apply {
         moveTo(0f, surfaceY)
         val segWidth = w / segments
         for (i in 0 until segments) {
             val x1 = segWidth * (i + 0.5f)
             val x2 = segWidth * (i + 1)
-            val phase = i * 0.7f
-            val offset = swayAngle * waveAmplitude * sin(phase + 1f)
+            val dir = if (i % 2 == 0) 1f else -0.7f
+            val offset = swayAngle * waveAmplitude * dir
             quadraticTo(x1, surfaceY + offset, x2, surfaceY)
         }
     }
-    drawPath(crestPath, WaveCrest, style = Stroke(width = 2.5f.dp.toPx(), cap = StrokeCap.Round))
-
-    // Cresta secundaria (más abajo, menor amplitud — efecto profundidad)
-    val crest2Path = Path().apply {
-        val offset2Y = surfaceY + waveAmplitude * 0.6f
-        moveTo(0f, offset2Y)
-        val segWidth = w / segments
-        for (i in 0 until segments) {
-            val x1 = segWidth * (i + 0.5f)
-            val x2 = segWidth * (i + 1)
-            val phase = i * 0.7f + 0.4f
-            val offset = swayAngle * waveAmplitude * 0.4f * sin(phase + 1.5f)
-            quadraticTo(x1, offset2Y + offset, x2, offset2Y)
-        }
-    }
-    drawPath(crest2Path, WaveCrest.copy(alpha = 0.25f), style = Stroke(width = 1.2f.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(crestPath, WaveCrest, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
 }
 
 private fun DrawScope.drawBubbles(

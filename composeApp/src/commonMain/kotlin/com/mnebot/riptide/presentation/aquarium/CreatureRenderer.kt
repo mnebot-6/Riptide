@@ -7,10 +7,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.CreatureSpecies
+import com.mnebot.riptide.presentation.aquarium.fauna.MantaRayRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.AnemoneRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.BrainCoralRenderer
 import com.mnebot.riptide.presentation.aquarium.flora.KelpRenderer
@@ -30,6 +32,7 @@ private val renderers = mapOf<CreatureSpecies, CreatureRenderer>(
     CreatureSpecies.BRAIN_CORAL to BrainCoralRenderer,
     CreatureSpecies.ANEMONE to AnemoneRenderer,
     CreatureSpecies.KELP to KelpRenderer,
+    CreatureSpecies.MANTA_RAY to MantaRayRenderer,
 )
 
 fun rendererFor(species: CreatureSpecies): CreatureRenderer? = renderers[species]
@@ -57,12 +60,18 @@ fun CreatureIcon(
                 }
             }
         }
-        Canvas(modifier = modifier.fillMaxSize()) {
+        val isSwimmer = spec.swimDuration > 0
+        val isFlora = !isSwimmer
+        Canvas(modifier = modifier.fillMaxSize().clipToBounds()) {
+            // Flora: escalar para que quepa sin recorte (base en el fondo, crece hacia arriba)
+            // Nadadores: centrado, usar min(width, height) para no desbordar
+            val renderSize = if (isFlora) size.height * 0.55f
+                             else minOf(size.width, size.height) * 0.8f
             with(renderer) {
                 render(
                     x = size.width / 2f,
-                    y = size.height,
-                    size = size.height,
+                    y = if (isFlora) size.height else size.height * 0.55f,
+                    size = renderSize,
                     level = level,
                     animTimeMs = animTimeMs,
                     mirrored = false

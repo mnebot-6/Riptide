@@ -174,7 +174,9 @@ data class CreatureSpec(
     // sizeMultiplier: ajuste manual de tamaño relativo al cálculo base
     val sizeMultiplier: Float      = 1.0f,
     // instanceCount: criaturas fijas con Canvas se renderizan este número de veces
-    val instanceCount: Int         = 1
+    val instanceCount: Int         = 1,
+    // emojiRotation: rotación en grados para emojis orientados verticalmente (ej. langosta -90°)
+    val emojiRotation: Float       = 0f
 )
 
 val allCreatures = listOf(
@@ -244,7 +246,7 @@ val allCreatures = listOf(
         driftSpeed = 0.13f, driftAmplitude = 0.14f, pauseFraction = 0.28f,
         easingType = EasingType.CRAWL, verticalCoupling = 0.25f,
         microWobble = 0.012f, xErraticness = 0.00f,
-        tempoVariation = 0.55f),
+        tempoVariation = 0.55f, emojiRotation = -90f),
 
     // Hermit Crab — explorador errático. Algo más alto que la langosta (personalYFraction=0.30).
     // Avanza a trompicones y escala pequeñas rocas (verticalCoupling más alto).
@@ -289,7 +291,7 @@ val allCreatures = listOf(
         driftSpeed = 0.23f, driftAmplitude = 0.26f, pauseFraction = 0.03f,
         easingType = EasingType.SMOOTH, verticalCoupling = 0.30f,
         microWobble = 0.008f, xErraticness = 0.00f,
-        tempoVariation = 0.12f, sizeMultiplier = 1.45f),
+        tempoVariation = 0.12f, sizeMultiplier = 2.4f),
 
     // Moon Jellyfish — deriva completamente pasiva. erraticness=0.90 + xErraticness=0.22.
     // No "nada": es arrastrada por corrientes simuladas. Nunca repite el mismo camino.
@@ -455,7 +457,8 @@ expect fun DrawScope.drawEmoji(
     x: Float,
     y: Float,
     sizeSp: Float,
-    mirrored: Boolean
+    mirrored: Boolean,
+    rotation: Float = 0f
 )
 
 // ── Hit-testing ───────────────────────────────────────────────────────────────
@@ -564,10 +567,29 @@ fun AquariumCreatures(
                 // Leer elapsedMs una sola vez por frame (state observation aquí)
                 val nowMs = elapsedMs.value
 
-                // Pre-calcular distribución de flora Canvas (múltiples instancias)
+                // Pre-calcular distribución de flora Canvas (múltiples instancias, interleaved)
                 val fixedEmojiCreatures = fixedCreatures.filter { rendererFor(it.species) == null }
                 val fixedCanvasCreatures = fixedCreatures.filter { rendererFor(it.species) != null }
                 val totalFloraSlots = fixedCanvasCreatures.sumOf { it.instanceCount }
+
+                // Round-robin: intercalar especies en vez de agruparlas por secciones
+                // Ej: BC#0, AN#0, KE#0, BC#1, AN#1, KE#1, BC#2, KE#2, BC#3, KE#3
+                val floraSlotMap = mutableMapOf<CreatureSpecies, List<Int>>()
+                run {
+                    var slotIdx = 0
+                    val maxInstances = fixedCanvasCreatures.maxOfOrNull { it.instanceCount } ?: 0
+                    val tempMap = mutableMapOf<CreatureSpecies, MutableList<Int>>()
+                    fixedCanvasCreatures.forEach { tempMap[it.species] = mutableListOf() }
+                    for (round in 0 until maxInstances) {
+                        for (spec in fixedCanvasCreatures) {
+                            if (round < spec.instanceCount) {
+                                tempMap[spec.species]!!.add(slotIdx)
+                                slotIdx++
+                            }
+                        }
+                    }
+                    tempMap.forEach { (k, v) -> floraSlotMap[k] = v }
+                }
 
                 unlockedCreatures.forEachIndexed { index, spec ->
                     val w = size.width
@@ -599,22 +621,19 @@ fun AquariumCreatures(
                         val renderer = rendererFor(spec.species)
 
                         if (renderer != null) {
-                            // ── FLORA CANVAS — múltiples instancias en el suelo ──
-                            val canvasIdx = fixedCanvasCreatures.indexOf(spec)
-                            val slotsBefore = fixedCanvasCreatures.take(canvasIdx).sumOf { it.instanceCount }
+                            // ── FLORA CANVAS — múltiples instancias interleaved ──
+                            val slots = floraSlotMap[spec.species] ?: emptyList()
                             val renderSize = iconSize * 3.2f
 
                             for (i in 0 until spec.instanceCount) {
-                                val slotIndex = slotsBefore + i
+                                val slotIndex = slots.getOrElse(i) { i }
                                 val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
-                                val instanceAnim = tRaw + i * 5000L  // desfase de animación por instancia
+                                val instanceAnim = tRaw + i * 5000L
                                 with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
-                                // Hitbox solo para la primera instancia
-                                if (i == 0) {
-                                    positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
-                                    hitboxAdded = true
-                                }
+                                // Hitbox en todas las instancias
+                                positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
                             }
+                            hitboxAdded = true
 
                         } else {
                             // ── CRIATURA FIJA EMOJI — posición en eje X distribuido ──
@@ -622,7 +641,7 @@ fun AquariumCreatures(
                             x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
                             val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
                             y = floorY - iconSize * 0.3f + wobble
-                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = false)
+                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
                         }
 
                     } else {
@@ -755,7 +774,7 @@ fun AquariumCreatures(
                         if (renderer != null) {
                             with(renderer) { render(x, y, iconSize, creatureLevel, tRaw, goingRight) }
                         } else {
-                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight)
+                            drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight, rotation = spec.emojiRotation)
                         }
                     }
 

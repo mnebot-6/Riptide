@@ -21,10 +21,10 @@ class BlockStreakProcessor(
             val tasksToday = dayTaskRepository.getByDateAndBlock(date, blockId)
             if (tasksToday.isEmpty()) continue  // día neutral
 
-            val hadActivity = tasksToday.any { it.status == TaskStatus.COMPLETED }
+            val allCompleted = tasksToday.all { it.status == TaskStatus.COMPLETED }
             val existing = blockStreakRepository.getByBlockId(blockId)
 
-            if (hadActivity) {
+            if (allCompleted) {
                 val isConsecutive = existing?.lastActiveDate == yesterday
                 val newStreak = if (isConsecutive) (existing!!.currentStreak + 1) else 1
                 if (existing == null) {

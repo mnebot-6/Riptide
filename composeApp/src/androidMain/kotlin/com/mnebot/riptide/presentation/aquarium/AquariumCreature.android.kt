@@ -10,7 +10,8 @@ actual fun DrawScope.drawEmoji(
     x: Float,
     y: Float,
     sizeSp: Float,
-    mirrored: Boolean
+    mirrored: Boolean,
+    rotation: Float
 ) {
     drawIntoCanvas { canvas ->
         val paint = android.graphics.Paint().apply {
@@ -22,7 +23,12 @@ actual fun DrawScope.drawEmoji(
         val drawY = y - (fm.ascent + fm.descent) / 2f
         val native = canvas.nativeCanvas
         native.save()
-        if (mirrored) {
+        if (rotation != 0f) {
+            // Emojis rotados: la dirección se controla negando la rotación,
+            // no con mirror (que los dejaría panza arriba).
+            val effectiveRotation = if (mirrored) -rotation else rotation
+            native.rotate(effectiveRotation, x, y)
+        } else if (mirrored) {
             native.scale(-1f, 1f, x, y)
         }
         native.drawText(emoji, x, drawY, paint)
