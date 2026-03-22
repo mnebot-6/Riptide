@@ -44,7 +44,7 @@ Cada bloque tiene asignada automáticamente una **categoría marina**. La consta
 | Mamíferos | 🐬 | Bloqueada |
 | Decoración | 🪙 | Especial |
 
-Al alcanzar ciertos niveles, nuevos habitantes aparecen en el estanque. Tú les pones el nombre. Con el tiempo crecen — cambian de tamaño y velocidad.
+Al alcanzar ciertos niveles, se obtiene una **lootbox** de la categoría correspondiente. Al abrirla, se revela una especie aleatoria ponderada por rareza (Común → Legendario). Tú le pones el nombre. Con el tiempo crecen — cambian de tamaño y velocidad. 40 especies repartidas en 5 rarezas.
 
 Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean nerviosos, los delfines saltan en arcos gráciles, los cangrejos exploran el fondo a ritmo variable, las medusas derivan con la corriente. No hay dos criaturas exactamente iguales.
 
@@ -80,6 +80,7 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint bugfixes 2 — Emoji centrado, fecha resumen, summaryTime | ✅ |
 | Sprint visual — Superficie, fondo marino, flora Canvas | ✅ |
 | Sprint visual 2 — Cielo dinámico, CreatureIcon, UI pulida | ✅ |
+| Sprint lootbox — Rareza, 40 especies, lootbox, EcosystemScreen overhaul | ✅ |
 | v3 — Onboarding, animaciones, testing | ⬜ |
 | v4 — Fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social | ⬜ |

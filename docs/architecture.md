@@ -55,22 +55,42 @@ Migraciones reales desde v9. `MIGRATION_8_9` añade `hasBeenRewarded` a `day_tas
 Dependencias: `EcosystemStateRepository` + `MarineCreatureRepository`.
 
 ```
-addXp(category, xp):
+addXp(category, xp, fromOverflow=false):
   1. Obtener EcosystemState existente
-  2. oldLevel = existing?.currentLevel ?: 1
-  3. Calcular newXp y newLevel
+  2. Si categoría completa (todas las especies desbloqueadas):
+     - kept = xp / 2 (sube nivel + reparte a criaturas)
+     - overflow = xp - kept → redistributeOverflow() (si !fromOverflow)
+  3. oldLevel, calcular newXp y newLevel
   4. Crear o actualizar EcosystemState
-  5. Detectar criaturas desbloqueadas: unlockLevel in (oldLevel+1)..newLevel
-  6. Obtener criaturas desbloqueadas de la categoría
-  7. Repartir xp/N entre ellas (floor), actualizar experience y creatureLevel
-  8. Devolver List<CreatureSpec> desbloqueadas
+  5. Detectar lootboxes: CATEGORY_UNLOCK_LEVELS[category] filtrado por (oldLevel+1)..newLevel
+  6. Repartir XP entre criaturas desbloqueadas de la categoría
+  7. Devolver List<PendingLootbox>
 ```
+
+XP overflow:
+- `redistributeOverflow(category, overflow)`: encuentra la categoría de menor nivel entre las NO completas (excluyendo DECORATION), llama `addXp(lowestCategory, overflow, fromOverflow=true)`
+- `fromOverflow=true` evita recursión infinita
 
 Casos especiales:
 - `categories` vacío en `addXpForTask` → reparte entre todas las desbloqueadas (tareas sin bloque)
 - Criatura recién desbloqueada: `experience=0`, no recibe XP hasta el siguiente evento
 - XP sobrante (xp % N) se pierde
 - XP solo se otorga si `!task.hasBeenRewarded` (controlado en `MainViewModel`)
+
+---
+
+## LootboxResolver
+
+Dependencias: `MarineCreatureRepository`.
+
+```
+resolve(lootbox: PendingLootbox): CreatureSpec
+  1. Obtener allSpecs de la categoría
+  2. Filtrar especies ya desbloqueadas → candidates
+  3. weightedRandom(candidates): selección ponderada por rarity.weight
+```
+
+La resolución ocurre cuando el usuario ABRE la lootbox, no cuando se gana. Esto hace que la especie revelada sea verdaderamente aleatoria en el momento de la apertura.
 
 ---
 
@@ -212,8 +232,9 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 - Trigger: tap → `freezeState.freeze(species)` + `frozenTimeMap[species] = currentTimeMs`
 - La criatura queda congelada en su posición hasta que el dialog llama `onDismiss` → `unfreeze`
 - Muestra `CreatureIcon` (80.dp) — Canvas animado para flora, emoji para el resto.
+- Badge de rareza con color bajo el nombre de especie (COMMON=gris, UNCOMMON=verde, RARE=azul, EPIC=morado, LEGENDARY=dorado)
 - Nickname: `BasicTextField` con overlay de placeholder. Permite guardar vacío → `null`.
-- `XpBar`: progreso al siguiente nivel sin números. Puntos de nivel (máx 10).
+- `XpBar`: barra de progreso al siguiente nivel + texto "Nivel X" numérico.
 - Persistencia: `viewModel.updateCreatureNickname` → `marineCreatureRepository.update`
 
 ---
@@ -224,31 +245,33 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 - Botón de retroceso `←` en el header con `onNavigateBack` → `navController.popBackStack()`
 - Lee `uiState.ecosystemByCategory` y `uiState.creaturesData` del `MainViewModel` compartido
 - Grid 3 columnas con `IntrinsicSize.Max` por fila → altura uniforme
-- Cards desbloqueadas: `CreatureIcon` (52.dp) en lugar de emoji text
-- Cards bloqueadas: `progress = categoryLevel / spec.unlockLevel`
+- Ordenamiento: por `rarity.ordinal` (COMMON→LEGENDARY), desbloqueados primero, luego bloqueados
+- Barra de progreso por categoría: usa `CATEGORY_UNLOCK_LEVELS` para calcular progreso hacia siguiente lootbox
+- Cards desbloqueadas: `CreatureIcon` (52.dp) + badge de rareza (punto de color) + "Nv. X" numérico
+- Cards bloqueadas: emoji al 10% opacity + "???" + punto de rareza tenue (sin barra de progreso individual)
 
 ---
 
-## Flujo de desbloqueo de criaturas
+## Flujo de desbloqueo de criaturas (Lootbox)
 
 ```
 toggleTaskCompleted (si !hasBeenRewarded)
     → addXpForTask(categories)
-        → addXp por categoría
-            → detecta nivel cruzado → List<CreatureSpec>
+        → addXp por categoría (con overflow si categoría completa)
+            → detecta niveles en CATEGORY_UNLOCK_LEVELS → List<PendingLootbox>
             → reparte XP a criaturas existentes
-    → si newUnlocks.isNotEmpty → pendingUnlocks en UiState
+    → si lootboxes.isNotEmpty → pendingLootboxes en UiState
 
 NightSummaryProcessor.processDay(date, blockNames, blockCategories, summaryTime)
     → addNightBonus
         → mismo flujo
-        → persiste emojis en DataStore
+        → persiste List<PendingLootbox> en DataStore (formato "FISH:4|CRUSTACEAN:6")
 
 MainActivity.onCreate
-    → checkPendingUnlocks → DataStore → UiState
-    → pendingSummary primero, luego pendingUnlocks
-    → diálogo: emoji + nombre obligatorio
-    → confirmUnlock → MarineCreature(experience=0, creatureLevel=1)
+    → checkPendingLootboxes → DataStore → UiState (+ migración legacy emojis)
+    → pendingSummary primero, luego pendingLootboxes
+    → Fase 1: 🎁 cerrada → botón "Abrir" → LootboxResolver.resolve() → revealedSpecies
+    → Fase 2: especie revelada + nombre → confirmUnlock → MarineCreature(experience=0, creatureLevel=1)
 ```
 
 ---

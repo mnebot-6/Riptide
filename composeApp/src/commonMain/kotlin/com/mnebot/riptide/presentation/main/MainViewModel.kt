@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mnebot.riptide.domain.EcosystemProcessor
+import com.mnebot.riptide.domain.LootboxResolver
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
@@ -42,6 +43,7 @@ class MainViewModel(
     private val blockStreakRepository: BlockStreakRepository,
     private val daySummaryRepository: DaySummaryRepository,
     private val ecosystemProcessor: EcosystemProcessor,
+    private val lootboxResolver: LootboxResolver,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val ecosystemStateRepository: EcosystemStateRepository,
     private val marineCreatureRepository: MarineCreatureRepository,
@@ -89,9 +91,9 @@ class MainViewModel(
             if (newStatus == TaskStatus.COMPLETED && !task.hasBeenRewarded) {
                 val block = uiState.value.blocks.find { it.id == task.blockId }
                 val categories = block?.marineCategories ?: emptyList()
-                val newUnlocks = ecosystemProcessor.addXpForTask(categories)
-                if (newUnlocks.isNotEmpty()) {
-                    _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks + newUnlocks) }
+                val newLootboxes = ecosystemProcessor.addXpForTask(categories)
+                if (newLootboxes.isNotEmpty()) {
+                    _uiState.update { it.copy(pendingLootboxes = it.pendingLootboxes + newLootboxes) }
                 }
             }
 
@@ -329,18 +331,33 @@ class MainViewModel(
         }
     }
 
-    private suspend fun checkPendingUnlocks() {
-        val emojis = userPreferencesRepository.getPendingUnlocks()
-        if (emojis.isEmpty()) return
-        val specs = emojis.mapNotNull { emoji -> allCreatures.find { it.emoji == emoji } }
-        if (specs.isNotEmpty()) {
-            _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks + specs) }
+    private suspend fun checkPendingLootboxes() {
+        // Migrar legacy (emojis) → limpiar
+        val oldEmojis = userPreferencesRepository.getPendingUnlocks()
+        if (oldEmojis.isNotEmpty()) {
             userPreferencesRepository.setPendingUnlocks(emptyList())
+        }
+
+        // Cargar lootboxes nuevas
+        val lootboxes = userPreferencesRepository.getPendingLootboxes()
+        if (lootboxes.isEmpty()) return
+        _uiState.update { it.copy(pendingLootboxes = it.pendingLootboxes + lootboxes) }
+        userPreferencesRepository.setPendingLootboxes(emptyList())
+    }
+
+    /** Usuario pulsa "Abrir" en la lootbox → resuelve especie aleatoria por rareza */
+    fun openLootbox() {
+        val lootbox = _uiState.value.pendingLootboxes.firstOrNull() ?: return
+        viewModelScope.launch {
+            val spec = lootboxResolver.resolve(lootbox)
+            _uiState.update { it.copy(revealedSpecies = spec) }
         }
     }
 
+    /** Usuario confirma nombre tras revelar especie */
     fun confirmUnlock(spec: CreatureSpec, nickname: String) {
         viewModelScope.launch {
+            val lootbox = _uiState.value.pendingLootboxes.firstOrNull()
             val ecosystemState = _uiState.value.ecosystemByCategory[spec.category]
             if (ecosystemState != null) {
                 marineCreatureRepository.insert(
@@ -349,7 +366,7 @@ class MainViewModel(
                         ecosystemId = ecosystemState.id,
                         species = spec.species,
                         nickname = nickname.trim(),
-                        unlockedAtLevel = spec.unlockLevel,
+                        unlockedAtLevel = lootbox?.categoryLevel ?: ecosystemState.currentLevel,
                         experience = 0,
                         creatureLevel = 1,
                         unlockedAt = Clock.System.now()
@@ -357,19 +374,30 @@ class MainViewModel(
                     )
                 )
             }
-            _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks.drop(1)) }
+            _uiState.update {
+                it.copy(
+                    pendingLootboxes = it.pendingLootboxes.drop(1),
+                    revealedSpecies = null
+                )
+            }
+            loadDay(_uiState.value.selectedDate)
         }
     }
 
-    fun dismissUnlock() {
-        _uiState.update { it.copy(pendingUnlocks = it.pendingUnlocks.drop(1)) }
+    fun dismissLootbox() {
+        _uiState.update {
+            it.copy(
+                pendingLootboxes = it.pendingLootboxes.drop(1),
+                revealedSpecies = null
+            )
+        }
     }
 
     fun reload() {
         viewModelScope.launch {
             loadDay(_uiState.value.selectedDate)
             checkPendingSummary()
-            checkPendingUnlocks()
+            checkPendingLootboxes()
         }
     }
 

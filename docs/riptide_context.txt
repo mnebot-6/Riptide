@@ -55,7 +55,10 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     NightSummaryProcessor.kt    (processDay recibe summaryTime; solo evalúa tareas completadas
                                  o con hora <= summaryTime; EXPIRED sigue siendo completable)
     EcosystemProcessor.kt       (addXpForTask, addNightBonus, unlockCategory;
-                                 reparte XP entre criaturas desbloqueadas de la categoría;
+                                 lootbox detection via CATEGORY_UNLOCK_LEVELS;
+                                 XP overflow 50% a categoría menor nivel;
+                                 requiere MarineCreatureRepository)
+    LootboxResolver.kt          (weighted-random selection al abrir lootbox;
                                  requiere MarineCreatureRepository)
     EcosystemLevelCalculator.kt
     model/
@@ -69,7 +72,9 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       DaySummary.kt
       BlockStreak.kt
       EcosystemState.kt         (+ isUnlocked: Boolean)
-      MarineCreature.kt         (+ CreatureSpecies enum con 24 especies)
+      MarineCreature.kt         (+ CreatureSpecies enum con 40 especies)
+      CreatureRarity.kt         (enum: COMMON/UNCOMMON/RARE/EPIC/LEGENDARY con weight)
+      PendingLootbox.kt         (data class: category + categoryLevel)
       BlockCategory.kt
     repository/
       WorkBlockRepository.kt
@@ -81,7 +86,8 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       EcosystemStateRepository.kt   (getByCategory, getAll, getUnlocked, insert, update)
       MarineCreatureRepository.kt   (getByEcosystem, getByCategory, insert, update)
       UserPreferencesRepository.kt  (getNightSummaryTime(Flow), setNightSummaryTime,
-                                     getPendingUnlocks, setPendingUnlocks,
+                                     getPendingLootboxes, setPendingLootboxes,
+                                     getPendingUnlocks/setPendingUnlocks (legacy),
                                      getLastDismissedSummaryDate, setLastDismissedSummaryDate,
                                      hasCompletedOnboarding, setOnboardingCompleted)
   presentation/
@@ -90,21 +96,24 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                  superficie con olas animadas cresta doble 9dp,
                                  fondo marino arena+textura 11 rocas 3 estilos, burbujas)
       AquariumBounds.kt        (SURFACE_FRACTION=0.08, FLOOR_FRACTION=0.88, surfaceY/floorY)
-      AquariumCreature.kt       (CreatureSpec +sizeMultiplier +instanceCount; SwimZone, EasingType,
+      AquariumCreature.kt       (CreatureSpec +rarity +sizeMultiplier +instanceCount; SwimZone, EasingType,
                                  personalYFraction, verticalCoupling, microWobble, xErraticness,
-                                 fixedWobbleScale, tempoVariation; 24 especies en allCreatures;
+                                 fixedWobbleScale, tempoVariation; 40 especies en allCreatures;
+                                 CATEGORY_UNLOCK_LEVELS; specBySpecies lazy map;
                                  tempo warping + variación por instancia + márgenes simétricos;
                                  múltiples instancias flora Canvas; crustáceos BOTTOM diferenciados;
                                  hit-testing con radio ampliado; tap → freeze + onCreatureTap)
       CreatureRenderer.kt       (CreatureRenderer interface + rendererFor(species) dispatch +
                                  CreatureIcon @Composable: Canvas animado para flora, emoji fallback)
-      CreatureDetailDialog.kt   (dialog OceanMid: CreatureIcon 80dp, displayName, nickname editable,
-                                 XpBar visual, fecha de desbloqueo)
+      CreatureDetailDialog.kt   (dialog OceanMid: CreatureIcon 80dp, displayName, badge rareza,
+                                 nickname editable, XpBar con nivel numérico, fecha de desbloqueo)
       CreatureExtensions.kt     (displayName: String, xpRequiredForLevel(level): Int —
                                  compartido por CreatureDetailDialog y EcosystemScreen)
       EcosystemScreen.kt        (pantalla "Mi ecosistema": botón ← retroceso onNavigateBack,
-                                 grid 3 col por categoría; CreatureIcon 52dp en cards desbloqueadas,
-                                 cards bloqueadas con silueta + barra progreso;
+                                 grid 3 col por categoría ordenado por rareza;
+                                 barra progreso por categoría hacia siguiente lootbox;
+                                 badges de rareza en cards; niveles numéricos;
+                                 cards bloqueadas emoji 10% opacity + "???";
                                  IntrinsicSize.Max para altura uniforme;
                                  abre CreatureDetailDialog al pulsar)
       flora/
@@ -121,12 +130,11 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     main/
       CurrentDate.kt
       ParseColor.kt
-      MainUiState.kt            (+ creaturesData: List<MarineCreature>)
-      MainViewModel.kt          (+ updateCreatureNickname(creatureId, nickname);
-                                 toggleTaskCompleted: hasBeenRewarded evita XP duplicado,
-                                 desmarcar vuelve a EXPIRED si DaySummary existe para esa fecha)
-      MainScreen.kt             (EXPIRED muestra ⌛ + checkbox completable;
-                                 onCreatureTap en vez de onCreatureLongPress)
+      MainUiState.kt            (+ creaturesData, pendingLootboxes, revealedSpecies)
+      MainViewModel.kt          (+ openLootbox, confirmUnlock, dismissLootbox, updateCreatureNickname;
+                                 toggleTaskCompleted con lootboxes; checkPendingLootboxes con migración legacy)
+      MainScreen.kt             (EXPIRED ⌛ + checkbox; diálogo lootbox bifásico cerrada→abierta;
+                                 onCreatureTap → CreatureDetailDialog)
       WeekCalendar.kt
       MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen)
     task/
@@ -222,20 +230,32 @@ MarineCategory enum(isUnlockedByDefault):
 MarineCreature: id, ecosystemId, species(CreatureSpecies), nickname?,
   unlockedAtLevel, experience, creatureLevel, unlockedAt
 
-CreatureSpecies (24 especies, con categoría y displayName):
-  FISH: CLOWNFISH(2), ANGELFISH(4), PUFFERFISH(7)
-  FLORA: BRAIN_CORAL(2), ANEMONE(4), KELP(6)
-  CRUSTACEAN: LOBSTER(2), HERMIT_CRAB(4), SHRIMP(6)
-  MOLLUSK: SEA_URCHIN(2), STARFISH(4), OYSTER(7)
-  PELAGIC: MANTA_RAY(2), MOON_JELLYFISH(4), WHALE_SHARK(8)
-  CEPHALOPOD: OCTOPUS(2), SQUID(5)
-  REPTILE: SEA_TURTLE(2)
-  MAMMAL: DOLPHIN(2), SEAL(5), BLUE_WHALE(8)
-  DECORATION: TREASURE_CHEST(1), ANCHOR(1), SUNKEN_SHIP(1)
-  (número entre paréntesis = unlockLevel)
+CreatureRarity enum(weight, displayName):
+  COMMON(0.40, "Común"), UNCOMMON(0.30, "Poco común"), RARE(0.20, "Raro"),
+  EPIC(0.08, "Épico"), LEGENDARY(0.02, "Legendario")
+
+PendingLootbox: category(MarineCategory), categoryLevel(Int)
+
+CreatureSpecies (40 especies, con categoría y displayName):
+  FISH: CLOWNFISH, ANGELFISH, PUFFERFISH, SURGEONFISH, LIONFISH, SUNFISH
+  FLORA: BRAIN_CORAL, ANEMONE, KELP, POSIDONIA, FAN_CORAL
+  CRUSTACEAN: LOBSTER, HERMIT_CRAB, SHRIMP, SPIDER_CRAB, BARNACLE
+  MOLLUSK: SEA_URCHIN, STARFISH, OYSTER, NAUTILUS, GIANT_CLAM
+  PELAGIC: MANTA_RAY, MOON_JELLYFISH, WHALE_SHARK, HAMMERHEAD, BARRACUDA
+  CEPHALOPOD: OCTOPUS, SQUID, CUTTLEFISH, BLUE_RINGED_OCTOPUS
+  REPTILE: SEA_TURTLE, MARINE_IGUANA
+  MAMMAL: DOLPHIN, SEAL, BLUE_WHALE, SEA_OTTER, MANATEE
+  DECORATION: TREASURE_CHEST, ANCHOR, SUNKEN_SHIP
+  (desbloqueo por lootbox con rareza, no por nivel fijo)
+
+CATEGORY_UNLOCK_LEVELS: niveles de categoría que producen lootbox
+  FISH: [2,4,6,8,10,12], FLORA: [2,4,6,8,10], CRUSTACEAN: [2,4,6,8,10],
+  MOLLUSK: [2,4,6,8,10], PELAGIC: [2,4,6,8,10], CEPHALOPOD: [2,4,6,8],
+  REPTILE: [2,5], MAMMAL: [2,5,8,11,14]
+  DECORATION excluida (unlock automático a nivel 1)
 
 CreatureSpec (presentation/aquarium):
-  emoji, species, category, unlockLevel, swimDuration(ms; 0=fija),
+  emoji, species, category, rarity(CreatureRarity), swimDuration(ms; 0=fija),
   wobbleAmplitude, speedScalePerLevel, swimZone(SwimZone),
   personalYFraction, waveCount, erraticness, driftSpeed, driftAmplitude,
   pauseFraction, easingType(EasingType), verticalCoupling, microWobble,
@@ -286,14 +306,22 @@ EcosystemProcessor(ecosystemStateRepository, marineCreatureRepository):
     — si categories vacío → reparte entre todas las categorías desbloqueadas (no DECORATION)
     — xpEach = 10 / targets.size (floor, sobrante se pierde)
     — solo da XP si !task.hasBeenRewarded (controlado en MainViewModel)
-  addNightBonus(score, bestStreak, categories): igual con bonus nocturno
-  addXp(category, xp):
-    — oldLevel = 1 si estado no existía, si no existing.currentLevel
-    — actualiza EcosystemState (crea con isUnlocked=category.isUnlockedByDefault si no existe)
-    — detecta criaturas desbloqueadas por nivel cruzado (oldLevel+1)..newLevel
-    — reparte xp/N entre criaturas desbloqueadas de la categoría (floor)
-    — actualiza experience y creatureLevel de cada criatura
+    — retorna List<PendingLootbox>
+  addNightBonus(score, bestStreak, categories): igual, retorna List<PendingLootbox>
+  addXp(category, xp, fromOverflow=false):
+    — si categoría completa: kept=xp/2, overflow=xp-kept → redistributeOverflow (si !fromOverflow)
+    — oldLevel, actualiza EcosystemState
+    — detecta lootboxes: CATEGORY_UNLOCK_LEVELS[category] filtrado por (oldLevel+1)..newLevel
+    — reparte XP entre criaturas desbloqueadas de la categoría
+    — retorna List<PendingLootbox>
+  redistributeOverflow(category, overflow): → categoría menor nivel no completa (excl. DECORATION)
   unlockCategory(category): marca isUnlocked=true
+
+LootboxResolver(marineCreatureRepository):
+  resolve(lootbox: PendingLootbox): CreatureSpec
+    — filtra especies bloqueadas de la categoría
+    — weightedRandom por rarity.weight
+    — se ejecuta al ABRIR la lootbox (no al ganarla)
 
 Nivel de criatura individual:
   — misma curva que EcosystemLevelCalculator
@@ -303,13 +331,15 @@ Nivel de criatura individual:
 
 ---
 
-FLUJO DE DESBLOQUEO DE CRIATURAS
+FLUJO DE DESBLOQUEO DE CRIATURAS (LOOTBOX)
 
-Al completar tarea (si !hasBeenRewarded) → addXpForTask → List<CreatureSpec> nuevas → pendingUnlocks en UiState
-Al resumen nocturno → addNightBonus → List<CreatureSpec> → DataStore
-Al arrancar → checkPendingUnlocks → DataStore → UiState
-Orden diálogos: pendingSummary → pendingUnlocks
-Diálogo: emoji + nombre obligatorio
+Al completar tarea (si !hasBeenRewarded) → addXpForTask → List<PendingLootbox> → pendingLootboxes en UiState
+Al resumen nocturno → addNightBonus → List<PendingLootbox> → DataStore (formato "FISH:4|CRUSTACEAN:6")
+Al arrancar → checkPendingLootboxes → DataStore → UiState (+ migración legacy emojis)
+Orden diálogos: pendingSummary → pendingLootboxes
+Diálogo bifásico:
+  Fase 1 (cerrada): 🎁 + categoría + nivel → botón "Abrir" → LootboxResolver.resolve() → revealedSpecies
+  Fase 2 (abierta): emoji + displayName + badge rareza + input nombre → confirmUnlock
 confirmUnlock(spec, nickname) → MarineCreature(experience=0, creatureLevel=1) → drop(1)
 
 ---
@@ -323,7 +353,7 @@ AquariumCreatures recibe:
   freezeState: CreatureFreezeState
   onCreatureTap: (MarineCreature, CreatureSpec) -> Unit
 
-Filtro: state.isUnlocked && state.currentLevel >= spec.unlockLevel
+Filtro: spec.species in creaturesData.map { it.species }.toSet()
 
 Tamaño: baseSize * (0.8f + (creatureLevel - 1) * 0.10f)
 Velocidad: swimDuration / max(0.3f, 1f + (creatureLevel-1) * speedScalePerLevel)
@@ -365,10 +395,11 @@ DETALLE DE CRIATURA (CreatureDetailDialog)
 
 Trigger: tap en AquariumCreatures → freezeState.freeze + onCreatureTap
 Dialog OceanMid con:
-  - Emoji (56sp)
+  - CreatureIcon (80dp)
   - displayName (de CreatureExtensions.kt)
+  - Badge de rareza con color (gris/verde/azul/morado/dorado)
   - Nickname editable con BasicTextField (siempre visible, puede guardarse vacío → null)
-  - XpBar: puntos de nivel (máx 10) + barra de progreso al siguiente nivel (sin números)
+  - XpBar: barra de progreso al siguiente nivel + "Nivel X" numérico
   - Fecha de desbloqueo ("En el estanque desde el DD/MM/YYYY")
   - Botón Guardar → onNicknameChanged + onDismiss → unfreeze
 Persistencia: MainViewModel.updateCreatureNickname → marineCreatureRepository.update
@@ -378,11 +409,14 @@ Persistencia: MainViewModel.updateCreatureNickname → marineCreatureRepository.
 PANTALLA MI ECOSISTEMA (EcosystemScreen)
 
 Acceso: Drawer → sección ECOSISTEMA → "Mi ecosistema" → navController.navigate(ROUTE_ECOSYSTEM)
-Fondo OceanDeep, sin header de vuelta atrás (swipe back de Android).
+Fondo OceanDeep, botón ← retroceso en header.
 Grid 3 columnas por categoría, separadas por divider.
+Ordenamiento: por rarity.ordinal (COMMON→LEGENDARY), desbloqueados primero, luego bloqueados.
+Header categoría: nombre uppercase + "Nv. X" o 🔒 + barra progreso hacia siguiente lootbox.
+Barra progreso: usa CATEGORY_UNLOCK_LEVELS para calcular distancia al siguiente nivel de lootbox.
 IntrinsicSize.Max en cada fila → todas las cards igualan la altura de la más alta.
-Cards desbloqueadas: emoji + nickname/displayName + puntos de nivel (máx 5) → abre CreatureDetailDialog
-Cards bloqueadas: silueta (alpha 10%) + barra de progreso al unlockLevel + "Nv. X" o "🔒"
+Cards desbloqueadas: CreatureIcon 52dp + badge rareza (punto de color) + nickname/displayName + "Nv. X" → abre CreatureDetailDialog
+Cards bloqueadas: emoji al 10% opacity + punto de rareza tenue + "???"
 El CreatureDetailDialog desde EcosystemScreen también llama a updateCreatureNickname.
 
 ---
@@ -394,17 +428,18 @@ MainUiState:
   ecosystemByCategory: Map<MarineCategory, EcosystemState>,
   creatureLevelBySpecies: Map<CreatureSpecies, Int>,
   creaturesData: List<MarineCreature>,
-  pendingSummary, pendingUnlocks, isLoading, error
+  pendingSummary, pendingLootboxes: List<PendingLootbox>, revealedSpecies: CreatureSpec?,
+  isLoading, error
 
 MainViewModel funciones:
-  selectDate, toggleTaskCompleted (hasBeenRewarded + EXPIRED↔COMPLETED),
+  selectDate, toggleTaskCompleted (hasBeenRewarded + EXPIRED↔COMPLETED + lootboxes),
   addOneTimeTask, addRecurringTask(title, blockId, time?, recurrence),
   updateOneTimeTask, updateRecurringTask(sourceId, title, blockId, time?, recurrence),
   deleteTask, deleteRecurringTaskInstance, deleteRecurringTaskFromDate, deleteRecurringTaskAll,
   postponeTask(task, date, time?),
   insertBlockAndReassign, updateBlockAndReassign, deleteBlockAndReassign,
   getRecurringTaskDef(sourceId): RecurringTaskDef?,
-  dismissSummary, confirmUnlock, dismissUnlock, reload,
+  dismissSummary, openLootbox, confirmUnlock, dismissLootbox, reload,
   updateNightSummaryTime(time),
   updateCreatureNickname(creatureId, nickname)
 
@@ -476,7 +511,7 @@ Orden correcto:
 
 ROADMAP
 
-MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅ | Sprint bugfixes ✅
+MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅ | Sprint bugfixes ✅ | Sprint lootbox ✅
 
 Sprint bugfixes completado:
 ✅ Resumen nocturno: filtrado por summaryTime, no evalúa tareas futuras ni sin hora

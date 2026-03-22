@@ -8,7 +8,7 @@ import com.mnebot.riptide.domain.model.TaskStatus
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
-import com.mnebot.riptide.presentation.aquarium.CreatureSpec
+import com.mnebot.riptide.domain.model.PendingLootbox
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
@@ -88,12 +88,12 @@ class NightSummaryProcessor(
             .flatMap { blockId -> blockCategories[blockId] ?: emptyList() }
             .distinct()
 
-        val newUnlocks: List<CreatureSpec> =
+        val newLootboxes: List<PendingLootbox> =
             ecosystemProcessor?.addNightBonus(score, bestStreak, allCategories) ?: emptyList()
 
-        if (newUnlocks.isNotEmpty() && userPreferencesRepository != null) {
-            val existing = userPreferencesRepository.getPendingUnlocks()
-            userPreferencesRepository.setPendingUnlocks(existing + newUnlocks.map { it.emoji })
+        if (newLootboxes.isNotEmpty() && userPreferencesRepository != null) {
+            val existing = userPreferencesRepository.getPendingLootboxes()
+            userPreferencesRepository.setPendingLootboxes(existing + newLootboxes)
         }
     }
 

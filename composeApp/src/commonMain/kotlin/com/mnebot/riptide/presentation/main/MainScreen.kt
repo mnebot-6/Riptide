@@ -394,51 +394,103 @@ fun MainScreen(
             )
         }
 
-        val currentUnlock = uiState.pendingUnlocks.firstOrNull()
-        if (currentUnlock != null && uiState.pendingSummary == null) {
-            var nickname by remember(currentUnlock) { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = {},
-                containerColor = OceanMid,
-                title = {
-                    Text("¡Algo nuevo en el estanque!", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                },
-                text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(currentUnlock.emoji, fontSize = 48.sp)
+        // ── Lootbox Dialog ────────────────────────────────────────────────────
+        val currentLootbox = uiState.pendingLootboxes.firstOrNull()
+        val revealedSpecies = uiState.revealedSpecies
+        if (currentLootbox != null && uiState.pendingSummary == null) {
+            if (revealedSpecies == null) {
+                // Estado 1: Lootbox cerrada
+                AlertDialog(
+                    onDismissRequest = {},
+                    containerColor = OceanMid,
+                    title = {
                         Text(
-                            "Un nuevo habitante ha llegado al estanque.\n¿Cómo quieres llamarle?",
-                            color = TextSecondary,
-                            fontSize = 14.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            "¡Lootbox de ${currentLootbox.category.name.lowercase().replaceFirstChar { it.uppercase() }}!",
+                            color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
                         )
-                        OutlinedTextField(
-                            value = nickname,
-                            onValueChange = { nickname = it },
-                            placeholder = { Text("Nombre...", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = Color(0xFF7EC8E3),
-                                unfocusedBorderColor = TextSecondary
+                    },
+                    text = {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🎁", fontSize = 56.sp)
+                            Text(
+                                "Has alcanzado el nivel ${currentLootbox.categoryLevel}.\n¡Una nueva criatura espera!",
+                                color = TextSecondary,
+                                fontSize = 14.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
-                        )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.openLootbox() }) {
+                            Text("Abrir 🎁", color = Color(0xFF7EC8E3))
+                        }
                     }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = { viewModel.confirmUnlock(currentUnlock, nickname) },
-                        enabled = nickname.isNotBlank()
-                    ) {
-                        Text("Bienvenido al estanque 🌊", color = Color(0xFF7EC8E3))
-                    }
+                )
+            } else {
+                // Estado 2: Especie revelada → pedir nombre
+                var nickname by remember(revealedSpecies) { mutableStateOf("") }
+                val rarityColor = when (revealedSpecies.rarity) {
+                    com.mnebot.riptide.domain.model.CreatureRarity.COMMON -> Color(0xFF9E9E9E)
+                    com.mnebot.riptide.domain.model.CreatureRarity.UNCOMMON -> Color(0xFF4CAF50)
+                    com.mnebot.riptide.domain.model.CreatureRarity.RARE -> Color(0xFF2196F3)
+                    com.mnebot.riptide.domain.model.CreatureRarity.EPIC -> Color(0xFF9C27B0)
+                    com.mnebot.riptide.domain.model.CreatureRarity.LEGENDARY -> Color(0xFFFF9800)
                 }
-            )
+                AlertDialog(
+                    onDismissRequest = {},
+                    containerColor = OceanMid,
+                    title = {
+                        Text("¡Algo nuevo en el estanque!", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    },
+                    text = {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(revealedSpecies.emoji, fontSize = 48.sp)
+                            Text(
+                                revealedSpecies.species.displayName,
+                                color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                revealedSpecies.rarity.displayName,
+                                color = rarityColor, fontSize = 12.sp, fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "¿Cómo quieres llamarle?",
+                                color = TextSecondary,
+                                fontSize = 14.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            OutlinedTextField(
+                                value = nickname,
+                                onValueChange = { nickname = it },
+                                placeholder = { Text("Nombre...", color = TextSecondary) },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedBorderColor = Color(0xFF7EC8E3),
+                                    unfocusedBorderColor = TextSecondary
+                                )
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = { viewModel.confirmUnlock(revealedSpecies, nickname) },
+                            enabled = nickname.isNotBlank()
+                        ) {
+                            Text("Bienvenido al estanque 🌊", color = Color(0xFF7EC8E3))
+                        }
+                    }
+                )
+            }
         }
 
         // Drawer

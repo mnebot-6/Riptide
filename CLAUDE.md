@@ -19,7 +19,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 |---|---|
 | `riptide_context.txt` | Referencia completa del proyecto: todos los sistemas, modelos, lógica de negocio, convenciones |
 | `architecture.md` | MVVM, expect/actual KMP, Room schema, EcosystemProcessor, animaciones AquariumCreatures, NightSummary |
-| `data-models.md` | Todos los modelos de dominio: WorkBlock, DayTask, RecurringTaskDef, MarineCreature, CreatureSpecies (24), XP curve |
+| `data-models.md` | Todos los modelos de dominio: WorkBlock, DayTask, RecurringTaskDef, MarineCreature, CreatureSpecies (40), XP curve |
 | `project_structure.md` | Árbol de directorios completo con descripción de cada archivo |
 | `roadmap.md` | Fases completadas y futuras (v3: testing/onboarding, v4: wallpaper dinámico, v5: backend, v6: iOS) |
 
@@ -75,7 +75,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 
 **Completado:**
 - MVVM + Room offline-first (v9)
-- Ecosistema marino: 24 especies, 9 categorías, desbloqueo por XP, crecimiento individual
+- Ecosistema marino: 40 especies, 9 categorías, sistema lootbox con rareza, crecimiento individual
 - Patrones de nado orgánicos (tempo warping, variación por instancia, márgenes simétricos)
 - Resumen nocturno con filtrado correcto por `summaryTime`
 - Tareas EXPIRED completables con checkbox
@@ -89,6 +89,12 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - Crustáceos diferenciados en altura (Lobster pegado al suelo, Hermit Crab algo más arriba)
 - EcosystemScreen con botón de retroceso y `CreatureIcon` en cards
 - Mayor opacidad en tarjetas de tarea para legibilidad
+- Sistema lootbox: desbloqueo aleatorio ponderado por rareza (COMMON→LEGENDARY) al subir nivel de categoría
+- `LootboxResolver` con selección weighted-random al abrir lootbox (no al ganar)
+- XP overflow: categorías completas redirigen 50% XP a la categoría de menor nivel
+- EcosystemScreen: ordenamiento por rareza, barra de progreso por categoría, badges de rareza
+- CreatureDetailDialog: niveles numéricos, badge de rareza con color
+- Diálogo lootbox bifásico: cerrada (🎁 + categoría) → abierta (especie + rareza + nombre)
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
@@ -105,7 +111,8 @@ composeApp/src/
 │   ├── domain/
 │   │   ├── model/          # WorkBlock, DayTask, RecurringTaskDef, MarineCreature, etc.
 │   │   ├── repository/     # Interfaces de repositorios
-│   │   └── processor/      # EcosystemProcessor, NightSummaryProcessor, RecurringTaskGenerator, MarineCategoryAssigner
+│   │   │   └── processor/      # EcosystemProcessor, NightSummaryProcessor, RecurringTaskGenerator, MarineCategoryAssigner
+│   │   └── LootboxResolver.kt            # Selección weighted-random de especie al abrir lootbox
 │   └── presentation/
 │       ├── main/MainScreen.kt              # Pantalla principal (Box con capas)
 │       ├── main/MainViewModel.kt           # ViewModel principal

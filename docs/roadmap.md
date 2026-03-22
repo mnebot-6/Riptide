@@ -138,6 +138,32 @@
 
 ---
 
+## ✅ Sprint lootbox — Sistema de rareza y desbloqueo aleatorio
+
+- **Sistema de rareza**: `CreatureRarity` enum (COMMON 40%, UNCOMMON 30%, RARE 20%, EPIC 8%, LEGENDARY 2%) con pesos de probabilidad normalizados entre candidatos.
+- **40 especies**: 16 nuevas especies añadidas (Surgeonfish, Lionfish, Sunfish, Posidonia, Fan Coral, Spider Crab, Barnacle, Nautilus, Giant Clam, Hammerhead, Barracuda, Cuttlefish, Blue-Ringed Octopus, Marine Iguana, Sea Otter, Manatee). Total: 40 especies en 9 categorías.
+- **Lootbox mechanic**: `CATEGORY_UNLOCK_LEVELS` define qué niveles de categoría producen lootbox. `PendingLootbox(category, categoryLevel)` reemplaza el sistema fijo de `unlockLevel` por especie.
+- **`LootboxResolver`**: selección weighted-random ejecutada al ABRIR la lootbox (no al ganarla). Normaliza pesos entre especies aún bloqueadas de la categoría.
+- **XP overflow**: cuando una categoría tiene todas sus especies desbloqueadas, 50% del XP se queda (sube nivel + XP a criaturas), 50% se redistribuye a la categoría de menor nivel no completa (excluyendo DECORATION). Parámetro `fromOverflow` evita recursión infinita.
+- **Diálogo lootbox bifásico** (`LootboxDialog` en `MainScreen.kt`):
+  - Fase 1 (cerrada): 🎁 + nombre de categoría + nivel + botón "Abrir 🎁"
+  - Fase 2 (abierta): emoji de especie + displayName + badge rareza con color + input nickname + "Bienvenido al estanque 🌊"
+- **EcosystemScreen overhaul**:
+  - Ordenamiento por rareza (COMMON→LEGENDARY), desbloqueados primero
+  - Barra de progreso por categoría hacia siguiente lootbox (reemplaza barras individuales)
+  - Badge de rareza (punto de color) en cards desbloqueadas y bloqueadas
+  - Niveles numéricos "Nv. X" reemplazando dots
+  - Cards bloqueadas: emoji al 10% opacity + "???" + punto de rareza tenue
+- **CreatureDetailDialog**: badge de rareza con color bajo el nombre de especie, niveles numéricos
+- **DataStore**: formato lootbox `"FISH:4|CRUSTACEAN:6"` reemplaza formato emoji. Migración legacy automática.
+- **NightSummaryProcessor**: adaptado para guardar `List<PendingLootbox>` en vez de emojis.
+- **`CreatureSpec` simplificado**: `unlockLevel` eliminado, `rarity: CreatureRarity` añadido. `baseSize` fijo `28f * 1.2f`.
+- **`specBySpecies`**: mapa lazy `Map<CreatureSpecies, CreatureSpec>` reemplaza `emojiToSpecies`.
+- **Rotación de crustáceos**: dirección controlada por negación de rotación (no mirror) cuando `emojiRotation != 0`.
+- **Manta ray**: `sizeMultiplier` 1.45→2.4 en acuario.
+
+---
+
 ## v3 — Revisión, pulido y onboarding
 
 - Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales

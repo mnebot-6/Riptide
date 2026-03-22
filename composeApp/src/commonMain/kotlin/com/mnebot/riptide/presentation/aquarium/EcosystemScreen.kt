@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mnebot.riptide.domain.model.CreatureRarity
 import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
@@ -38,6 +39,14 @@ private fun MarineCategory.displayName(): String = when (this) {
     MarineCategory.REPTILE    -> "Reptiles"
     MarineCategory.MAMMAL     -> "Mamíferos"
     MarineCategory.DECORATION -> "Decoración"
+}
+
+private fun rarityColor(rarity: CreatureRarity): Color = when (rarity) {
+    CreatureRarity.COMMON    -> Color(0xFF9E9E9E)
+    CreatureRarity.UNCOMMON  -> Color(0xFF4CAF50)
+    CreatureRarity.RARE      -> Color(0xFF2196F3)
+    CreatureRarity.EPIC      -> Color(0xFF9C27B0)
+    CreatureRarity.LEGENDARY -> Color(0xFFFF9800)
 }
 
 @Composable
@@ -89,14 +98,22 @@ fun EcosystemScreen(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp)
             ) {
+                val unlockedSpeciesSet = remember(creaturesData) {
+                    creaturesData.map { it.species }.toSet()
+                }
+
                 MarineCategory.entries.forEachIndexed { index, category ->
                     val state = ecosystemByCategory[category]
                     val isUnlocked = state?.isUnlocked == true
                     val categoryLevel = state?.currentLevel ?: 0
 
-                    val specs = allCreatures
+                    // Ordenar por rareza: desbloqueados primero, luego bloqueados
+                    val allSpecs = allCreatures
                         .filter { it.category == category }
-                        .sortedBy { it.unlockLevel }
+                        .sortedBy { it.rarity.ordinal }
+                    val unlockedSpecs = allSpecs.filter { it.species in unlockedSpeciesSet }
+                    val lockedSpecs = allSpecs.filter { it.species !in unlockedSpeciesSet }
+                    val orderedSpecs = unlockedSpecs + lockedSpecs
 
                     if (index > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -113,8 +130,9 @@ fun EcosystemScreen(
                         category = category,
                         isUnlocked = isUnlocked,
                         categoryLevel = categoryLevel,
-                        specs = specs,
+                        specs = orderedSpecs,
                         creaturesData = creaturesData,
+                        unlockedSpeciesSet = unlockedSpeciesSet,
                         onCreatureTap = { creature, spec ->
                             selectedCreature = creature to spec
                         }
@@ -143,14 +161,16 @@ private fun EcosystemCategorySection(
     categoryLevel: Int,
     specs: List<CreatureSpec>,
     creaturesData: List<MarineCreature>,
+    unlockedSpeciesSet: Set<com.mnebot.riptide.domain.model.CreatureSpecies>,
     onCreatureTap: (MarineCreature, CreatureSpec) -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        // ── Header con nombre de categoría ──
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 10.dp)
+                .padding(bottom = 4.dp)
         ) {
             Text(
                 text = category.displayName().uppercase(),
@@ -160,11 +180,52 @@ private fun EcosystemCategorySection(
                 letterSpacing = 1.2.sp,
                 modifier = Modifier.weight(1f)
             )
-            if (!isUnlocked) Text("🔒", fontSize = 11.sp)
+            if (!isUnlocked) {
+                Text("🔒", fontSize = 11.sp)
+            } else {
+                Text(
+                    text = "Nv. $categoryLevel",
+                    color = SectionLabel,
+                    fontSize = 10.sp
+                )
+            }
         }
 
+        // ── Barra de progreso hacia siguiente lootbox (en la categoría) ──
+        if (isUnlocked) {
+            val unlockLevels = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
+            val nextUnlockLevel = unlockLevels.firstOrNull { it > categoryLevel }
+            val progress = if (nextUnlockLevel != null) {
+                val prevLevel = unlockLevels.lastOrNull { it <= categoryLevel } ?: 0
+                val range = nextUnlockLevel - prevLevel
+                if (range > 0) ((categoryLevel - prevLevel).toFloat() / range).coerceIn(0f, 1f)
+                else 1f
+            } else {
+                1f // todas desbloqueadas
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x22FFFFFF))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(Accent.copy(alpha = 0.55f))
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        } else {
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
+        // ── Grid de criaturas ──
         specs.chunked(3).forEach { rowSpecs ->
-            // IntrinsicSize.Max iguala la altura de todas las cards de la fila
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,7 +234,7 @@ private fun EcosystemCategorySection(
             ) {
                 rowSpecs.forEach { spec ->
                     val creature = creaturesData.find { it.species == spec.species }
-                    val isCreatureUnlocked = isUnlocked && categoryLevel >= spec.unlockLevel
+                    val isCreatureUnlocked = spec.species in unlockedSpeciesSet
 
                     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         if (isCreatureUnlocked && creature != null) {
@@ -183,11 +244,7 @@ private fun EcosystemCategorySection(
                                 onClick = { onCreatureTap(creature, spec) }
                             )
                         } else {
-                            LockedCreatureCard(
-                                spec = spec,
-                                categoryLevel = categoryLevel,
-                                isUnlocked = isUnlocked
-                            )
+                            LockedCreatureCard(spec = spec)
                         }
                     }
                 }
@@ -216,8 +273,16 @@ private fun UnlockedCreatureCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Badge de rareza (punto de color)
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(rarityColor(spec.rarity))
+                .align(Alignment.End)
+        )
         CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(52.dp))
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = creature.nickname ?: spec.displayName,
             color = TextPrimary,
@@ -225,31 +290,17 @@ private fun UnlockedCreatureCard(
             textAlign = TextAlign.Center,
             maxLines = 1
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        val dots = creature.creatureLevel.coerceAtMost(5)
-        Row(horizontalArrangement = Arrangement.Center) {
-            repeat(dots) { i ->
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(Accent)
-                )
-                if (i < dots - 1) Spacer(Modifier.width(3.dp))
-            }
-        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Nv. ${creature.creatureLevel}",
+            color = Accent,
+            fontSize = 10.sp
+        )
     }
 }
 
 @Composable
-private fun LockedCreatureCard(
-    spec: CreatureSpec,
-    categoryLevel: Int,
-    isUnlocked: Boolean
-) {
-    val progress = if (!isUnlocked) 0f
-    else (categoryLevel.toFloat() / spec.unlockLevel.coerceAtLeast(1)).coerceIn(0f, 1f)
-
+private fun LockedCreatureCard(spec: CreatureSpec) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -265,24 +316,16 @@ private fun LockedCreatureCard(
             color = Color.White.copy(alpha = 0.10f)
         )
         Spacer(modifier = Modifier.height(6.dp))
+        // Badge de rareza (punto de color pero tenue)
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
+                .size(6.dp)
                 .clip(CircleShape)
-                .background(Color(0x22FFFFFF))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .background(Accent.copy(alpha = 0.45f))
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
+                .background(rarityColor(spec.rarity).copy(alpha = 0.35f))
+        )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = if (!isUnlocked) "🔒" else "Nv. ${spec.unlockLevel}",
+            text = "???",
             color = SectionLabel,
             fontSize = 10.sp,
             textAlign = TextAlign.Center

@@ -25,7 +25,9 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `DaySummary.kt` | Score interno + mensaje visible |
 | `BlockStreak.kt` | PK natural = `blockId` |
 | `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoría |
-| `MarineCreature.kt` | `experience` + `creatureLevel` individuales + `CreatureSpecies` (24 especies) |
+| `MarineCreature.kt` | `experience` + `creatureLevel` individuales + `CreatureSpecies` (40 especies) |
+| `CreatureRarity.kt` | Enum: COMMON(0.40), UNCOMMON(0.30), RARE(0.20), EPIC(0.08), LEGENDARY(0.02) con pesos |
+| `PendingLootbox.kt` | `data class PendingLootbox(category, categoryLevel)` — lootbox pendiente de abrir |
 | `BlockCategory.kt` | Relación bloque ↔ categoría (automática) |
 
 ### `domain/repository/`
@@ -34,7 +36,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
-| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), pendingUnlocks, **lastDismissedSummaryDate**, hasCompletedOnboarding |
+| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, pendingUnlocks (legacy), **lastDismissedSummaryDate**, hasCompletedOnboarding |
 | Resto | operaciones estándar |
 
 ### `domain/`
@@ -45,7 +47,8 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable |
 | `BlockStreakProcessor.kt` | Rachas por bloque |
 | `NightSummaryProcessor.kt` | Recibe `summaryTime`; evalúa tareas completadas + PENDING con hora ≤ summaryTime |
-| `EcosystemProcessor.kt` | XP a categorías + XP a criaturas individuales; requiere `MarineCreatureRepository` |
+| `EcosystemProcessor.kt` | XP a categorías + XP a criaturas + lootbox detection + overflow; requiere `MarineCreatureRepository` |
+| `LootboxResolver.kt` | Selección weighted-random de especie al abrir lootbox; requiere `MarineCreatureRepository` |
 | `EcosystemLevelCalculator.kt` | Curva de niveles compartida para ecosistemas y criaturas |
 
 ### `presentation/aquarium/`
@@ -54,11 +57,11 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `AquariumBackground.kt` | Canvas: cielo dinámico por hora (7 periodos), superficie con olas animadas (cresta doble), fondo marino (arena con textura, 11 rocas 3 estilos), burbujas |
 | `AquariumBounds.kt` | `SURFACE_FRACTION=0.08`, `FLOOR_FRACTION=0.88`, `surfaceY(h)`, `floorY(h)` — compartidas entre background y criaturas |
-| `AquariumCreature.kt` | `CreatureSpec` (+`sizeMultiplier`, `instanceCount`), SwimZone, EasingType, 24 especies, `AquariumCreatures`, `CreatureFreezeState`, hit-testing, tempo warping, variación por instancia, múltiples instancias de flora Canvas, crustáceos en BOTTOM diferenciados |
+| `AquariumCreature.kt` | `CreatureSpec` (+`rarity`, `sizeMultiplier`, `instanceCount`), SwimZone, EasingType, 40 especies, `CATEGORY_UNLOCK_LEVELS`, `specBySpecies`, `AquariumCreatures`, `CreatureFreezeState`, hit-testing, tempo warping, variación por instancia, múltiples instancias de flora Canvas, crustáceos en BOTTOM diferenciados |
 | `CreatureRenderer.kt` | `CreatureRenderer` interface + `rendererFor(species)` dispatch + `CreatureIcon` @Composable (Canvas animado para flora, emoji fallback) |
-| `CreatureDetailDialog.kt` | Dialog OceanMid: `CreatureIcon(80dp)`, nombre, nickname editable, XpBar sin números, fecha desbloqueo |
+| `CreatureDetailDialog.kt` | Dialog OceanMid: `CreatureIcon(80dp)`, nombre, badge rareza, nickname editable, XpBar con nivel numérico, fecha desbloqueo |
 | `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos entre dialogs |
-| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": botón ← retroceso, grid 3 col, `CreatureIcon(52dp)` en cards desbloqueadas, cards bloqueadas con barra progreso |
+| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": botón ← retroceso, grid 3 col por rareza, barra progreso por categoría, badges rareza, niveles numéricos, cards bloqueadas con emoji 10% opacity |
 | `flora/BrainCoralRenderer.kt` | Canvas: domos con crestas, cluster multi-domo nivel 6+, colores coral/rosa |
 | `flora/AnemoneRenderer.kt` | Canvas: tentáculos con `quadraticTo`, ondulación interna animada, 5→14 tentáculos según nivel |
 | `flora/KelpRenderer.kt` | Canvas: tallos con hojas alternas, ondulación creciente, bosque multi-tallo nivel 6+ |
@@ -67,9 +70,9 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Archivo | Qué hace |
 |---|---|
-| `MainUiState.kt` | + `creaturesData: List<MarineCreature>` |
-| `MainViewModel.kt` | `loadDay` carga `creaturesData`; `toggleTaskCompleted` con `hasBeenRewarded` y lógica EXPIRED; `updateCreatureNickname` |
-| `MainScreen.kt` | EXPIRED: ⌛ + checkbox completable; tap criatura → `CreatureDetailDialog` |
+| `MainUiState.kt` | + `creaturesData`, `pendingLootboxes`, `revealedSpecies` |
+| `MainViewModel.kt` | `loadDay` carga `creaturesData`; `toggleTaskCompleted` con lootboxes; `openLootbox`, `confirmUnlock`, `dismissLootbox`; `updateCreatureNickname` |
+| `MainScreen.kt` | EXPIRED: ⌛ + checkbox; tap criatura → `CreatureDetailDialog`; diálogo lootbox bifásico (cerrada→abierta) |
 | `WeekCalendar.kt` | Excluye POSTPONED |
 | `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES; scroll interno con `LocalWindowInfo` |
 
@@ -115,7 +118,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Archivo | Nota |
 |---|---|
-| `MainViewModelFactory.kt` | `EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo)` |
+| `MainViewModelFactory.kt` | `EcosystemProcessor(...)` + `LootboxResolver(marineCreatureRepo)` |
 | `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
 | `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
 | `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay` |
@@ -163,7 +166,7 @@ Box (pointerInput gestos)
  ├── AlertDialog deletingRecurring
  ├── AlertDialog editingScopeTask
  ├── AlertDialog pendingSummary
- ├── AlertDialog pendingUnlocks
+ ├── Dialog pendingLootboxes (bifásico: cerrada→abierta)
  ├── CreatureDetailDialog (tap criatura)
  ├── Drawer (pointerInput propio para cerrar)
  │    └── MainDrawer(onNavigateToEcosystem)

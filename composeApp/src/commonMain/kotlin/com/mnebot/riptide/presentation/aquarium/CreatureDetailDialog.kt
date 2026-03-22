@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.mnebot.riptide.domain.model.CreatureRarity
 import com.mnebot.riptide.domain.model.MarineCreature
 
 private val OceanMid = Color(0xFF1B3A6B)
@@ -53,6 +54,22 @@ fun CreatureDetailDialog(
                 color = TextPrimary,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            val rarityColor = when (spec.rarity) {
+                CreatureRarity.COMMON    -> Color(0xFF9E9E9E)
+                CreatureRarity.UNCOMMON  -> Color(0xFF4CAF50)
+                CreatureRarity.RARE      -> Color(0xFF2196F3)
+                CreatureRarity.EPIC      -> Color(0xFF9C27B0)
+                CreatureRarity.LEGENDARY -> Color(0xFFFF9800)
+            }
+            Text(
+                text = spec.rarity.displayName,
+                color = rarityColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
 
             Spacer(Modifier.height(12.dp))
@@ -148,22 +165,12 @@ private fun XpBar(creature: MarineCreature) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            repeat(creature.creatureLevel.coerceAtMost(10)) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Accent)
-                )
-                if (it < creature.creatureLevel.coerceAtMost(10) - 1) {
-                    Spacer(Modifier.width(4.dp))
-                }
-            }
-        }
+        Text(
+            text = "Nivel ${creature.creatureLevel}",
+            color = Accent,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
 
         Spacer(Modifier.height(8.dp))
 

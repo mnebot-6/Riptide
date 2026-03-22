@@ -181,6 +181,35 @@ Curva de niveles:
 
 ---
 
+## CreatureRarity
+
+```kotlin
+enum class CreatureRarity(val weight: Float, val displayName: String) {
+    COMMON(0.40f, "Común"),
+    UNCOMMON(0.30f, "Poco común"),
+    RARE(0.20f, "Raro"),
+    EPIC(0.08f, "Épico"),
+    LEGENDARY(0.02f, "Legendario")
+}
+```
+
+Los pesos son probabilidades relativas, normalizadas entre las especies aún bloqueadas de la categoría al resolver una lootbox.
+
+---
+
+## PendingLootbox
+
+```kotlin
+data class PendingLootbox(
+    val category: MarineCategory,
+    val categoryLevel: Int
+)
+```
+
+Representa una lootbox pendiente de abrir. Se genera cuando una categoría alcanza un nivel definido en `CATEGORY_UNLOCK_LEVELS`. La especie se resuelve al ABRIR (no al ganar).
+
+---
+
 ## MarineCreature / CreatureSpecies
 
 ```kotlin
@@ -200,32 +229,59 @@ data class MarineCreature(
 
 ```kotlin
 enum class CreatureSpecies(val category: MarineCategory, val displayName: String) {
+    // FISH (6)
     CLOWNFISH(FISH, "Pez payaso"),
     ANGELFISH(FISH, "Pez ángel"),
     PUFFERFISH(FISH, "Pez globo"),
+    SURGEONFISH(FISH, "Pez cirujano"),
+    LIONFISH(FISH, "Pez león"),
+    SUNFISH(FISH, "Pez luna"),
+    // FLORA (5)
     BRAIN_CORAL(FLORA, "Coral cerebro"),
     ANEMONE(FLORA, "Anémona"),
     KELP(FLORA, "Alga kelp"),
+    POSIDONIA(FLORA, "Posidonia"),
+    FAN_CORAL(FLORA, "Coral abanico"),
+    // CRUSTACEAN (5)
     LOBSTER(CRUSTACEAN, "Langosta"),
     HERMIT_CRAB(CRUSTACEAN, "Cangrejo ermitaño"),
     SHRIMP(CRUSTACEAN, "Gamba"),
+    SPIDER_CRAB(CRUSTACEAN, "Cangrejo araña"),
+    BARNACLE(CRUSTACEAN, "Percebes"),
+    // MOLLUSK (5)
     SEA_URCHIN(MOLLUSK, "Erizo de mar"),
     STARFISH(MOLLUSK, "Estrella de mar"),
     OYSTER(MOLLUSK, "Ostra"),
+    NAUTILUS(MOLLUSK, "Nautilus"),
+    GIANT_CLAM(MOLLUSK, "Almeja gigante"),
+    // PELAGIC (5)
     MANTA_RAY(PELAGIC, "Raya manta"),
     MOON_JELLYFISH(PELAGIC, "Medusa luna"),
     WHALE_SHARK(PELAGIC, "Tiburón ballena"),
+    HAMMERHEAD(PELAGIC, "Pez martillo"),
+    BARRACUDA(PELAGIC, "Barracuda"),
+    // CEPHALOPOD (4)
     OCTOPUS(CEPHALOPOD, "Pulpo"),
     SQUID(CEPHALOPOD, "Calamar"),
+    CUTTLEFISH(CEPHALOPOD, "Sepia"),
+    BLUE_RINGED_OCTOPUS(CEPHALOPOD, "Pulpo anillado"),
+    // REPTILE (2)
     SEA_TURTLE(REPTILE, "Tortuga marina"),
+    MARINE_IGUANA(REPTILE, "Iguana marina"),
+    // MAMMAL (5)
     DOLPHIN(MAMMAL, "Delfín"),
     SEAL(MAMMAL, "Foca"),
     BLUE_WHALE(MAMMAL, "Ballena azul"),
+    SEA_OTTER(MAMMAL, "Nutria marina"),
+    MANATEE(MAMMAL, "Manatí"),
+    // DECORATION (3)
     TREASURE_CHEST(DECORATION, "Cofre del tesoro"),
     ANCHOR(DECORATION, "Ancla"),
     SUNKEN_SHIP(DECORATION, "Barco hundido")
 }
 ```
+
+Total: 40 especies. Rareza asignada en `CreatureSpec` (código, no DB).
 
 ---
 
@@ -236,7 +292,7 @@ data class CreatureSpec(
     val emoji: String,
     val species: CreatureSpecies,
     val category: MarineCategory,
-    val unlockLevel: Int,
+    val rarity: CreatureRarity,
     val swimDuration: Int,          // ms; 0 = fija
     val wobbleAmplitude: Float,     // amplitud onda Y primaria (fracción de banda)
     val speedScalePerLevel: Float,  // + más rápido, - más lento al crecer

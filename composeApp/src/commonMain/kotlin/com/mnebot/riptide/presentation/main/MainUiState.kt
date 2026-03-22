@@ -6,6 +6,7 @@ import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
+import com.mnebot.riptide.domain.model.PendingLootbox
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import kotlinx.datetime.LocalDate
@@ -19,7 +20,9 @@ data class MainUiState(
     val creatureLevelBySpecies: Map<CreatureSpecies, Int> = emptyMap(),
     val creaturesData: List<MarineCreature> = emptyList(),
     val pendingSummary: DaySummary? = null,
-    val pendingUnlocks: List<CreatureSpec> = emptyList(),
+    // Nuevo sistema de lootbox
+    val pendingLootboxes: List<PendingLootbox> = emptyList(),
+    val revealedSpecies: CreatureSpec? = null,
     val isLoading: Boolean = false,
     val error: String? = null
 )
