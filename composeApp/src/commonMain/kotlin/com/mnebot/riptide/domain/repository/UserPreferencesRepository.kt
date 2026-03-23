@@ -20,6 +20,10 @@ interface UserPreferencesRepository {
     suspend fun getLastDismissedSummaryDate(): LocalDate?
     suspend fun setLastDismissedSummaryDate(date: LocalDate)
 
+    // Morning reminder (null = disabled)
+    fun getMorningReminderTime(): Flow<LocalTime?>
+    suspend fun setMorningReminderTime(time: LocalTime?)
+
     // Onboarding
     fun hasCompletedOnboarding(): Flow<Boolean>
     suspend fun setOnboardingCompleted()

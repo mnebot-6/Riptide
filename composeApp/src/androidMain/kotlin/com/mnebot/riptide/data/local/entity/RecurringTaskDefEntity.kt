@@ -21,5 +21,6 @@ data class RecurringTaskDefEntity(
     val title: String,
     val time: String?,               // LocalTime serializado, nullable
     val recurrence: String,          // JSON
-    val isActive: Boolean
+    val isActive: Boolean,
+    val notificationsEnabled: Boolean = false
 )

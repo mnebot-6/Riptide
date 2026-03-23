@@ -21,7 +21,7 @@ object DatabaseProvider {
                 RiptideDatabase::class.java,
                 "riptide.db"
             )
-                .addMigrations(MIGRATION_8_9)
+                .addMigrations(MIGRATION_8_9, MIGRATION_9_10)
                 .build().also { instance = it }
         }
     }

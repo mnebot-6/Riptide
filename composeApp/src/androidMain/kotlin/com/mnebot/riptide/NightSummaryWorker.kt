@@ -66,8 +66,23 @@ class NightSummaryWorker(
             ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         val summaryTime = userPreferencesRepository.getNightSummaryTime().first()
+        val daySummaryRepo = DaySummaryRepositoryImpl(db.daySummaryDao())
 
         processor.processDay(today, blockNames, blockCategories, summaryTime)
+
+        // Send push notification with the day's stats
+        val summary = daySummaryRepo.getByDate(today)
+        if (summary != null) {
+            NotificationHelper.sendNightSummaryNotification(
+                context = context,
+                completedCount = summary.tasksCompleted,
+                totalCount = summary.tasksTotal
+            )
+        }
+
+        // Reschedule for the same time tomorrow
+        schedule(context, summaryTime)
+
         return Result.success()
     }
 

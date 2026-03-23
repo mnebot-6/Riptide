@@ -38,7 +38,8 @@ class RecurringTaskGenerator(
                         status = TaskStatus.PENDING,
                         completedAt = null,
                         postponedTo = null,
-                        sourceTaskId = def.id
+                        sourceTaskId = def.id,
+                        notificationsEnabled = def.notificationsEnabled
                     )
                 )
             }

@@ -2,6 +2,7 @@ package com.mnebot.riptide.presentation.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mnebot.riptide.TaskReminderScheduler
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.LootboxResolver
 import com.mnebot.riptide.domain.MarineCategoryAssigner
@@ -47,6 +48,7 @@ class MainViewModel(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val ecosystemStateRepository: EcosystemStateRepository,
     private val marineCreatureRepository: MarineCreatureRepository,
+    private val taskReminderScheduler: TaskReminderScheduler? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -78,6 +80,7 @@ class MainViewModel(
             } else {
                 newStatus = TaskStatus.COMPLETED
                 completedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                taskReminderScheduler?.cancelReminder(task.id)
             }
 
             dayTaskRepository.update(
@@ -105,21 +108,31 @@ class MainViewModel(
         title: String,
         blockId: String?,
         date: LocalDate,
-        time: LocalTime?
+        time: LocalTime?,
+        notificationsEnabled: Boolean = false
     ) {
         viewModelScope.launch {
+            val taskId = generateUUID()
             dayTaskRepository.insert(
                 DayTask(
-                    id = generateUUID(),
+                    id = taskId,
                     blockId = blockId,
                     title = title,
                     schedule = TaskSchedule.OneTime(date = date, time = time),
                     status = TaskStatus.PENDING,
                     completedAt = null,
                     postponedTo = null,
-                    sourceTaskId = null
+                    sourceTaskId = null,
+                    notificationsEnabled = notificationsEnabled
                 )
             )
+            if (notificationsEnabled && time != null) {
+                val scheduledAt = LocalDateTime(date, time)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                if (scheduledAt > now) {
+                    taskReminderScheduler?.scheduleReminder(taskId, title, scheduledAt)
+                }
+            }
             loadDay(_uiState.value.selectedDate)
         }
     }
@@ -131,7 +144,8 @@ class MainViewModel(
         title: String,
         blockId: String,
         time: LocalTime?,
-        recurrence: Recurrence
+        recurrence: Recurrence,
+        notificationsEnabled: Boolean = false
     ) {
         viewModelScope.launch {
             val def = RecurringTaskDef(
@@ -140,10 +154,24 @@ class MainViewModel(
                 title = title,
                 time = time,
                 recurrence = recurrence,
-                isActive = true
+                isActive = true,
+                notificationsEnabled = notificationsEnabled
             )
             recurringTaskDefRepository.insert(def)
             recurringTaskGenerator.generateUpTo(currentDate(), daysAhead = 7)
+            // Schedule reminders for newly generated instances if notifications enabled
+            if (notificationsEnabled && time != null) {
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                dayTaskRepository.getBySourceTask(def.id)
+                    .filter { it.notificationsEnabled && it.status == TaskStatus.PENDING }
+                    .forEach { task ->
+                        val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date ?: return@forEach
+                        val scheduledAt = LocalDateTime(taskDate, time)
+                        if (scheduledAt > now) {
+                            taskReminderScheduler?.scheduleReminder(task.id, task.title, scheduledAt)
+                        }
+                    }
+            }
             loadDay(_uiState.value.selectedDate)
         }
     }
@@ -153,19 +181,43 @@ class MainViewModel(
         title: String,
         blockId: String,
         time: LocalTime?,
-        recurrence: Recurrence
+        recurrence: Recurrence,
+        notificationsEnabled: Boolean = false
     ) {
         viewModelScope.launch {
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
-            recurringTaskDefRepository.update(
-                def.copy(title = title, blockId = blockId, time = time, recurrence = recurrence)
-            )
+            // Cancel reminders for all pending future instances before deleting them
             val today = currentDate()
-            dayTaskRepository.getBySourceTask(sourceId)
+            val pendingFuture = dayTaskRepository.getBySourceTask(sourceId)
                 .filter { it.status == TaskStatus.PENDING }
                 .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= today } == true }
-                .forEach { dayTaskRepository.delete(it.id) }
+            pendingFuture.forEach { task ->
+                taskReminderScheduler?.cancelReminder(task.id)
+                dayTaskRepository.delete(task.id)
+            }
+            recurringTaskDefRepository.update(
+                def.copy(
+                    title = title,
+                    blockId = blockId,
+                    time = time,
+                    recurrence = recurrence,
+                    notificationsEnabled = notificationsEnabled
+                )
+            )
             recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
+            // Schedule reminders for newly generated instances
+            if (notificationsEnabled && time != null) {
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                dayTaskRepository.getBySourceTask(sourceId)
+                    .filter { it.notificationsEnabled && it.status == TaskStatus.PENDING }
+                    .forEach { task ->
+                        val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date ?: return@forEach
+                        val scheduledAt = LocalDateTime(taskDate, time)
+                        if (scheduledAt > now) {
+                            taskReminderScheduler?.scheduleReminder(task.id, task.title, scheduledAt)
+                        }
+                    }
+            }
             loadDay(_uiState.value.selectedDate)
         }
     }
@@ -260,6 +312,7 @@ class MainViewModel(
 
     fun deleteTask(task: DayTask) {
         viewModelScope.launch {
+            taskReminderScheduler?.cancelReminder(task.id)
             dayTaskRepository.delete(task.id)
             loadDay(_uiState.value.selectedDate)
         }
@@ -270,41 +323,58 @@ class MainViewModel(
         title: String,
         blockId: String?,
         date: LocalDate,
-        time: LocalTime?
+        time: LocalTime?,
+        notificationsEnabled: Boolean = false
     ) {
         viewModelScope.launch {
+            taskReminderScheduler?.cancelReminder(original.id)
             dayTaskRepository.update(
                 original.copy(
                     title = title,
                     blockId = blockId,
-                    schedule = TaskSchedule.OneTime(date = date, time = time)
+                    schedule = TaskSchedule.OneTime(date = date, time = time),
+                    notificationsEnabled = notificationsEnabled
                 )
             )
+            if (notificationsEnabled && time != null) {
+                val scheduledAt = LocalDateTime(date, time)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                if (scheduledAt > now) {
+                    taskReminderScheduler?.scheduleReminder(original.id, title, scheduledAt)
+                }
+            }
             loadDay(_uiState.value.selectedDate)
         }
     }
 
     fun postponeTask(task: DayTask, date: LocalDate, time: LocalTime?) {
         viewModelScope.launch {
+            taskReminderScheduler?.cancelReminder(task.id)
             val postponedTo = LocalDateTime(date, time ?: LocalTime(0, 0))
             dayTaskRepository.update(task.copy(status = TaskStatus.POSTPONED, postponedTo = postponedTo))
+            val newId = generateUUID()
             dayTaskRepository.insert(
                 task.copy(
-                    id = generateUUID(),
-                    schedule = TaskSchedule.OneTime(
-                        date = date,
-                        time = time
-                    ),
+                    id = newId,
+                    schedule = TaskSchedule.OneTime(date = date, time = time),
                     status = TaskStatus.PENDING,
                     postponedTo = null
                 )
             )
+            if (task.notificationsEnabled && time != null) {
+                val scheduledAt = LocalDateTime(date, time)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                if (scheduledAt > now) {
+                    taskReminderScheduler?.scheduleReminder(newId, task.title, scheduledAt)
+                }
+            }
             loadDay(_uiState.value.selectedDate)
         }
     }
 
     fun deleteRecurringTaskInstance(task: DayTask) {
         viewModelScope.launch {
+            taskReminderScheduler?.cancelReminder(task.id)
             dayTaskRepository.update(task.copy(status = TaskStatus.CANCELLED))
             loadDay(_uiState.value.selectedDate)
         }
@@ -315,6 +385,11 @@ class MainViewModel(
             val sourceId = task.sourceTaskId ?: return@launch
             val date = (task.schedule as? TaskSchedule.OneTime)?.date ?: return@launch
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            // Cancel reminders for pending instances from this date onwards
+            dayTaskRepository.getBySourceTask(sourceId)
+                .filter { it.status == TaskStatus.PENDING }
+                .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= date } == true }
+                .forEach { taskReminderScheduler?.cancelReminder(it.id) }
             recurringTaskDefRepository.update(def.copy(isActive = false))
             dayTaskRepository.deleteBySourceIdFromDate(sourceId, date)
             loadDay(_uiState.value.selectedDate)
@@ -325,6 +400,10 @@ class MainViewModel(
         viewModelScope.launch {
             val sourceId = task.sourceTaskId ?: return@launch
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
+            // Cancel reminders for all pending instances
+            dayTaskRepository.getBySourceTask(sourceId)
+                .filter { it.status == TaskStatus.PENDING }
+                .forEach { taskReminderScheduler?.cancelReminder(it.id) }
             recurringTaskDefRepository.update(def.copy(isActive = false))
             dayTaskRepository.deleteBySourceId(sourceId)
             loadDay(_uiState.value.selectedDate)

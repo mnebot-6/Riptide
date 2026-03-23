@@ -7,4 +7,9 @@ interface NightSummaryScheduler {
     fun getNightSummaryTime(): Flow<LocalTime>
     suspend fun setNightSummaryTime(time: LocalTime)
     fun scheduleWorker(time: LocalTime)
+
+    // Morning reminder (null = disabled)
+    fun getMorningReminderTime(): Flow<LocalTime?>
+    suspend fun setMorningReminderTime(time: LocalTime?)
+    fun scheduleMorningReminder(time: LocalTime?)
 }

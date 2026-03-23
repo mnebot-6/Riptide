@@ -50,8 +50,8 @@ fun TaskFormSheet(
     existingTask: DayTask? = null,
     existingDef: RecurringTaskDef? = null,
     forceRecurring: Boolean = false,
-    onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?) -> Unit,
-    onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence) -> Unit,
+    onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?, notificationsEnabled: Boolean) -> Unit,
+    onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence, notificationsEnabled: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
@@ -63,8 +63,16 @@ fun TaskFormSheet(
     var selectedDate by remember { mutableStateOf<LocalDate?>(initialSchedule?.date ?: initialDate) }
     var selectedTime by remember { mutableStateOf<LocalTime?>(initialSchedule?.time) }
 
-    var recurringTime by remember { mutableStateOf<LocalTime?>(existingDef?.time) }
-    val selectedDays = remember {
+    var recurringTime by remember(existingDef) { mutableStateOf<LocalTime?>(existingDef?.time) }
+    var notificationsEnabled by remember(existingTask, existingDef) {
+        mutableStateOf(existingTask?.notificationsEnabled ?: existingDef?.notificationsEnabled ?: false)
+    }
+
+    // Reset notification toggle when time is cleared
+    LaunchedEffect(selectedTime) { if (selectedTime == null) notificationsEnabled = false }
+    LaunchedEffect(recurringTime) { if (recurringTime == null) notificationsEnabled = false }
+
+    val selectedDays = remember(existingDef) {
         mutableStateMapOf<Int, Unit>().also { map ->
             val slots = (existingDef?.recurrence as? Recurrence.Weekly)?.slots
             slots?.forEach { map[it.dayOfWeek] = Unit }
@@ -156,6 +164,28 @@ fun TaskFormSheet(
                     onValueChange = { selectedTime = it },
                     nullable = true
                 )
+                if (selectedTime != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "🔔 ${stringResource(Res.string.label_notify_at_time)}",
+                            color = TextSecondary,
+                            fontSize = 14.sp
+                        )
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { notificationsEnabled = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = TextPrimary,
+                                checkedTrackColor = Color(0xFF1A73E8)
+                            )
+                        )
+                    }
+                }
             } else {
                 SheetSectionLabel(stringResource(Res.string.label_time_optional))
                 Spacer(modifier = Modifier.height(8.dp))
@@ -164,6 +194,28 @@ fun TaskFormSheet(
                     onValueChange = { recurringTime = it },
                     nullable = true
                 )
+                if (recurringTime != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "🔔 ${stringResource(Res.string.label_notify_at_time)}",
+                            color = TextSecondary,
+                            fontSize = 14.sp
+                        )
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { notificationsEnabled = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = TextPrimary,
+                                checkedTrackColor = Color(0xFF1A73E8)
+                            )
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -246,12 +298,12 @@ fun TaskFormSheet(
                             if (title.isBlank()) return@clickable
                             if (!isRecurring) {
                                 val date = selectedDate ?: currentDate()
-                                onSaveOneTime(title, selectedBlockId, date, selectedTime)
+                                onSaveOneTime(title, selectedBlockId, date, selectedTime, notificationsEnabled)
                             } else {
                                 val blockId = selectedBlockId ?: return@clickable
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
-                                onSaveRecurring(title, blockId, recurringTime, Recurrence.Weekly(slots))
+                                onSaveRecurring(title, blockId, recurringTime, Recurrence.Weekly(slots), notificationsEnabled)
                             }
                         }
                         .padding(vertical = 14.dp),

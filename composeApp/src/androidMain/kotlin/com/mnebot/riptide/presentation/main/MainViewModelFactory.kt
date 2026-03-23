@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.main
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.mnebot.riptide.TaskReminderSchedulerImpl
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.*
 import com.mnebot.riptide.domain.EcosystemProcessor
@@ -40,6 +41,7 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
             ecosystemStateRepository = ecosystemStateRepo,
             userPreferencesRepository = userPreferencesRepo,
             marineCreatureRepository = marineCreatureRepo,
+            taskReminderScheduler = TaskReminderSchedulerImpl(context.applicationContext),
         ) as T
     }
 }

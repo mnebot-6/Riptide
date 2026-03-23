@@ -175,4 +175,10 @@
     <string name="onboarding_ready_body">Crea tu primer bloque para organizar tu día y comienza a construir tu ecosistema marino.</string>
     <string name="onboarding_btn_next">Siguiente →</string>
     <string name="onboarding_btn_start">Empezar 🌊</string>
+
+    <!-- Notifications — Drawer settings -->
+    <string name="label_morning_reminder">Aviso matutino</string>
+
+    <!-- Notifications — TaskForm -->
+    <string name="label_notify_at_time">Notificarme a esta hora</string>
 </resources>

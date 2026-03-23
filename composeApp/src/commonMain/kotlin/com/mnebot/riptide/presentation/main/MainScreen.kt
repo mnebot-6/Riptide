@@ -118,6 +118,8 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
         .collectAsState(initial = LocalTime(23, 30))
+    val morningReminderTime by nightSummaryScheduler.getMorningReminderTime()
+        .collectAsState(initial = null)
     var showAquarium by remember { mutableStateOf(false) }
     var showDrawer by remember { mutableStateOf(false) }
     var showTaskSheet by remember { mutableStateOf(false) }
@@ -551,6 +553,7 @@ fun MainScreen(
                 MainDrawer(
                     blocks = uiState.blocks,
                     nightSummaryTime = nightSummaryTime,
+                    morningReminderTime = morningReminderTime,
                     onAddBlock = {
                         scope.launch {
                             drawerOffsetY.animateTo(0f, animationSpec = tween(250))
@@ -568,6 +571,10 @@ fun MainScreen(
                     onNightSummaryTimeChanged = { time ->
                         nightSummaryScheduler.scheduleWorker(time)
                         viewModel.updateNightSummaryTime(time)
+                    },
+                    onMorningReminderTimeChanged = { time ->
+                        scope.launch { nightSummaryScheduler.setMorningReminderTime(time) }
+                        nightSummaryScheduler.scheduleMorningReminder(time)
                     },
                     onNavigateToEcosystem = {
                         scope.launch {
@@ -603,13 +610,13 @@ fun MainScreen(
                         blocks = uiState.blocks,
                         initialDate = uiState.selectedDate,
                         initialBlockId = quickTaskBlock?.id,
-                        onSaveOneTime = { title, blockId, date, time ->
-                            viewModel.addOneTimeTask(title, blockId, date, time)
+                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled ->
+                            viewModel.addOneTimeTask(title, blockId, date, time, notificationsEnabled)
                             showTaskSheet = false
                             quickTaskBlock = null
                         },
-                        onSaveRecurring = { title, blockId, time, recurrence ->
-                            viewModel.addRecurringTask(title, blockId, time, recurrence)
+                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled ->
+                            viewModel.addRecurringTask(title, blockId, time, recurrence, notificationsEnabled)
                             showTaskSheet = false
                             quickTaskBlock = null
                         },
@@ -645,14 +652,14 @@ fun MainScreen(
                         existingTask = taskForForm,
                         existingDef = if (isRecurringEdit) editingTaskDef else null,
                         forceRecurring = isRecurringEdit,
-                        onSaveOneTime = { title, blockId, date, time ->
-                            viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time)
+                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled ->
+                            viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time, notificationsEnabled)
                             editingTask = null
                             editingTaskDef = null
                         },
-                        onSaveRecurring = { title, blockId, time, recurrence ->
+                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled ->
                             val sourceId = realSourceId ?: return@TaskFormSheet
-                            viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence)
+                            viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence, notificationsEnabled)
                             editingTask = null
                             editingTaskDef = null
                         },

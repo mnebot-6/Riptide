@@ -27,5 +27,6 @@ data class DayTask(
     val completedAt: LocalDateTime?,
     val postponedTo: LocalDateTime?,
     val sourceTaskId: String?,
-    val hasBeenRewarded: Boolean = false
+    val hasBeenRewarded: Boolean = false,
+    val notificationsEnabled: Boolean = false
 )

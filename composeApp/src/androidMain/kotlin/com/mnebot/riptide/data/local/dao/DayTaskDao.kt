@@ -37,4 +37,7 @@ interface DayTaskDao {
 
     @Query("SELECT * FROM day_tasks WHERE date = :date AND blockId = :blockId")
     suspend fun getByDateAndBlock(date: String, blockId: String): List<DayTaskEntity>
+
+    @Query("SELECT * FROM day_tasks WHERE notificationsEnabled = 1 AND status = 'PENDING' AND time IS NOT NULL")
+    suspend fun getPendingWithNotifications(): List<DayTaskEntity>
 }

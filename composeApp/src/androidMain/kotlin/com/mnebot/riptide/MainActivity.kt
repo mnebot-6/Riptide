@@ -1,9 +1,12 @@
 package com.mnebot.riptide
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.mnebot.riptide.data.local.db.DatabaseProvider
@@ -30,6 +33,10 @@ import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
 
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* permission granted or denied — channels already created */ }
+
     private val viewModel by viewModels<com.mnebot.riptide.presentation.main.MainViewModel> {
         MainViewModelFactory(applicationContext)
     }
@@ -37,6 +44,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Create notification channels and request POST_NOTIFICATIONS permission (API 33+)
+        NotificationHelper.createChannels(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val scheduler = NightSummarySchedulerImpl(applicationContext)
         val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
@@ -51,6 +64,9 @@ class MainActivity : ComponentActivity() {
                 ecosystemStateRepo
             )
             DataSeeder.seedIfEmpty(db, assigner)
+
+            // Reschedule task reminders that may have been lost (e.g., after device restart)
+            TaskReminderSchedulerImpl(applicationContext).rescheduleAll()
 
             val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
             val blocks = WorkBlockRepositoryImpl(db.workBlockDao()).getAll()

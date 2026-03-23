@@ -28,8 +28,11 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_PENDING_LOOTBOXES = stringPreferencesKey("pending_lootboxes")
         private val KEY_DISMISSED_SUMMARY_DATE = stringPreferencesKey("dismissed_summary_date")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val KEY_MORNING_HOUR   = intPreferencesKey("morning_reminder_hour")
+        private val KEY_MORNING_MINUTE = intPreferencesKey("morning_reminder_minute")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
+        private const val DISABLED = -1          // sentinel for "no morning reminder"
         private const val SEPARATOR = "|"
     }
 
@@ -88,6 +91,25 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
     override suspend fun setLastDismissedSummaryDate(date: LocalDate) {
         context.dataStore.edit { prefs ->
             prefs[KEY_DISMISSED_SUMMARY_DATE] = date.toString()
+        }
+    }
+
+    override fun getMorningReminderTime(): Flow<LocalTime?> =
+        context.dataStore.data.map { prefs ->
+            val hour = prefs[KEY_MORNING_HOUR] ?: DISABLED
+            if (hour == DISABLED) null
+            else LocalTime(hour, prefs[KEY_MORNING_MINUTE] ?: 0)
+        }
+
+    override suspend fun setMorningReminderTime(time: LocalTime?) {
+        context.dataStore.edit { prefs ->
+            if (time == null) {
+                prefs[KEY_MORNING_HOUR] = DISABLED
+                prefs[KEY_MORNING_MINUTE] = 0
+            } else {
+                prefs[KEY_MORNING_HOUR] = time.hour
+                prefs[KEY_MORNING_MINUTE] = time.minute
+            }
         }
     }
 

@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,9 +37,11 @@ private val DividerColor = Color(0x33FFFFFF)
 fun MainDrawer(
     blocks: List<WorkBlock>,
     nightSummaryTime: LocalTime,
+    morningReminderTime: LocalTime?,
     onAddBlock: () -> Unit,
     onEditBlock: (String) -> Unit,
     onNightSummaryTimeChanged: (LocalTime) -> Unit,
+    onMorningReminderTimeChanged: (LocalTime?) -> Unit,
     onNavigateToEcosystem: () -> Unit
 ) {
     val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
@@ -96,6 +100,11 @@ fun MainDrawer(
                 currentTime = nightSummaryTime,
                 onTimeChanged = onNightSummaryTimeChanged
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            MorningReminderSetting(
+                currentTime = morningReminderTime,
+                onTimeChanged = onMorningReminderTimeChanged
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -126,6 +135,44 @@ private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (Loca
             onValueChange = { it?.let { t -> onTimeChanged(t) } },
             nullable = false,
             compact = true
+        )
+    }
+}
+
+@Composable
+private fun MorningReminderSetting(currentTime: LocalTime?, onTimeChanged: (LocalTime?) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("🌅", fontSize = 18.sp)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            stringResource(Res.string.label_morning_reminder),
+            color = TextSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.weight(1f)
+        )
+        if (currentTime != null) {
+            TimeInputField(
+                value = currentTime,
+                onValueChange = { it?.let { t -> onTimeChanged(t) } },
+                nullable = false,
+                compact = true
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Switch(
+            checked = currentTime != null,
+            onCheckedChange = { enabled ->
+                onTimeChanged(if (enabled) LocalTime(8, 0) else null)
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF4A90D9),
+                uncheckedThumbColor = Color(0x99FFFFFF),
+                uncheckedTrackColor = Color(0x33FFFFFF)
+            )
         )
     }
 }
