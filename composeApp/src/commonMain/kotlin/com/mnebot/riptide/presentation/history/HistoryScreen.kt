@@ -35,6 +35,7 @@ private val CardBackground = Color(0x22FFFFFF)
 @Composable
 fun HistoryScreen(
     uiState: HistoryUiState,
+    onRangeSelected: (HistoryRange) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val blocksById = uiState.blocks.associateBy { it.id }
@@ -74,6 +75,36 @@ fun HistoryScreen(
                 )
             }
 
+            // Range toggle
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(CardBackground)
+                    .padding(4.dp)
+            ) {
+                HistoryRange.entries.forEach { range ->
+                    val selected = uiState.range == range
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) Color(0xFF1A73E8) else Color.Transparent)
+                            .clickable { onRangeSelected(range) }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.history_range_days, range.days),
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
             when {
                 uiState.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -95,7 +126,7 @@ fun HistoryScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(Res.string.history_no_data),
+                            text = stringResource(Res.string.history_no_data, uiState.range.days),
                             color = TextSecondary,
                             fontSize = 14.sp
                         )
@@ -124,12 +155,29 @@ fun HistoryScreen(
 }
 
 @Composable
+private fun localizedMonths(): Array<String> = arrayOf(
+    stringResource(Res.string.month_jan),
+    stringResource(Res.string.month_feb),
+    stringResource(Res.string.month_mar),
+    stringResource(Res.string.month_apr),
+    stringResource(Res.string.month_may),
+    stringResource(Res.string.month_jun),
+    stringResource(Res.string.month_jul),
+    stringResource(Res.string.month_aug),
+    stringResource(Res.string.month_sep),
+    stringResource(Res.string.month_oct),
+    stringResource(Res.string.month_nov),
+    stringResource(Res.string.month_dec)
+)
+
+@Composable
 private fun DayHistoryCard(
     date: LocalDate,
     summary: DaySummary?,
     tasks: List<DayTask>,
     blocksById: Map<String, WorkBlock>
 ) {
+    val months = localizedMonths()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +192,7 @@ private fun DayHistoryCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = date.formatDisplay(),
+                text = date.formatDisplay(months),
                 color = TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -233,13 +281,8 @@ private fun HistoryTaskRow(task: DayTask, block: WorkBlock?) {
     }
 }
 
-private fun LocalDate.formatDisplay(): String {
-    val months = arrayOf(
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    )
-    return "$dayOfMonth ${months[monthNumber - 1]} $year"
-}
+private fun LocalDate.formatDisplay(months: Array<String>): String =
+    "$dayOfMonth ${months[monthNumber - 1]} $year"
 
 private fun summaryColor(pct: Float): Color = when {
     pct <= 0f  -> Color(0x66FFFFFF)

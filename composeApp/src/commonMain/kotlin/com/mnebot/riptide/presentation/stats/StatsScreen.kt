@@ -17,7 +17,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,7 +35,6 @@ private val OceanMid   = Color(0xFF1B3A6B)
 private val TextPrimary   = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val CardBackground = Color(0x22FFFFFF)
-private val DividerColor   = Color(0x33FFFFFF)
 
 private fun completionColor(pct: Float): Color = when {
     pct <= 0f   -> Color(0x44FFFFFF)
@@ -127,6 +125,7 @@ fun StatsScreen(
                 CompletionBarChart(
                     dates = dates,
                     summaryByDate = summaryByDate,
+                    range = uiState.range,
                     modifier = Modifier.fillMaxWidth().height(160.dp)
                 )
             }
@@ -204,46 +203,78 @@ fun StatsScreen(
 private fun CompletionBarChart(
     dates: List<LocalDate>,
     summaryByDate: Map<LocalDate, DaySummary>,
+    range: StatsRange,
     modifier: Modifier = Modifier
 ) {
     val today = currentDate()
-    Canvas(modifier = modifier) {
-        val barCount = dates.size
-        val totalWidth = size.width
-        val chartHeight = size.height - 28.dp.toPx()   // leave room for labels
-        val barWidth = (totalWidth / barCount) * 0.55f
-        val barSpacing = (totalWidth / barCount)
+    val dowLabels = listOf(
+        stringResource(Res.string.day_mon),
+        stringResource(Res.string.day_tue),
+        stringResource(Res.string.day_wed),
+        stringResource(Res.string.day_thu),
+        stringResource(Res.string.day_fri),
+        stringResource(Res.string.day_sat),
+        stringResource(Res.string.day_sun)
+    )
 
-        dates.forEachIndexed { i, date ->
-            val summary = summaryByDate[date]
-            val pct = if (summary != null && summary.tasksTotal > 0)
-                summary.tasksCompleted.toFloat() / summary.tasksTotal
-            else if (date > today) 0f
-            else 0f
+    Column(modifier = modifier) {
+        Canvas(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            val barCount = dates.size
+            val totalWidth = size.width
+            val chartHeight = size.height
+            val barWidth = (totalWidth / barCount) * 0.55f
+            val barSpacing = totalWidth / barCount
 
-            val barColor = completionColor(pct)
-            val barHeight = if (pct > 0f) (chartHeight * pct).coerceAtLeast(6.dp.toPx())
-                           else 4.dp.toPx()
+            dates.forEachIndexed { i, date ->
+                val summary = summaryByDate[date]
+                val pct = if (summary != null && summary.tasksTotal > 0)
+                    summary.tasksCompleted.toFloat() / summary.tasksTotal
+                else 0f
 
-            val left = i * barSpacing + (barSpacing - barWidth) / 2f
-            val top = chartHeight - barHeight
+                val barColor = completionColor(pct)
+                val barHeight = if (pct > 0f) (chartHeight * pct).coerceAtLeast(6.dp.toPx())
+                               else 4.dp.toPx()
 
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(left, top),
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(4.dp.toPx())
-            )
+                val left = i * barSpacing + (barSpacing - barWidth) / 2f
+                val top = chartHeight - barHeight
 
-            // Day label
-            drawDayLabel(date, left + barWidth / 2f, chartHeight + 10.dp.toPx())
+                drawRoundRect(
+                    color = barColor,
+                    topLeft = Offset(left, top),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(4.dp.toPx())
+                )
+            }
+        }
+
+        // Day labels row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+                .padding(top = 4.dp)
+        ) {
+            dates.forEach { date ->
+                val label = when (range) {
+                    StatsRange.WEEK  -> dowLabels[date.dayOfWeek.ordinal]
+                    StatsRange.MONTH -> if (date.dayOfMonth % 5 == 0) date.dayOfMonth.toString() else ""
+                }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    if (label.isNotEmpty()) {
+                        Text(
+                            text = label,
+                            color = if (date == today) TextPrimary else TextSecondary,
+                            fontSize = if (range == StatsRange.WEEK) 10.sp else 8.sp,
+                            fontWeight = if (date == today) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
         }
     }
-}
-
-private fun DrawScope.drawDayLabel(date: LocalDate, x: Float, y: Float) {
-    // We use a simple dot for today, nothing for others
-    // Full text labels require nativeCanvas which is platform-specific
 }
 
 @Composable

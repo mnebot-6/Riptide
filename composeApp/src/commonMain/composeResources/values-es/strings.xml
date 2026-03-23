@@ -200,5 +200,20 @@
 
     <!-- HistoryScreen -->
     <string name="title_history">Historial</string>
-    <string name="history_no_data">Sin tareas completadas en los últimos 30 días</string>
+    <string name="history_range_days">%1$d días</string>
+    <string name="history_no_data">Sin tareas completadas en los últimos %1$d días</string>
+
+    <!-- Nombres cortos de meses (gráficos y fechas del historial) -->
+    <string name="month_jan">Ene</string>
+    <string name="month_feb">Feb</string>
+    <string name="month_mar">Mar</string>
+    <string name="month_apr">Abr</string>
+    <string name="month_may">May</string>
+    <string name="month_jun">Jun</string>
+    <string name="month_jul">Jul</string>
+    <string name="month_aug">Ago</string>
+    <string name="month_sep">Sep</string>
+    <string name="month_oct">Oct</string>
+    <string name="month_nov">Nov</string>
+    <string name="month_dec">Dic</string>
 </resources>
