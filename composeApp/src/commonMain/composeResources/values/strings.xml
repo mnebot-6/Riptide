@@ -181,4 +181,24 @@
 
     <!-- Notifications — TaskForm -->
     <string name="label_notify_at_time">Notify me at this time</string>
+
+    <!-- MainDrawer — Progress section -->
+    <string name="section_progress">PROGRESS</string>
+    <string name="btn_stats">Statistics</string>
+    <string name="btn_history">History</string>
+
+    <!-- StatsScreen -->
+    <string name="title_stats">Statistics</string>
+    <string name="stats_range_week">Week</string>
+    <string name="stats_range_month">Month</string>
+    <string name="stats_active_days">Active days</string>
+    <string name="stats_total_completed">Completed</string>
+    <string name="stats_best_day">Best day</string>
+    <string name="stats_streaks_title">STREAKS BY BLOCK</string>
+    <string name="stats_no_streaks">No active streaks yet</string>
+    <string name="msg_loading">Loading…</string>
+
+    <!-- HistoryScreen -->
+    <string name="title_history">History</string>
+    <string name="history_no_data">No completed tasks in the last 30 days</string>
 </resources>

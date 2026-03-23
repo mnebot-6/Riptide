@@ -11,6 +11,9 @@ interface DaySummaryDao {
     @Query("SELECT * FROM day_summaries WHERE date = :date LIMIT 1")
     suspend fun getByDate(date: String): DaySummaryEntity?
 
+    @Query("SELECT * FROM day_summaries WHERE date >= :from AND date <= :to ORDER BY date DESC")
+    suspend fun getRange(from: String, to: String): List<DaySummaryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(summary: DaySummaryEntity)
 }

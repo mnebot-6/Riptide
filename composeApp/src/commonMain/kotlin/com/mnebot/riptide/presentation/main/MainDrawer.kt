@@ -42,7 +42,9 @@ fun MainDrawer(
     onEditBlock: (String) -> Unit,
     onNightSummaryTimeChanged: (LocalTime) -> Unit,
     onMorningReminderTimeChanged: (LocalTime?) -> Unit,
-    onNavigateToEcosystem: () -> Unit
+    onNavigateToEcosystem: () -> Unit,
+    onNavigateToStats: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
         LocalWindowInfo.current.containerSize.height.toDp()
@@ -89,6 +91,15 @@ fun MainDrawer(
             SectionTitle(stringResource(Res.string.section_ecosystem))
             Spacer(modifier = Modifier.height(8.dp))
             DrawerItem(icon = "🐠", label = stringResource(Res.string.btn_my_ecosystem), onClick = onNavigateToEcosystem)
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            SectionTitle(stringResource(Res.string.section_progress))
+            Spacer(modifier = Modifier.height(8.dp))
+            DrawerItem(icon = "📊", label = stringResource(Res.string.btn_stats), onClick = onNavigateToStats)
+            DrawerItem(icon = "📋", label = stringResource(Res.string.btn_history), onClick = onNavigateToHistory)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)

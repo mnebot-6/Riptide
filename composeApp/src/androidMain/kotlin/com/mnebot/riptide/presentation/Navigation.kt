@@ -17,9 +17,15 @@ import com.mnebot.riptide.presentation.block.BlockFormResult
 import com.mnebot.riptide.presentation.block.BlockFormScreen
 import com.mnebot.riptide.presentation.block.BlockFormViewModel
 import com.mnebot.riptide.presentation.block.BlockFormViewModelFactory
+import com.mnebot.riptide.presentation.history.HistoryScreen
+import com.mnebot.riptide.presentation.history.HistoryViewModel
+import com.mnebot.riptide.presentation.history.HistoryViewModelFactory
 import com.mnebot.riptide.presentation.main.MainScreen
 import com.mnebot.riptide.presentation.main.MainViewModel
 import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
+import com.mnebot.riptide.presentation.stats.StatsScreen
+import com.mnebot.riptide.presentation.stats.StatsViewModel
+import com.mnebot.riptide.presentation.stats.StatsViewModelFactory
 import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 
@@ -28,6 +34,8 @@ const val ROUTE_MAIN = "main"
 const val ROUTE_BLOCK_CREATE = "block/create"
 const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
 const val ROUTE_ECOSYSTEM = "ecosystem"
+const val ROUTE_STATS = "stats"
+const val ROUTE_HISTORY = "history"
 
 fun NavGraphBuilder.onboardingGraph(
     userPreferencesRepository: UserPreferencesRepository,
@@ -59,7 +67,9 @@ fun NavGraphBuilder.mainGraph(
             onNavigateToEditBlock = { blockId ->
                 navController.navigate("block/edit/$blockId")
             },
-            onNavigateToEcosystem = { navController.navigate(ROUTE_ECOSYSTEM) }
+            onNavigateToEcosystem = { navController.navigate(ROUTE_ECOSYSTEM) },
+            onNavigateToStats = { navController.navigate(ROUTE_STATS) },
+            onNavigateToHistory = { navController.navigate(ROUTE_HISTORY) }
         )
     }
 
@@ -117,6 +127,27 @@ fun NavGraphBuilder.mainGraph(
             onCreatureNicknameChanged = { creatureId, nickname ->
                 mainViewModel.updateCreatureNickname(creatureId, nickname)
             },
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
+
+    composable(ROUTE_STATS) {
+        val context = LocalContext.current
+        val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(context))
+        val uiState by statsViewModel.uiState.collectAsState()
+        StatsScreen(
+            uiState = uiState,
+            onRangeSelected = { range -> statsViewModel.selectRange(range) },
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
+
+    composable(ROUTE_HISTORY) {
+        val context = LocalContext.current
+        val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(context))
+        val uiState by historyViewModel.uiState.collectAsState()
+        HistoryScreen(
+            uiState = uiState,
             onNavigateBack = { navController.popBackStack() }
         )
     }

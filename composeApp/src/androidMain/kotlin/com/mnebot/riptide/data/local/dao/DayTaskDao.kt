@@ -40,4 +40,7 @@ interface DayTaskDao {
 
     @Query("SELECT * FROM day_tasks WHERE notificationsEnabled = 1 AND status = 'PENDING' AND time IS NOT NULL")
     suspend fun getPendingWithNotifications(): List<DayTaskEntity>
+
+    @Query("SELECT * FROM day_tasks WHERE date >= :from AND date <= :to AND status IN ('COMPLETED','EXPIRED') ORDER BY date DESC, time ASC")
+    suspend fun getCompletedRange(from: String, to: String): List<DayTaskEntity>
 }

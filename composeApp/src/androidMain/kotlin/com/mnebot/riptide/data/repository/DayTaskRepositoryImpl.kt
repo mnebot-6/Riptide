@@ -44,4 +44,7 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
 
     override suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask> =
         dao.getByDateAndBlock(date.toString(), blockId).map { it.toDomain() }
+
+    override suspend fun getCompletedRange(from: LocalDate, to: LocalDate): List<DayTask> =
+        dao.getCompletedRange(from.toString(), to.toString()).map { it.toDomain() }
 }

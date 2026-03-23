@@ -15,6 +15,9 @@ interface BlockStreakDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(streak: BlockStreakEntity)
 
+    @Query("SELECT * FROM block_streaks")
+    suspend fun getAll(): List<BlockStreakEntity>
+
     @Update
     suspend fun update(streak: BlockStreakEntity)
 }

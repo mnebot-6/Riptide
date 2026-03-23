@@ -181,4 +181,24 @@
 
     <!-- Notifications — TaskForm -->
     <string name="label_notify_at_time">Notificarme a esta hora</string>
+
+    <!-- MainDrawer — sección Progreso -->
+    <string name="section_progress">PROGRESO</string>
+    <string name="btn_stats">Estadísticas</string>
+    <string name="btn_history">Historial</string>
+
+    <!-- StatsScreen -->
+    <string name="title_stats">Estadísticas</string>
+    <string name="stats_range_week">Semana</string>
+    <string name="stats_range_month">Mes</string>
+    <string name="stats_active_days">Días activos</string>
+    <string name="stats_total_completed">Completadas</string>
+    <string name="stats_best_day">Mejor día</string>
+    <string name="stats_streaks_title">RACHAS POR BLOQUE</string>
+    <string name="stats_no_streaks">Aún no hay rachas activas</string>
+    <string name="msg_loading">Cargando…</string>
+
+    <!-- HistoryScreen -->
+    <string name="title_history">Historial</string>
+    <string name="history_no_data">Sin tareas completadas en los últimos 30 días</string>
 </resources>

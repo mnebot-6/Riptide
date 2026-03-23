@@ -113,7 +113,9 @@ fun MainScreen(
     nightSummaryScheduler: NightSummaryScheduler,
     onNavigateToCreateBlock: () -> Unit,
     onNavigateToEditBlock: (String) -> Unit,
-    onNavigateToEcosystem: () -> Unit
+    onNavigateToEcosystem: () -> Unit,
+    onNavigateToStats: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
@@ -582,6 +584,20 @@ fun MainScreen(
                             showDrawer = false
                         }
                         onNavigateToEcosystem()
+                    },
+                    onNavigateToStats = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onNavigateToStats()
+                    },
+                    onNavigateToHistory = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onNavigateToHistory()
                     }
                 )
             }

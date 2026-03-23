@@ -10,6 +10,9 @@ class BlockStreakRepositoryImpl(private val dao: BlockStreakDao) : BlockStreakRe
     override suspend fun getByBlockId(blockId: String): BlockStreak? =
         dao.getByBlockId(blockId)?.toDomain()
 
+    override suspend fun getAll(): List<BlockStreak> =
+        dao.getAll().map { it.toDomain() }
+
     override suspend fun insert(streak: BlockStreak) =
         dao.insert(streak.toEntity())
 

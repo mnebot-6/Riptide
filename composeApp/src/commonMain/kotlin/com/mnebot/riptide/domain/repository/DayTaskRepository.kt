@@ -17,4 +17,5 @@ interface DayTaskRepository {
     suspend fun deleteBySourceId(sourceTaskId: String)
     suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate)
     suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask>
+    suspend fun getCompletedRange(from: LocalDate, to: LocalDate): List<DayTask>
 }
