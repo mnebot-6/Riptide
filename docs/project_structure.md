@@ -98,11 +98,27 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `DateInputField.kt` | Campo readonly, click abre `DatePickerDialogWrapper` |
 | `InputFieldDialogs.kt` | Declaraciones `expect` de pickers |
 
+### `presentation/stats/`
+
+| Archivo | Qué hace |
+|---|---|
+| `StatsUiState.kt` | `StatsRange` enum (WEEK/MONTH) + `StatsUiState` (summaries, streaksByBlock, range, isLoading) |
+| `StatsViewModel.kt` | Carga `DaySummary` por rango + `BlockStreak` activos; `selectRange()` reactivo |
+| `StatsScreen.kt` | Gráfico barras Canvas (coloreado por % completado, etiquetas día localizadas), toggle Semana/Mes, tarjetas resumen, rachas por bloque |
+
+### `presentation/history/`
+
+| Archivo | Qué hace |
+|---|---|
+| `HistoryUiState.kt` | `HistoryRange` enum (DAYS_30/DAYS_60/DAYS_90) + `HistoryUiState` (tasksByDate, summaryByDate, range, isLoading) |
+| `HistoryViewModel.kt` | Carga tareas completadas/expiradas + summaries por rango; `selectRange()` reactivo |
+| `HistoryScreen.kt` | Selector 30/60/90 días, LazyColumn de días agrupados descendente, meses localizados EN/ES, badge completadas/totales |
+
 ### `presentation/task/`
 
 | Archivo | Qué hace |
 |---|---|
-| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` con `remember(existingDef)`; toggle `notificationsEnabled` (pendiente, visible solo si hay hora) |
+| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` con `remember(existingDef)`; toggle `notificationsEnabled` visible solo si hay hora |
 | `PostponeSheet.kt` | Hora opcional. `onPostpone` llama a `postponingTask = null` tras confirmar. |
 
 ---
@@ -123,7 +139,9 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateDao` | `getAll()`, `getUnlocked()` |
 | `MarineCreatureDao` | `getByCategory(category: String)` |
-| `DayTaskDao` | `getPendingWithNotifications()` — tareas PENDING con `notificationsEnabled=1` y hora no nula |
+| `DayTaskDao` | `getPendingWithNotifications()` — tareas PENDING con `notificationsEnabled=1` y hora no nula; `getCompletedRange(from, to)` — COMPLETED/EXPIRED en rango de fechas |
+| `DaySummaryDao` | `getRange(from, to)` — summaries en rango de fechas (DESC) |
+| `BlockStreakDao` | `getAll()` — todas las rachas por bloque |
 
 ### `data/local/db/`
 
@@ -133,16 +151,18 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Archivo | Nota |
 |---|---|
-| `MainViewModelFactory.kt` | `EcosystemProcessor(...)` + `LootboxResolver(marineCreatureRepo)` |
+| `MainViewModelFactory.kt` | `EcosystemProcessor(...)` + `LootboxResolver(marineCreatureRepo)` + `TaskReminderSchedulerImpl` |
 | `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
-| `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo`; pendiente: `createChannels()`, permiso `POST_NOTIFICATIONS`, `rescheduleAll()` |
+| `StatsViewModelFactory.kt` | Instancia `StatsViewModel` con repos de DB |
+| `HistoryViewModelFactory.kt` | Instancia `HistoryViewModel` con repos de DB |
+| `MainActivity.kt` | `createChannels()`, permiso `POST_NOTIFICATIONS` (API 33+), `rescheduleAll()` tras seeding |
 | `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay`; envía push con stats; se auto-reprograma |
 | `MorningReminderWorker.kt` | Envía push matutino; lee hora de DataStore; se auto-reprograma diariamente |
-| `TaskReminderWorker.kt` | *(pendiente)* One-shot; envía push a la hora de la tarea |
+| `TaskReminderWorker.kt` | One-shot; envía push a la hora de la tarea (`task_reminder_$taskId` nombre único) |
+| `TaskReminderSchedulerImpl.kt` | WorkManager `REPLACE`; `rescheduleAll()` vía `getPendingWithNotifications()` |
 | `NightSummaryScheduler.android.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
-| `TaskReminderSchedulerImpl.kt` | *(pendiente)* WorkManager `REPLACE`; `rescheduleAll()` vía `getPendingWithNotifications()` |
 | `NotificationHelper.kt` | `createChannels()`, `sendNightSummaryNotification()`, `sendMorningReminderNotification()`, `sendTaskReminderNotification()` |
-| `Navigation.kt` | + `ROUTE_ECOSYSTEM = "ecosystem"`, + `ROUTE_ONBOARDING`; composable usa `MainViewModel` compartido |
+| `Navigation.kt` | `ROUTE_ECOSYSTEM`, `ROUTE_ONBOARDING`, `ROUTE_STATS`, `ROUTE_HISTORY`; composable usa `MainViewModel` compartido |
 | `OnboardingScreen.kt` | 4 pasos con `AnimatedContent`, indicador de puntos, paleta marina |
 | `App.kt` | Decide `startDestination` según `hasCompletedOnboarding()` de DataStore |
 
@@ -167,7 +187,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | Archivo | Nota |
 |---|---|
 | `NightSummaryScheduler.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
-| `TaskReminderScheduler.kt` | *(pendiente)* Interfaz: `scheduleReminder(task)`, `cancelReminder(taskId)`, `rescheduleAll()` |
+| `TaskReminderScheduler.kt` | Interfaz: `scheduleReminder(taskId, title, scheduledAt)`, `cancelReminder(taskId)`, `rescheduleAll()` |
 
 ---
 

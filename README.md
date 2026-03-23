@@ -86,8 +86,9 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint i18n + renderers — Traducciones EN/ES, 13 nuevos renderers Canvas | ✅ |
 | Sprint renderers total — 23 renderers adicionales, cobertura 100% (40/40 especies) | ✅ |
 | Sprint onboarding — Flujo 4 pasos, DataStore, AnimatedContent, i18n EN/ES | ✅ |
-| Sprint notificaciones push — Resumen nocturno, aviso matutino, recordatorio por tarea | 🔄 |
-| v3 — Estadísticas, historial, evolución criaturas, testing | ⬜ |
+| Sprint notificaciones push — Resumen nocturno, aviso matutino, recordatorio por tarea | ✅ |
+| Sprint estadísticas + historial — StatsScreen, HistoryScreen, rango configurable, meses localizados | ✅ |
+| v3 — Racha global, evolución criaturas, recompensas de racha, testing | ⬜ |
 | v4 — Widget Android, fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social + backup | ⬜ |
 | v6 — iOS completo | ⬜ |

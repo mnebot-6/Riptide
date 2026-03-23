@@ -90,18 +90,14 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **i18n**: EN + ES, `LocalizationExtensions.kt` con extension functions para enums
 - **40 renderers Canvas** (cobertura total): todas las 40 especies tienen Canvas renderer propio
 - **Onboarding**: flujo de 4 pasos con `AnimatedContent`, DataStore key `onboarding_completed`, se muestra solo en primer lanzamiento
-- **Notificaciones push** (en curso): `NotificationHelper` (3 canales), push resumen nocturno, aviso matutino configurable (`MorningReminderWorker`), campo `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), strings EN/ES
-
-**Pendiente (sprint notificaciones):**
-- `TaskReminderScheduler` + `TaskReminderWorker` + toggle en `TaskFormSheet`
-- Inyectar scheduler en ViewModels y factories
-- `MainActivity`: `createChannels()`, permiso `POST_NOTIFICATIONS`, `rescheduleAll()`
+- **Notificaciones push** ✅: `NotificationHelper` (3 canales), push resumen nocturno + matutino + por tarea, `TaskReminderSchedulerImpl` (WorkManager, `rescheduleAll()`), `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), permiso `POST_NOTIFICATIONS`, strings EN + ES (Compose resources + `androidMain/res/values-es`)
+- **Estadísticas**: `StatsScreen` con gráfico de barras Canvas (coloreado por % completado, etiquetas localizadas), toggle Semana/Mes, tarjetas de resumen, rachas por bloque
+- **Historial**: `HistoryScreen` con selector 30/60/90 días, LazyColumn de días agrupados, badge completadas/totales, meses localizados (EN/ES)
 
 **Próximo (v3):**
-- Pantalla de estadísticas (DaySummary semanal/mensual, rachas por bloque)
-- Historial de tareas completadas
+- Racha global en pantalla principal (días consecutivos de uso)
 - Evolución visual de criaturas por nivel en renderers
-- Recompensas automáticas de racha (lootbox en hitos)
+- Recompensas automáticas de racha (lootbox en hitos 7/14/30 días)
 - Tests unitarios e instrumentados
 - Preparar firma de la app
 
@@ -120,6 +116,10 @@ composeApp/src/
 │   └── presentation/
 │       ├── main/MainScreen.kt              # Pantalla principal (Box con capas)
 │       ├── main/MainViewModel.kt           # ViewModel principal
+│       ├── stats/StatsScreen.kt            # Gráfico barras Canvas + toggle Semana/Mes + rachas
+│       ├── stats/StatsViewModel.kt         # Carga DaySummary + BlockStreak por rango
+│       ├── history/HistoryScreen.kt        # LazyColumn días agrupados + selector 30/60/90d
+│       ├── history/HistoryViewModel.kt     # Carga tareas completadas + summaries por rango
 │       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino
 │       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
 │       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación 60fps, hit-testing
@@ -133,7 +133,10 @@ composeApp/src/
     ├── NotificationHelper.kt           # Canales + sendNightSummary/MorningReminder/TaskReminder
     ├── NightSummaryWorker.kt           # Resumen nocturno + push + auto-reprogramación
     ├── MorningReminderWorker.kt        # Aviso matutino + auto-reprogramación diaria
-    ├── TaskReminderWorker.kt           # (pendiente) One-shot a la hora de la tarea
+    ├── TaskReminderWorker.kt           # One-shot a la hora de la tarea
+    ├── TaskReminderSchedulerImpl.kt    # WorkManager REPLACE + rescheduleAll()
+    ├── presentation/stats/StatsViewModelFactory.kt
+    ├── presentation/history/HistoryViewModelFactory.kt
     └── data/local/
         ├── db/RiptideDatabase.kt       # Room DB v10, migraciones reales (8_9, 9_10)
         └── dao/                        # DAOs para cada entidad

@@ -49,7 +49,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   Serializers.kt                (LocalTimeSerializer: KSerializer<LocalTime>, ISO string)
   NightSummaryScheduler.kt      (interfaz: getNightSummaryTime, setNightSummaryTime, scheduleWorker,
                                  getMorningReminderTime, setMorningReminderTime, scheduleMorningReminder)
-  TaskReminderScheduler.kt      (pendiente — interfaz commonMain: scheduleReminder(task), cancelReminder(taskId), rescheduleAll())
+  TaskReminderScheduler.kt      (interfaz commonMain: scheduleReminder(taskId, title, scheduledAt), cancelReminder(taskId), rescheduleAll())
   domain/
     MarineCategoryAssigner.kt   (redistribuye entre categorías desbloqueadas; requiere EcosystemStateRepository)
     RecurringTaskGenerator.kt
@@ -157,25 +157,35 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                  onCreatureTap → CreatureDetailDialog)
       WeekCalendar.kt
       MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen;
-                                 sección AJUSTES: hora resumen nocturno + aviso matutino toggle+hora)
+                                 sección AJUSTES: hora resumen nocturno + aviso matutino toggle+hora;
+                                 sección PROGRESO: Estadísticas + Historial)
+    stats/
+      StatsUiState.kt           (StatsRange enum WEEK/MONTH + StatsUiState: summaries, streaksByBlock, range, isLoading)
+      StatsViewModel.kt         (carga DaySummary por rango + BlockStreak activos; selectRange() reactivo)
+      StatsScreen.kt            (gráfico barras Canvas coloreado por % completado, etiquetas día localizadas,
+                                 toggle Semana/Mes, tarjetas resumen, rachas por bloque)
+    history/
+      HistoryUiState.kt         (HistoryRange enum DAYS_30/DAYS_60/DAYS_90 + HistoryUiState: tasksByDate, summaryByDate, range, isLoading)
+      HistoryViewModel.kt       (carga tareas completadas/expiradas + summaries por rango; selectRange() reactivo)
+      HistoryScreen.kt          (selector 30/60/90 días, LazyColumn días desc, badge completadas/totales, meses localizados)
     task/
       TaskFormSheet.kt          (+ initialBlockId para long press en cabecera de bloque;
                                  remember(existingDef) para precargar hora/días al editar recurrentes;
-                                 toggle notificationsEnabled pendiente — solo visible si hay hora)
+                                 toggle notificationsEnabled — solo visible si hay hora)
       PostponeSheet.kt
       TaskFormViewModel.kt
 
 composeApp/src/androidMain/kotlin/com/mnebot/riptide/
   App.kt                        (determina startDestination: ROUTE_ONBOARDING si !hasCompletedOnboarding, ROUTE_MAIN si sí)
-  MainActivity.kt               (pendiente: createChannels, POST_NOTIFICATIONS runtime permission, rescheduleAll)
+  MainActivity.kt               (createChannels(), POST_NOTIFICATIONS runtime permission API 33+, rescheduleAll() tras seeding)
   DataSeeder.kt                 (5 bloques genéricos; crea EcosystemStates ANTES del reassign)
   NotificationHelper.kt         (createChannels() — 3 canales: night_summary, morning_reminder, task_reminder;
                                  sendNightSummaryNotification, sendMorningReminderNotification, sendTaskReminderNotification)
   NightSummaryWorker.kt         (lee summaryTime con .first(), lo pasa a processDay; envía push con stats; se auto-reprograma)
   MorningReminderWorker.kt      (envía push matutino; lee hora de DataStore; se auto-reprograma diariamente)
-  TaskReminderWorker.kt         (pendiente — one-shot a la hora de la tarea; nombre único "task_reminder_$taskId")
+  TaskReminderWorker.kt         (one-shot a la hora de la tarea; nombre único "task_reminder_$taskId")
   NightSummarySchedulerImpl.android.kt  (+ getMorningReminderTime, setMorningReminderTime, scheduleMorningReminder)
-  TaskReminderSchedulerImpl.kt  (pendiente — WorkManager REPLACE; rescheduleAll via getPendingWithNotifications)
+  TaskReminderSchedulerImpl.kt  (WorkManager REPLACE; rescheduleAll via getPendingWithNotifications)
   UuidGenerator.android.kt
   data/local/
     entity/
@@ -190,7 +200,10 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
     dao/
       EcosystemStateDao.kt      (getByCategory, getAll, getUnlocked, insert, update)
       MarineCreatureDao.kt      (getByEcosystem, getByCategory, insert, update)
-      DayTaskDao.kt             (+ getPendingWithNotifications(): List<DayTaskEntity> — PENDING con notificationsEnabled=1 y hora no nula)
+      DayTaskDao.kt             (+ getPendingWithNotifications(): List<DayTaskEntity> — PENDING con notificationsEnabled=1 y hora no nula;
+                                 + getCompletedRange(from, to): COMPLETED/EXPIRED en rango de fechas DESC)
+      DaySummaryDao.kt          (+ getRange(from, to): summaries en rango de fechas DESC)
+      BlockStreakDao.kt         (+ getAll(): List<BlockStreakEntity>)
     db/
       RiptideDatabase.kt        (versión 10, migraciones reales MIGRATION_8_9 + MIGRATION_9_10)
       DatabaseProvider.kt       (addMigrations en vez de fallbackToDestructiveMigration)
@@ -209,10 +222,14 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
     main/
       CurrentDate.android.kt
       ParseColor.android.kt
-      MainViewModelFactory.kt
+      MainViewModelFactory.kt   (+ TaskReminderSchedulerImpl inyectado en MainViewModel)
+    stats/
+      StatsViewModelFactory.kt
+    history/
+      HistoryViewModelFactory.kt
     task/
       TaskFormViewModelFactory.kt
-    Navigation.kt               (+ ROUTE_ECOSYSTEM = "ecosystem"; + ROUTE_ONBOARDING = "onboarding"; composable conectado a MainViewModel)
+    Navigation.kt               (ROUTE_ECOSYSTEM, ROUTE_ONBOARDING, ROUTE_STATS, ROUTE_HISTORY; composable conectado a MainViewModel)
     OnboardingScreen.kt         (flujo 4 pasos: bienvenida, cómo funciona, ecosistema, listo — AnimatedContent slide+fade)
 
 composeApp/src/iosMain/kotlin/com/mnebot/riptide/
@@ -546,29 +563,28 @@ MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint
 Sprint bugfixes ✅ | Sprint bugfixes 2 ✅ | Sprint visual ✅ | Sprint visual 2 ✅
 Sprint lootbox ✅ | Sprint i18n+renderers ✅ | Sprint renderers total ✅ | Sprint onboarding ✅
 
-Sprint notificaciones push (en curso):
-✅ NotificationHelper (3 canales: night_summary, morning_reminder, task_reminder)
-✅ POST_NOTIFICATIONS en AndroidManifest
-✅ Push resumen nocturno: NightSummaryWorker envía notificación + se auto-reprograma
-✅ Aviso matutino: MorningReminderWorker + toggle+hora en Drawer + DataStore
-✅ Campo notificationsEnabled en DayTask/RecurringTaskDef (migración Room v9→v10)
-✅ DayTaskDao.getPendingWithNotifications()
-✅ Strings EN/ES para notificaciones
-⬜ RecurringTaskGenerator: propagar notificationsEnabled de def a instancias
-⬜ TaskReminderScheduler (commonMain) + TaskReminderSchedulerImpl (WorkManager)
-⬜ TaskReminderWorker (one-shot a la hora de la tarea)
-⬜ Toggle notificationsEnabled en TaskFormSheet (solo si hay hora)
-⬜ TaskFormViewModel + MainViewModel: inyectar scheduler, schedule/cancel
-⬜ Factories: pasar TaskReminderSchedulerImpl
-⬜ MainActivity: createChannels, permiso POST_NOTIFICATIONS, rescheduleAll
+Sprint notificaciones push ✅:
+  NotificationHelper (3 canales) + POST_NOTIFICATIONS + push nocturno + aviso matutino
+  TaskReminderScheduler + TaskReminderWorker + TaskReminderSchedulerImpl (rescheduleAll)
+  notificationsEnabled en DayTask/RecurringTaskDef (Room v10) propagado por RecurringTaskGenerator
+  Toggle en TaskFormSheet, schedule/cancel en MainViewModel, factories actualizadas
+  MainActivity: createChannels + permiso API 33+ + rescheduleAll
+  Strings EN/ES en androidMain/res/values + values-es
 
-v3 — Estadísticas, historial, evolución y pulido:
-⬜ Pantalla de estadísticas (DaySummary semanal/mensual, rachas por bloque)
-⬜ Historial de tareas completadas filtrable
+Sprint estadísticas + historial ✅:
+  Data layer: BlockStreakDao.getAll(), DaySummaryDao.getRange(), DayTaskDao.getCompletedRange()
+  StatsScreen: gráfico barras Canvas (coloreado por %, etiquetas día), toggle Semana/Mes,
+    tarjetas resumen, rachas activas por bloque
+  HistoryScreen: selector 30/60/90 días, LazyColumn días desc, meses localizados EN/ES
+  StatsViewModel + HistoryViewModel con selectRange() reactivo
+  StatsViewModelFactory + HistoryViewModelFactory
+  Navigation: ROUTE_STATS + ROUTE_HISTORY; MainDrawer: sección PROGRESO
+  Strings EN/ES: month_jan–month_dec, history_range_days, history_no_data parametrizados
+
+v3 — Pulido, evolución y recompensas:
+⬜ Racha global en pantalla principal (días consecutivos de uso en header)
 ⬜ Evolución visual de criaturas por nivel en renderers Canvas
 ⬜ Recompensas automáticas de racha (lootbox en hitos: 7, 14, 30 días)
-⬜ Búsqueda y filtro de tareas
-⬜ Animación entrada criatura al desbloquearse
 ⬜ Testing automatizado (dominio) + manual
 ⬜ Preparar firma de la app
 

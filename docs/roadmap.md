@@ -189,38 +189,40 @@
 
 ---
 
-## 🔄 Sprint notificaciones push (en curso)
-
-### ✅ Completado
+## ✅ Sprint notificaciones push
 
 - **Canales de notificación**: `NotificationHelper` con 3 canales (`night_summary`, `morning_reminder`, `task_reminder`). `createChannels()` crea los canales Android O+.
-- **Permiso `POST_NOTIFICATIONS`** declarado en `AndroidManifest.xml` (Android 13+).
+- **Permiso `POST_NOTIFICATIONS`** declarado en `AndroidManifest.xml` (Android 13+). Solicitado en `MainActivity` en API 33+.
 - **Push resumen nocturno**: `NightSummaryWorker` envía notificación con stats (`X de Y tareas completadas`) tras `processDay`. Se auto-reprograma para el día siguiente.
 - **Aviso matutino configurable**: toggle + selector de hora en el Drawer (sección Ajustes). `MorningReminderWorker` (auto-reprogramado diariamente). Hora almacenada en DataStore (`morning_reminder_hour/minute`, centinela -1 = desactivado). Sin configurar = sin notificación.
-- **Campo `notificationsEnabled`** en `DayTask` y `RecurringTaskDef`. Migración Room v9→v10 (`ALTER TABLE day_tasks/recurring_task_defs ADD COLUMN notificationsEnabled`).
-- **Mappers y DAOs actualizados**: `DayTaskMapper`, `RecurringTaskDefMapper`, `DayTaskDao.getPendingWithNotifications()`.
-- **Strings de notificación** en `androidMain/res/values/strings.xml` y strings de UI en `composeResources/values/strings.xml` (EN + ES).
-
-### ☐ Pendiente
-
-- `RecurringTaskGenerator`: propagar `notificationsEnabled` de def a instancias generadas
-- `TaskReminderScheduler` (interfaz commonMain) + `TaskReminderSchedulerImpl` (WorkManager, `ExistingWorkPolicy.REPLACE`, `rescheduleAll()`)
-- `TaskReminderWorker`: envía notificación a la hora exacta de la tarea
-- `TaskFormSheet`: toggle de notificación (solo visible si `selectedTime != null`), reset al borrar hora
-- `TaskFormViewModel` + `MainViewModel`: inyectar `TaskReminderScheduler`, programar al guardar/añadir, cancelar al completar/eliminar/posponer
-- `MainViewModelFactory` + `TaskFormViewModelFactory`: instanciar y pasar `TaskReminderSchedulerImpl`
-- `MainActivity`: llamar `createChannels()`, solicitar permiso (API 33+), llamar `rescheduleAll()` tras seeding
+- **Campo `notificationsEnabled`** en `DayTask` y `RecurringTaskDef`. Migración Room v9→v10. `RecurringTaskGenerator` propaga el valor de def a instancias generadas.
+- **`TaskReminderScheduler`** (interfaz commonMain) + **`TaskReminderSchedulerImpl`** (WorkManager, `ExistingWorkPolicy.REPLACE`, `rescheduleAll()` al arrancar).
+- **`TaskReminderWorker`**: one-shot a la hora exacta de la tarea. Usa `task_reminder_$taskId` como nombre único.
+- **`MainViewModel`**: inyecta `TaskReminderScheduler`; programa/cancela en add, edit, postpone, delete, complete.
+- **`MainActivity`**: `createChannels()`, permiso API 33+, `rescheduleAll()` tras seeding.
+- **Toggle en `TaskFormSheet`**: visible solo si hay hora configurada; se resetea al borrar la hora.
+- **Strings EN + ES**: `androidMain/res/values/strings.xml` (R.string canales + contenido) y `values-es/strings.xml` (traducción española), `composeResources` para UI.
 
 ---
 
-## v3 — Estadísticas, historial y pulido
+## ✅ Sprint estadísticas + historial
 
-- **Pantalla de estadísticas**: gráfica de completitud semanal y mensual usando `DaySummary`. Racha actual y mejor racha por bloque. Días más productivos.
-- **Historial de tareas completadas**: vista navegable por fecha o bloque; tareas COMPLETED y EXPIRED con marca temporal.
-- **Búsqueda y filtro**: filtrar tareas del día por bloque o buscar por título en el historial.
+- **Data layer**: `BlockStreakDao.getAll()`, `DaySummaryDao.getRange(from, to)`, `DayTaskDao.getCompletedRange(from, to)`. Interfaces de repositorio extendidas. Implementaciones en androidMain.
+- **`StatsScreen`**: gráfico de barras Canvas coloreado por % completado (gris→rojo→ámbar→teal→azul), toggle Semana/Mes, etiquetas de día localizadas (iniciales de día para WEEK, cada 5 días para MONTH), tarjetas de resumen (días activos, completadas, mejor día), rachas activas por bloque ordenadas.
+- **`HistoryScreen`**: LazyColumn de días en orden descendente, selector de rango 30/60/90 días, badge completadas/totales, icono ✓/✗ por tarea, bloque coloreado por punto, meses localizados EN/ES.
+- **`StatsViewModel`** + **`HistoryViewModel`**: `selectRange()` reactivo, rango configurable en UiState.
+- **`StatsViewModelFactory`** + **`HistoryViewModelFactory`** en androidMain.
+- **Navigation**: `ROUTE_STATS = "stats"`, `ROUTE_HISTORY = "history"` integrados en `mainGraph`.
+- **`MainDrawer`**: sección PROGRESO con botones "Estadísticas" e "Historial".
+- **Strings EN + ES**: meses abreviados (`month_jan`…`month_dec`), `history_range_days`, `history_no_data` parametrizados, sección drawer, títulos y etiquetas de pantallas.
+
+---
+
+## v3 — Pulido, evolución y recompensas
+
+- **Racha global en pantalla principal**: días consecutivos de uso visible en el header de `MainScreen`. Basado en `DaySummary` existente.
 - **Evolución visual de criaturas**: el renderer cambia según `creatureLevel` (tamaño, colores, efectos extra). Ya preparado con `sizeScale` y `speedMultiplier`; ampliar a efectos Canvas.
 - **Recompensas automáticas de racha**: lootbox adicional al alcanzar hitos de racha (7, 14, 30 días) en un bloque. Infraestructura `BlockStreak` ya disponible.
-- **Animación de entrada de criatura**: al desbloquear una nueva especie, nada entrando desde el borde de la pantalla.
 - **Testing automatizado**: dominio (`EcosystemProcessor`, `NightSummaryProcessor`, `EcosystemLevelCalculator`) + manual de flujos principales.
 - **Preparar firma de la app** para distribución (keystore, release build).
 
