@@ -96,8 +96,9 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - CreatureDetailDialog: niveles numéricos, badge de rareza con color
 - Diálogo lootbox bifásico: cerrada (🎁 + categoría) → abierta (especie + rareza + nombre)
 - **i18n**: `composeResources/values/` (EN) + `values-es/` (ES), `LocalizationExtensions.kt` con extension functions para enums
-- **17 renderers Canvas**: 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
+- **17 renderers Canvas** (sprint i18n): 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
 - **Conversión de densidad para Canvas swimmers**: `renderSize = iconSize * density` iguala tamaño visual con emojis; `sizeMultiplier` recalibrado por especie según extensión visual del renderer
+- **40 renderers Canvas (cobertura total)**: 23 renderers adicionales para las criaturas restantes — todas las 40 especies tienen Canvas renderer propio. Emoji field queda sólo como fallback de texto.
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
@@ -125,7 +126,7 @@ composeApp/src/
 │       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (17 renderers) + CreatureIcon composable
 │       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
 │       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer, PosidoniaRenderer, FanCoralRenderer
-│       ├── aquarium/fauna/                 # MantaRayRenderer + 10 nuevos renderers (Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle)
+│       ├── aquarium/fauna/                 # 35 renderers — COBERTURA TOTAL: todas las 40 especies (5 son flora/)
 │       └── theme/Theme.kt                  # Paleta de colores marina
 └── androidMain/kotlin/com/mnebot/riptide/
     └── data/local/
