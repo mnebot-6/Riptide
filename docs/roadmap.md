@@ -176,23 +176,60 @@
 
 ---
 
-## v3 — Revisión, pulido y onboarding
+## ✅ Sprint onboarding
 
-- Testing automatizado (dominio: EcosystemProcessor, NightSummaryProcessor, EcosystemLevelCalculator) + manual de flujos principales
-- Animación de entrada de criatura al desbloquearse (nada desde el borde)
-- Revisión de gestos, formularios y edge cases del resumen nocturno
-- Preparar firma de la app para distribución
-- Tutorial de primera vez (onboarding al primer inicio)
-  - `hasCompletedOnboarding` en `UserPreferencesRepository` (DataStore)
-  - Pantalla fullscreen con fondo marino, pasos swipeables
-  - Explica bloques, tareas, ecosistema, resumen nocturno
-  - Termina creando el primer bloque o salta al DataSeeder
+- **Flujo de primera vez** (`OnboardingScreen.kt`): 4 pasos con `AnimatedContent` (slide+fade), paleta marina, indicador de puntos.
+  - Paso 1 — Bienvenida
+  - Paso 2 — Cómo funciona
+  - Paso 3 — El ecosistema marino
+  - Paso 4 — Listo para empezar
+- **Persistencia**: `hasCompletedOnboarding()` / `setOnboardingCompleted()` en `UserPreferencesRepository` vía DataStore.
+- **Navegación**: `App.kt` decide `startDestination` según el valor del DataStore. Hasta que emite, el `NavHost` no se crea (`collectAsState(initial=null)` con guard). Al completar, navega a `ROUTE_MAIN` sacando el onboarding del backstack.
+- **`ROUTE_ONBOARDING`** añadido a `Navigation.kt`.
 
 ---
 
-## v4 — Fondo de pantalla dinámico
+## 🔄 Sprint notificaciones push (en curso)
 
-- Live wallpaper del acuario (WallpaperService Android)
+### ✅ Completado
+
+- **Canales de notificación**: `NotificationHelper` con 3 canales (`night_summary`, `morning_reminder`, `task_reminder`). `createChannels()` crea los canales Android O+.
+- **Permiso `POST_NOTIFICATIONS`** declarado en `AndroidManifest.xml` (Android 13+).
+- **Push resumen nocturno**: `NightSummaryWorker` envía notificación con stats (`X de Y tareas completadas`) tras `processDay`. Se auto-reprograma para el día siguiente.
+- **Aviso matutino configurable**: toggle + selector de hora en el Drawer (sección Ajustes). `MorningReminderWorker` (auto-reprogramado diariamente). Hora almacenada en DataStore (`morning_reminder_hour/minute`, centinela -1 = desactivado). Sin configurar = sin notificación.
+- **Campo `notificationsEnabled`** en `DayTask` y `RecurringTaskDef`. Migración Room v9→v10 (`ALTER TABLE day_tasks/recurring_task_defs ADD COLUMN notificationsEnabled`).
+- **Mappers y DAOs actualizados**: `DayTaskMapper`, `RecurringTaskDefMapper`, `DayTaskDao.getPendingWithNotifications()`.
+- **Strings de notificación** en `androidMain/res/values/strings.xml` y strings de UI en `composeResources/values/strings.xml` (EN + ES).
+
+### ☐ Pendiente
+
+- `RecurringTaskGenerator`: propagar `notificationsEnabled` de def a instancias generadas
+- `TaskReminderScheduler` (interfaz commonMain) + `TaskReminderSchedulerImpl` (WorkManager, `ExistingWorkPolicy.REPLACE`, `rescheduleAll()`)
+- `TaskReminderWorker`: envía notificación a la hora exacta de la tarea
+- `TaskFormSheet`: toggle de notificación (solo visible si `selectedTime != null`), reset al borrar hora
+- `TaskFormViewModel` + `MainViewModel`: inyectar `TaskReminderScheduler`, programar al guardar/añadir, cancelar al completar/eliminar/posponer
+- `MainViewModelFactory` + `TaskFormViewModelFactory`: instanciar y pasar `TaskReminderSchedulerImpl`
+- `MainActivity`: llamar `createChannels()`, solicitar permiso (API 33+), llamar `rescheduleAll()` tras seeding
+
+---
+
+## v3 — Estadísticas, historial y pulido
+
+- **Pantalla de estadísticas**: gráfica de completitud semanal y mensual usando `DaySummary`. Racha actual y mejor racha por bloque. Días más productivos.
+- **Historial de tareas completadas**: vista navegable por fecha o bloque; tareas COMPLETED y EXPIRED con marca temporal.
+- **Búsqueda y filtro**: filtrar tareas del día por bloque o buscar por título en el historial.
+- **Evolución visual de criaturas**: el renderer cambia según `creatureLevel` (tamaño, colores, efectos extra). Ya preparado con `sizeScale` y `speedMultiplier`; ampliar a efectos Canvas.
+- **Recompensas automáticas de racha**: lootbox adicional al alcanzar hitos de racha (7, 14, 30 días) en un bloque. Infraestructura `BlockStreak` ya disponible.
+- **Animación de entrada de criatura**: al desbloquear una nueva especie, nada entrando desde el borde de la pantalla.
+- **Testing automatizado**: dominio (`EcosystemProcessor`, `NightSummaryProcessor`, `EcosystemLevelCalculator`) + manual de flujos principales.
+- **Preparar firma de la app** para distribución (keystore, release build).
+
+---
+
+## v4 — Widget y fondo de pantalla
+
+- **Widget Android (Glance)**: widget de pantalla de inicio con tareas pendientes del día y barra de progreso. Actualización vía `WorkManager`.
+- **Live wallpaper del acuario** (`WallpaperService` Android): el ecosistema como fondo de pantalla animado.
 
 ---
 
@@ -203,6 +240,7 @@
 - Perfiles de usuario
 - Google Sign-In
 - Visitar el estanque de un amigo (solo ver, nunca competir)
+- Backup y exportación de datos (JSON / Google Drive)
 
 ---
 
@@ -210,7 +248,8 @@
 
 - Implementación real de `AquariumCreature.ios.kt`
 - Pickers nativos iOS (`TimePickerDialogWrapper`, `DatePickerDialogWrapper`)
-- `NightSummaryScheduler` con notificaciones locales iOS
+- `NightSummaryScheduler` con notificaciones locales iOS (`UNUserNotificationCenter`)
+- `BGTaskScheduler` equivalente a WorkManager para resumen nocturno y avisos
 
 ---
 

@@ -20,6 +20,8 @@ Inspirado en **Forest**, pero más profundo y personal — orientado a la sensac
 
 **Durante el día** simplemente marcas tareas como completadas. Sin valoraciones, sin números visibles. Si se te pasa la hora, la tarea queda marcada como fuera de plazo pero sigue siendo completable.
 
+**Opcionalmente** puedes activar un aviso matutino para planificar el día, y notificaciones push a la hora de cada tarea que quieras recordar.
+
 **Por la noche** recibes un resumen emocional a la hora que configures:
 - 0% → *"Las corrientes cambian. Mañana el mar sigue ahí."*
 - ~50% → *"Buen empuje hoy."*
@@ -56,7 +58,7 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 |---|---|
 | Multiplataforma | Kotlin Multiplatform (KMP) |
 | UI | Compose Multiplatform |
-| Persistencia | Room 2.8.4 (offline-first, v9 con migraciones reales) |
+| Persistencia | Room 2.8.4 (offline-first, v10 con migraciones reales) |
 | Serialización | kotlinx-serialization-json 1.7.3 |
 | Arquitectura | MVVM |
 | Navegación | Navigation Compose (multiplatform) |
@@ -84,9 +86,10 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint i18n + renderers — Traducciones EN/ES, 13 nuevos renderers Canvas | ✅ |
 | Sprint renderers total — 23 renderers adicionales, cobertura 100% (40/40 especies) | ✅ |
 | Sprint onboarding — Flujo 4 pasos, DataStore, AnimatedContent, i18n EN/ES | ✅ |
-| v3 — Animaciones de transición, testing | ⬜ |
-| v4 — Fondo de pantalla dinámico | ⬜ |
-| v5 — Backend + social | ⬜ |
+| Sprint notificaciones push — Resumen nocturno, aviso matutino, recordatorio por tarea | 🔄 |
+| v3 — Estadísticas, historial, evolución criaturas, testing | ⬜ |
+| v4 — Widget Android, fondo de pantalla dinámico | ⬜ |
+| v5 — Backend + social + backup | ⬜ |
 | v6 — iOS completo | ⬜ |
 
 ---

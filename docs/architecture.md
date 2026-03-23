@@ -35,9 +35,9 @@ expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -
 
 ---
 
-## androidMain — Room (v9)
+## androidMain — Room (v10)
 
-Migraciones reales desde v9. `MIGRATION_8_9` añade `hasBeenRewarded` a `day_tasks`.
+Migraciones reales desde v9. Sin `fallbackToDestructiveMigration`.
 
 ### Historial de versiones de esquema
 
@@ -47,6 +47,7 @@ Migraciones reales desde v9. `MIGRATION_8_9` añade `hasBeenRewarded` a `day_tas
 | 7 | `RecurringTaskDefEntity.time` → `String?` nullable |
 | 8 | `EcosystemStateEntity` + `isUnlocked: Boolean` |
 | 9 | `DayTaskEntity` + `hasBeenRewarded: Boolean` (migración real) |
+| 10 | `DayTaskEntity` + `notificationsEnabled: Boolean`; `RecurringTaskDefEntity` + `notificationsEnabled: Boolean` |
 
 ---
 
@@ -315,6 +316,64 @@ El `Box` raíz tiene un `detectDragGestures`:
 
 El `Box` del drawer tiene su propio `detectDragGestures`:
 - **Vertical hacia arriba** → cierra drawer
+
+---
+
+## Push Notifications
+
+### Canales (Android O+)
+
+| Canal | ID | Descripción |
+|---|---|---|
+| Resumen nocturno | `night_summary` | Push tras `processDay` con stats del día |
+| Aviso matutino | `morning_reminder` | Recordatorio configurable por el usuario |
+| Recordatorio de tarea | `task_reminder` | Notificación a la hora exacta de una tarea |
+
+`NotificationHelper.createChannels(context)` crea los tres canales. Llamar desde `MainActivity.onCreate`.
+
+Permiso `POST_NOTIFICATIONS` declarado en `AndroidManifest.xml`. Solicitar en runtime (API 33+) con `registerForActivityResult(RequestPermission())`.
+
+### Workers
+
+```
+NightSummaryWorker.doWork()
+  → processDay(targetDate, summaryTime)
+  → sendNightSummaryNotification(completedCount, totalCount)
+  → schedule(context, summaryTime)   // se reprograma para mañana
+
+MorningReminderWorker.doWork()
+  → sendMorningReminderNotification()
+  → prefs.getMorningReminderTime().first() ?: return
+  → schedule(context, time)          // se reprograma para mañana
+
+TaskReminderWorker.doWork()
+  → sendTaskReminderNotification(taskTitle, taskId)
+  // one-shot, no se reprograma
+```
+
+`TaskReminderWorker` usa `ExistingWorkPolicy.REPLACE` con nombre `"task_reminder_$taskId"`. Cancelar con `WorkManager.cancelUniqueWork(name)`.
+
+### TaskReminderScheduler
+
+Interfaz en `commonMain` para que `MainViewModel` y `TaskFormViewModel` no dependan de WorkManager directamente:
+
+```kotlin
+interface TaskReminderScheduler {
+    fun scheduleReminder(task: DayTask)
+    fun cancelReminder(taskId: String)
+    fun rescheduleAll()   // llamar al arrancar la app
+}
+```
+
+`rescheduleAll()` obtiene las tareas PENDING con `notificationsEnabled = true` y hora futura via `DayTaskDao.getPendingWithNotifications()` y las reprograma con `ExistingWorkPolicy.KEEP`.
+
+### UserPreferencesRepository — claves de notificación
+
+| Clave DataStore | Tipo | Descripción |
+|---|---|---|
+| `morning_reminder_hour` | `Int` | Hora del aviso matutino. `-1` = desactivado |
+| `morning_reminder_minute` | `Int` | Minuto del aviso matutino |
+| `onboarding_completed` | `Boolean` | Si el usuario completó el onboarding |
 
 ---
 

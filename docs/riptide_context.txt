@@ -19,7 +19,7 @@ STACK TÉCNICO
 - La estructura no tiene carpeta shared: todo vive en composeApp/src/
 - commonMain: lógica de negocio, modelos, repositorios, ViewModels, UI
 - androidMain / iosMain: implementaciones específicas de plataforma
-- Persistencia: Room (local, offline-first), versión 9
+- Persistencia: Room (local, offline-first), versión 10
 - IDs String (UUID) desde el primer día para facilitar sincronización futura
 - Capa repositorio que abstrae el origen de datos (fácil migración a Ktor en v5)
 - Patrón MVVM
@@ -47,7 +47,9 @@ ARQUITECTURA DE CARPETAS
 composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   UuidGenerator.kt              (expect fun generateUUID(): String)
   Serializers.kt                (LocalTimeSerializer: KSerializer<LocalTime>, ISO string)
-  NightSummaryScheduler.kt      (interfaz: getNightSummaryTime, setNightSummaryTime, scheduleWorker)
+  NightSummaryScheduler.kt      (interfaz: getNightSummaryTime, setNightSummaryTime, scheduleWorker,
+                                 getMorningReminderTime, setMorningReminderTime, scheduleMorningReminder)
+  TaskReminderScheduler.kt      (pendiente — interfaz commonMain: scheduleReminder(task), cancelReminder(taskId), rescheduleAll())
   domain/
     MarineCategoryAssigner.kt   (redistribuye entre categorías desbloqueadas; requiere EcosystemStateRepository)
     RecurringTaskGenerator.kt
@@ -89,7 +91,9 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                      getPendingLootboxes, setPendingLootboxes,
                                      getPendingUnlocks/setPendingUnlocks (legacy),
                                      getLastDismissedSummaryDate, setLastDismissedSummaryDate,
-                                     hasCompletedOnboarding, setOnboardingCompleted)
+                                     hasCompletedOnboarding, setOnboardingCompleted,
+                                     getMorningReminderTime(): Flow<LocalTime?>,
+                                     setMorningReminderTime(time: LocalTime?))
   presentation/
     aquarium/
       AquariumBackground.kt    (Canvas: cielo dinámico 7 periodos via kotlin.time.Clock.System,
@@ -152,25 +156,33 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       MainScreen.kt             (EXPIRED ⌛ + checkbox; diálogo lootbox bifásico cerrada→abierta;
                                  onCreatureTap → CreatureDetailDialog)
       WeekCalendar.kt
-      MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen)
+      MainDrawer.kt             (sección ECOSISTEMA con botón "Mi ecosistema" → EcosystemScreen;
+                                 sección AJUSTES: hora resumen nocturno + aviso matutino toggle+hora)
     task/
-      TaskFormSheet.kt          (+ initialBlockId para long press en cabecera de bloque)
+      TaskFormSheet.kt          (+ initialBlockId para long press en cabecera de bloque;
+                                 remember(existingDef) para precargar hora/días al editar recurrentes;
+                                 toggle notificationsEnabled pendiente — solo visible si hay hora)
       PostponeSheet.kt
       TaskFormViewModel.kt
 
 composeApp/src/androidMain/kotlin/com/mnebot/riptide/
-  App.kt
-  MainActivity.kt
+  App.kt                        (determina startDestination: ROUTE_ONBOARDING si !hasCompletedOnboarding, ROUTE_MAIN si sí)
+  MainActivity.kt               (pendiente: createChannels, POST_NOTIFICATIONS runtime permission, rescheduleAll)
   DataSeeder.kt                 (5 bloques genéricos; crea EcosystemStates ANTES del reassign)
-  NightSummaryWorker.kt         (lee summaryTime con .first() y lo pasa a processDay)
-  NightSummarySchedulerImpl.android.kt
+  NotificationHelper.kt         (createChannels() — 3 canales: night_summary, morning_reminder, task_reminder;
+                                 sendNightSummaryNotification, sendMorningReminderNotification, sendTaskReminderNotification)
+  NightSummaryWorker.kt         (lee summaryTime con .first(), lo pasa a processDay; envía push con stats; se auto-reprograma)
+  MorningReminderWorker.kt      (envía push matutino; lee hora de DataStore; se auto-reprograma diariamente)
+  TaskReminderWorker.kt         (pendiente — one-shot a la hora de la tarea; nombre único "task_reminder_$taskId")
+  NightSummarySchedulerImpl.android.kt  (+ getMorningReminderTime, setMorningReminderTime, scheduleMorningReminder)
+  TaskReminderSchedulerImpl.kt  (pendiente — WorkManager REPLACE; rescheduleAll via getPendingWithNotifications)
   UuidGenerator.android.kt
   data/local/
     entity/
       WorkBlockEntity.kt
       BlockCategoryEntity.kt
-      DayTaskEntity.kt          (+ hasBeenRewarded: Boolean)
-      RecurringTaskDefEntity.kt (time String? nullable)
+      DayTaskEntity.kt          (+ hasBeenRewarded: Boolean, + notificationsEnabled: Boolean)
+      RecurringTaskDefEntity.kt (time String? nullable, + notificationsEnabled: Boolean)
       DaySummaryEntity.kt
       BlockStreakEntity.kt
       EcosystemStateEntity.kt   (+ isUnlocked: Boolean)
@@ -178,8 +190,9 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
     dao/
       EcosystemStateDao.kt      (getByCategory, getAll, getUnlocked, insert, update)
       MarineCreatureDao.kt      (getByEcosystem, getByCategory, insert, update)
+      DayTaskDao.kt             (+ getPendingWithNotifications(): List<DayTaskEntity> — PENDING con notificationsEnabled=1 y hora no nula)
     db/
-      RiptideDatabase.kt        (versión 9, migración real MIGRATION_8_9)
+      RiptideDatabase.kt        (versión 10, migraciones reales MIGRATION_8_9 + MIGRATION_9_10)
       DatabaseProvider.kt       (addMigrations en vez de fallbackToDestructiveMigration)
     mapper/
   data/repository/
@@ -199,7 +212,8 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
       MainViewModelFactory.kt
     task/
       TaskFormViewModelFactory.kt
-    Navigation.kt               (+ ROUTE_ECOSYSTEM = "ecosystem"; composable conectado a MainViewModel)
+    Navigation.kt               (+ ROUTE_ECOSYSTEM = "ecosystem"; + ROUTE_ONBOARDING = "onboarding"; composable conectado a MainViewModel)
+    OnboardingScreen.kt         (flujo 4 pasos: bienvenida, cómo funciona, ecosistema, listo — AnimatedContent slide+fade)
 
 composeApp/src/iosMain/kotlin/com/mnebot/riptide/
   MainViewController.kt
@@ -226,9 +240,10 @@ TaskSchedule sealed: OneTime(date, time?) / Recurring(time, recurrence)
 
 DayTask: id, blockId(String?), title, schedule, status,
   completedAt(LocalDateTime?), postponedTo(LocalDateTime?), sourceTaskId(String?),
-  hasBeenRewarded(Boolean)
+  hasBeenRewarded(Boolean), notificationsEnabled(Boolean=false)
 
-RecurringTaskDef: id, blockId, title, time(LocalTime?), recurrence, isActive
+RecurringTaskDef: id, blockId, title, time(LocalTime?), recurrence, isActive,
+  notificationsEnabled(Boolean=false)  ← propagado a instancias por RecurringTaskGenerator
 
 Recurrence @Serializable sealed: None | Weekly(slots: List<WeeklySlot>)
 WeeklySlot @Serializable: dayOfWeek(Int), startTime(LocalTime?), endTime(LocalTime?)
@@ -527,30 +542,42 @@ Orden correcto:
 
 ROADMAP
 
-MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅ | Sprint bugfixes ✅ | Sprint lootbox ✅
+MVP ✅ | v2 ✅ | v2.1 ✅ | Sprint fixes ✅ | Sprint v2 ampliado ✅ | Sprint pre-v3 ✅
+Sprint bugfixes ✅ | Sprint bugfixes 2 ✅ | Sprint visual ✅ | Sprint visual 2 ✅
+Sprint lootbox ✅ | Sprint i18n+renderers ✅ | Sprint renderers total ✅ | Sprint onboarding ✅
 
-Sprint bugfixes completado:
-✅ Resumen nocturno: filtrado por summaryTime, no evalúa tareas futuras ni sin hora
-✅ Tareas EXPIRED completables: ⌛ + checkbox, desmarcar vuelve a EXPIRED si DaySummary existe
-✅ XP duplicado: hasBeenRewarded en DayTask, migración real Room v8→v9
-✅ Migración real Room: MIGRATION_8_9, eliminado fallbackToDestructiveMigration
-✅ TimePicker: colores explícitos con TimePickerDefaults.colors()
-✅ Inputs fecha/hora: readonly, click abre picker, eliminados emojis y BasicTextField
-✅ Patrones de nado: tempo warping, variación por instancia, márgenes simétricos,
-   velocidades ajustadas (clownfish, shrimp, dolphin, squid), crustáceos con profundidad
-   (verticalCoupling, tempoVariation), hitbox ampliado
-✅ Tap en criatura (en vez de long press): onCreatureTap
+Sprint notificaciones push (en curso):
+✅ NotificationHelper (3 canales: night_summary, morning_reminder, task_reminder)
+✅ POST_NOTIFICATIONS en AndroidManifest
+✅ Push resumen nocturno: NightSummaryWorker envía notificación + se auto-reprograma
+✅ Aviso matutino: MorningReminderWorker + toggle+hora en Drawer + DataStore
+✅ Campo notificationsEnabled en DayTask/RecurringTaskDef (migración Room v9→v10)
+✅ DayTaskDao.getPendingWithNotifications()
+✅ Strings EN/ES para notificaciones
+⬜ RecurringTaskGenerator: propagar notificationsEnabled de def a instancias
+⬜ TaskReminderScheduler (commonMain) + TaskReminderSchedulerImpl (WorkManager)
+⬜ TaskReminderWorker (one-shot a la hora de la tarea)
+⬜ Toggle notificationsEnabled en TaskFormSheet (solo si hay hora)
+⬜ TaskFormViewModel + MainViewModel: inyectar scheduler, schedule/cancel
+⬜ Factories: pasar TaskReminderSchedulerImpl
+⬜ MainActivity: createChannels, permiso POST_NOTIFICATIONS, rescheduleAll
 
-v3 — Revisión, pulido y onboarding:
-⬜ Testing automatizado (dominio) + manual
+v3 — Estadísticas, historial, evolución y pulido:
+⬜ Pantalla de estadísticas (DaySummary semanal/mensual, rachas por bloque)
+⬜ Historial de tareas completadas filtrable
+⬜ Evolución visual de criaturas por nivel en renderers Canvas
+⬜ Recompensas automáticas de racha (lootbox en hitos: 7, 14, 30 días)
+⬜ Búsqueda y filtro de tareas
 ⬜ Animación entrada criatura al desbloquearse
-⬜ Revisión gestos y edge cases
+⬜ Testing automatizado (dominio) + manual
 ⬜ Preparar firma de la app
-⬜ Tutorial de primera vez (onboarding)
 
-v4 — Fondo de pantalla dinámico (WallpaperService)
-v5 — Ktor+PostgreSQL, perfiles, amigos, Google Sign-In
-v6 — iOS completo
+v4 — Widget y wallpaper:
+⬜ Widget Android (Glance): tareas del día + progreso
+⬜ Live wallpaper del acuario (WallpaperService)
+
+v5 — Ktor+PostgreSQL, perfiles, amigos, Google Sign-In, backup/exportación
+v6 — iOS completo (BGTaskScheduler, UNUserNotificationCenter, pickers nativos)
 
 ---
 

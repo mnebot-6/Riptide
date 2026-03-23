@@ -77,11 +77,14 @@ data class DayTask(
     val completedAt: LocalDateTime?,
     val postponedTo: LocalDateTime?,
     val sourceTaskId: String?,
-    val hasBeenRewarded: Boolean = false
+    val hasBeenRewarded: Boolean = false,
+    val notificationsEnabled: Boolean = false
 )
 ```
 
 `hasBeenRewarded`: se pone a `true` al completar la tarea por primera vez. Evita dar XP duplicado al desmarcar y volver a marcar. Una vez `true`, nunca se resetea.
+
+`notificationsEnabled`: si `true` y la tarea tiene hora, se programa un `TaskReminderWorker` a esa hora. Por defecto `false`. Solo relevante si `schedule` incluye `time != null`.
 
 ---
 
@@ -94,9 +97,12 @@ data class RecurringTaskDef(
     val title: String,
     val time: LocalTime?,   // nullable — hora opcional
     val recurrence: Recurrence,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val notificationsEnabled: Boolean = false
 )
 ```
+
+`notificationsEnabled`: se propaga a cada `DayTask` generado por `RecurringTaskGenerator`. Equivalente al campo del mismo nombre en `DayTask`.
 
 ---
 
@@ -337,14 +343,14 @@ data class CreatureSpec(
 
 ---
 
-## Room — androidMain (v9)
+## Room — androidMain (v10)
 
 | Entity | Tabla |
 |--------|-------|
 | `WorkBlockEntity` | `work_blocks` |
 | `BlockCategoryEntity` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity` | `day_tasks` — + `hasBeenRewarded: Boolean` |
-| `RecurringTaskDefEntity` | `recurring_task_defs` — `time String?` nullable |
+| `DayTaskEntity` | `day_tasks` — + `hasBeenRewarded: Boolean`, + `notificationsEnabled: Boolean` |
+| `RecurringTaskDefEntity` | `recurring_task_defs` — `time String?` nullable, + `notificationsEnabled: Boolean` |
 | `DaySummaryEntity` | `day_summaries` |
 | `BlockStreakEntity` | `block_streaks` — PK `blockId` |
 | `EcosystemStateEntity` | `ecosystem_states` — `isUnlocked Boolean` |
@@ -355,3 +361,4 @@ data class CreatureSpec(
 | Migración | SQL |
 |---|---|
 | 8 → 9 | `ALTER TABLE day_tasks ADD COLUMN hasBeenRewarded INTEGER NOT NULL DEFAULT 0` |
+| 9 → 10 | `ALTER TABLE day_tasks ADD COLUMN notificationsEnabled INTEGER NOT NULL DEFAULT 0` + `ALTER TABLE recurring_task_defs ADD COLUMN notificationsEnabled INTEGER NOT NULL DEFAULT 0` |

@@ -20,8 +20,8 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `WorkBlock.kt` | Bloque + `Recurrence` sealed `@Serializable` + `WeeklySlot` |
 | `TaskStatus.kt` | PENDING, COMPLETED, EXPIRED, POSTPONED |
 | `TaskSchedule.kt` | `OneTime(date, time?)` / `Recurring(time, recurrence)` |
-| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP |
-| `RecurringTaskDef.kt` | `time: LocalTime?` nullable |
+| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP, `notificationsEnabled` para push |
+| `RecurringTaskDef.kt` | `time: LocalTime?` nullable, `notificationsEnabled` propagado a instancias generadas |
 | `DaySummary.kt` | Score interno + mensaje visible |
 | `BlockStreak.kt` | PK natural = `blockId` |
 | `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoría |
@@ -36,7 +36,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
-| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, pendingUnlocks (legacy), **lastDismissedSummaryDate**, hasCompletedOnboarding |
+| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, pendingUnlocks (legacy), **lastDismissedSummaryDate**, hasCompletedOnboarding, **morningReminderTime** (Flow<LocalTime?>) |
 | Resto | operaciones estándar |
 
 ### `domain/`
@@ -44,7 +44,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | Archivo | Qué hace |
 |---|---|
 | `MarineCategoryAssigner.kt` | Redistribuye entre categorías **desbloqueadas** (requiere `EcosystemStateRepository`) |
-| `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable |
+| `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable; propaga `notificationsEnabled` de def a cada `DayTask` |
 | `BlockStreakProcessor.kt` | Rachas por bloque |
 | `NightSummaryProcessor.kt` | Recibe `summaryTime`; evalúa tareas completadas + PENDING con hora ≤ summaryTime |
 | `EcosystemProcessor.kt` | XP a categorías + XP a criaturas + lootbox detection + overflow; requiere `MarineCreatureRepository` |
@@ -88,7 +88,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 | `MainViewModel.kt` | `loadDay` carga `creaturesData`; `toggleTaskCompleted` con lootboxes; `openLootbox`, `confirmUnlock`, `dismissLootbox`; `updateCreatureNickname` |
 | `MainScreen.kt` | EXPIRED: ⌛ + checkbox; tap criatura → `CreatureDetailDialog`; diálogo lootbox bifásico (cerrada→abierta) |
 | `WeekCalendar.kt` | Excluye POSTPONED |
-| `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES; scroll interno con `LocalWindowInfo` |
+| `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES (hora resumen nocturno + aviso matutino toggle+hora); scroll interno con `LocalWindowInfo` |
 
 ### `presentation/components/`
 
@@ -102,7 +102,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Archivo | Qué hace |
 |---|---|
-| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` |
+| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` con `remember(existingDef)`; toggle `notificationsEnabled` (pendiente, visible solo si hay hora) |
 | `PostponeSheet.kt` | Hora opcional. `onPostpone` llama a `postponingTask = null` tras confirmar. |
 
 ---
@@ -113,8 +113,8 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 | Entity | Cambios relevantes |
 |---|---|
-| `DayTaskEntity` | + `hasBeenRewarded: Boolean` (v9) |
-| `RecurringTaskDefEntity` | `time: String?` nullable |
+| `DayTaskEntity` | + `hasBeenRewarded: Boolean` (v9), + `notificationsEnabled: Boolean` (v10) |
+| `RecurringTaskDefEntity` | `time: String?` nullable, + `notificationsEnabled: Boolean` (v10) |
 | `EcosystemStateEntity` | + `isUnlocked: Boolean` |
 
 ### `data/local/dao/`
@@ -123,10 +123,11 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateDao` | `getAll()`, `getUnlocked()` |
 | `MarineCreatureDao` | `getByCategory(category: String)` |
+| `DayTaskDao` | `getPendingWithNotifications()` — tareas PENDING con `notificationsEnabled=1` y hora no nula |
 
 ### `data/local/db/`
 
-`RiptideDatabase` — **versión 9**. Migración real `MIGRATION_8_9`. Sin `fallbackToDestructiveMigration`.
+`RiptideDatabase` — **versión 10**. Migraciones reales `MIGRATION_8_9`, `MIGRATION_9_10`. Sin `fallbackToDestructiveMigration`.
 
 ### `presentation/`
 
@@ -134,9 +135,16 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `MainViewModelFactory.kt` | `EcosystemProcessor(...)` + `LootboxResolver(marineCreatureRepo)` |
 | `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
-| `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo` |
-| `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay` |
-| `Navigation.kt` | + `ROUTE_ECOSYSTEM = "ecosystem"`; composable usa `MainViewModel` compartido |
+| `MainActivity.kt` | `EcosystemProcessor` con `marineCreatureRepo`; pendiente: `createChannels()`, permiso `POST_NOTIFICATIONS`, `rescheduleAll()` |
+| `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay`; envía push con stats; se auto-reprograma |
+| `MorningReminderWorker.kt` | Envía push matutino; lee hora de DataStore; se auto-reprograma diariamente |
+| `TaskReminderWorker.kt` | *(pendiente)* One-shot; envía push a la hora de la tarea |
+| `NightSummaryScheduler.android.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
+| `TaskReminderSchedulerImpl.kt` | *(pendiente)* WorkManager `REPLACE`; `rescheduleAll()` vía `getPendingWithNotifications()` |
+| `NotificationHelper.kt` | `createChannels()`, `sendNightSummaryNotification()`, `sendMorningReminderNotification()`, `sendTaskReminderNotification()` |
+| `Navigation.kt` | + `ROUTE_ECOSYSTEM = "ecosystem"`, + `ROUTE_ONBOARDING`; composable usa `MainViewModel` compartido |
+| `OnboardingScreen.kt` | 4 pasos con `AnimatedContent`, indicador de puntos, paleta marina |
+| `App.kt` | Decide `startDestination` según `hasCompletedOnboarding()` de DataStore |
 
 ### `presentation/components/`
 
@@ -151,6 +159,15 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 2. Insertar bloques
 3. `assigner.reassign()`
 4. Insertar tareas
+
+---
+
+### `domain/`
+
+| Archivo | Nota |
+|---|---|
+| `NightSummaryScheduler.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
+| `TaskReminderScheduler.kt` | *(pendiente)* Interfaz: `scheduleReminder(task)`, `cancelReminder(taskId)`, `rescheduleAll()` |
 
 ---
 

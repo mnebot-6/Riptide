@@ -33,7 +33,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 |---|---|
 | Kotlin | 2.3.10 |
 | Compose Multiplatform | 1.10.2 |
-| Room | 2.8.4 (schema v9) |
+| Room | 2.8.4 (schema v10) |
 | kotlinx-serialization | 1.7.3 |
 | androidx-datastore | 1.1.7 |
 | androidx-work (WorkManager) | 2.10.1 |
@@ -64,8 +64,10 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **IDs:** siempre `UUID.randomUUID().toString()`
 - **Colores:** paleta marina definida en `Theme.kt` — no usar colores hardcodeados
 - **Fechas/horas:** `LocalDate`/`LocalTime` de `kotlinx-datetime`, serializadas como strings ISO
-- **Room migrations:** SIEMPRE migraciones reales (nunca `fallbackToDestructiveMigration`). Ver `MIGRATION_8_9` como referencia.
+- **Room migrations:** SIEMPRE migraciones reales (nunca `fallbackToDestructiveMigration`). Ver `MIGRATION_8_9` y `MIGRATION_9_10` como referencia.
 - **hasBeenRewarded:** campo en `DayTask` para evitar XP duplicado — siempre respetar esta bandera al distribuir XP
+- **notificationsEnabled:** campo en `DayTask` y `RecurringTaskDef` — solo relevante si la tarea tiene hora; propagar de def a instancias en `RecurringTaskGenerator`
+- **Notificaciones:** usar siempre `NotificationHelper` para enviar pushes. Tres canales: `night_summary`, `morning_reminder`, `task_reminder`. `TaskReminderWorker` usa nombre único `"task_reminder_$taskId"`.
 - **Recurrence:** enum serializado como string (`DAILY`, `WEEKLY`, `MONTHLY`)
 - **Tiempo nulo en RecurringTaskDef:** tarea sin hora asignada — el generador la omite en el DaySummary si no tiene `summaryTime`
 
@@ -74,36 +76,34 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 ## Estado actual (marzo 2026)
 
 **Completado:**
-- MVVM + Room offline-first (v9)
+- MVVM + Room offline-first (v10, migraciones reales)
 - Ecosistema marino: 40 especies, 9 categorías, sistema lootbox con rareza, crecimiento individual
 - Patrones de nado orgánicos (tempo warping, variación por instancia, márgenes simétricos)
-- Resumen nocturno con filtrado correcto por `summaryTime`
+- Resumen nocturno con filtrado correcto por `summaryTime`; push notification tras `processDay`
 - Tareas EXPIRED completables con checkbox
 - TimePicker y DatePicker con paleta marina
 - Inputs de fecha/hora readonly (click abre picker)
-- Superficie del agua animada (olas con `Path` + `quadraticTo`, cresta doble)
-- Fondo marino elaborado (arena con textura, 11 rocas en 3 estilos)
-- Cielo dinámico por hora del día (7 periodos: noche, amanecer, mañana, día, atardecer, crepúsculo)
-- Flora Canvas: BrainCoral, Anemone, Kelp — crecimiento visual por nivel, múltiples instancias
+- Superficie del agua animada, fondo marino elaborado, cielo dinámico (7 periodos)
+- Flora Canvas: BrainCoral, Anemone, Kelp, Posidonia, FanCoral — crecimiento visual por nivel
 - `CreatureIcon` composable reutilizable (Canvas animado para flora, emoji para el resto)
-- Crustáceos diferenciados en altura (Lobster pegado al suelo, Hermit Crab algo más arriba)
-- EcosystemScreen con botón de retroceso y `CreatureIcon` en cards
-- Mayor opacidad en tarjetas de tarea para legibilidad
-- Sistema lootbox: desbloqueo aleatorio ponderado por rareza (COMMON→LEGENDARY) al subir nivel de categoría
-- `LootboxResolver` con selección weighted-random al abrir lootbox (no al ganar)
-- XP overflow: categorías completas redirigen 50% XP a la categoría de menor nivel
-- EcosystemScreen: ordenamiento por rareza, barra de progreso por categoría, badges de rareza
-- CreatureDetailDialog: niveles numéricos, badge de rareza con color
-- Diálogo lootbox bifásico: cerrada (🎁 + categoría) → abierta (especie + rareza + nombre)
-- **i18n**: `composeResources/values/` (EN) + `values-es/` (ES), `LocalizationExtensions.kt` con extension functions para enums
-- **17 renderers Canvas** (sprint i18n): 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
-- **Conversión de densidad para Canvas swimmers**: `renderSize = iconSize * density` iguala tamaño visual con emojis; `sizeMultiplier` recalibrado por especie según extensión visual del renderer
-- **40 renderers Canvas (cobertura total)**: 23 renderers adicionales para las criaturas restantes — todas las 40 especies tienen Canvas renderer propio. Emoji field queda sólo como fallback de texto.
-- **Onboarding**: flujo de 4 pasos (Bienvenida → Cómo funciona → Ecosistema → Listo), `AnimatedContent` con slide+fade, `DataStore` key `onboarding_completed`, se muestra solo en primer lanzamiento. `UserPreferencesRepository.hasCompletedOnboarding()` + `setOnboardingCompleted()`. `App.kt` determina `startDestination` según el estado; `OnboardingScreen.kt` en `presentation/onboarding/`.
+- Sistema lootbox: desbloqueo aleatorio ponderado por rareza (COMMON→LEGENDARY)
+- **i18n**: EN + ES, `LocalizationExtensions.kt` con extension functions para enums
+- **40 renderers Canvas** (cobertura total): todas las 40 especies tienen Canvas renderer propio
+- **Onboarding**: flujo de 4 pasos con `AnimatedContent`, DataStore key `onboarding_completed`, se muestra solo en primer lanzamiento
+- **Notificaciones push** (en curso): `NotificationHelper` (3 canales), push resumen nocturno, aviso matutino configurable (`MorningReminderWorker`), campo `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), strings EN/ES
+
+**Pendiente (sprint notificaciones):**
+- `TaskReminderScheduler` + `TaskReminderWorker` + toggle en `TaskFormSheet`
+- Inyectar scheduler en ViewModels y factories
+- `MainActivity`: `createChannels()`, permiso `POST_NOTIFICATIONS`, `rescheduleAll()`
 
 **Próximo (v3):**
+- Pantalla de estadísticas (DaySummary semanal/mensual, rachas por bloque)
+- Historial de tareas completadas
+- Evolución visual de criaturas por nivel en renderers
+- Recompensas automáticas de racha (lootbox en hitos)
 - Tests unitarios e instrumentados
-- Animaciones de transición
+- Preparar firma de la app
 
 ---
 
@@ -130,7 +130,11 @@ composeApp/src/
 │       ├── onboarding/OnboardingScreen.kt  # Flujo 4 pasos: bienvenida, cómo funciona, ecosistema, listo
 │       └── theme/Theme.kt                  # Paleta de colores marina
 └── androidMain/kotlin/com/mnebot/riptide/
+    ├── NotificationHelper.kt           # Canales + sendNightSummary/MorningReminder/TaskReminder
+    ├── NightSummaryWorker.kt           # Resumen nocturno + push + auto-reprogramación
+    ├── MorningReminderWorker.kt        # Aviso matutino + auto-reprogramación diaria
+    ├── TaskReminderWorker.kt           # (pendiente) One-shot a la hora de la tarea
     └── data/local/
-        ├── db/RiptideDatabase.kt       # Room DB v9, migraciones reales
+        ├── db/RiptideDatabase.kt       # Room DB v10, migraciones reales (8_9, 9_10)
         └── dao/                        # DAOs para cada entidad
 ```
