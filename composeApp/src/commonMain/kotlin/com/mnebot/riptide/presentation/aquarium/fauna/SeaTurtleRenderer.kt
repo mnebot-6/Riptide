@@ -148,6 +148,33 @@ object SeaTurtleRenderer : CreatureRenderer {
             drawPath(shell, TurtShell3.copy(alpha = 0.40f),
                 style = Stroke(width = (1.0f * s).coerceAtLeast(0.5f)))
 
+            // ── LEVEL 3+: Algae patches on carapace ──────────────────────────────
+            if (level >= 3) {
+                val AlgGreen = Color(0xFF2A5A18)
+                val algaePositions = listOf(
+                    Triple(-0.28f, -0.58f, 1.2f), Triple(0.12f, -0.65f, 0.9f),
+                    Triple(0.36f, -0.42f, 1.1f),  Triple(-0.18f, 0.52f, 1.0f),
+                    Triple(0.22f, 0.58f, 0.85f)
+                )
+                for ((ax, ay, ar) in algaePositions) {
+                    drawCircle(AlgGreen.copy(alpha = 0.42f), (ar * s).coerceAtLeast(0.5f),
+                        Offset(x + ax * shellW, y + ay * shellH))
+                }
+            }
+
+            // ── LEVEL 5+: Barnacle clusters on leading shell edge ─────────────────
+            if (level >= 5) {
+                val BarnGrey = Color(0xFF8A8A7A)
+                for (b in 0 until 5) {
+                    val bx = x - shellW * 0.38f + b * shellW * 0.20f
+                    drawCircle(BarnGrey.copy(alpha = 0.58f), (0.9f * s).coerceAtLeast(0.4f),
+                        Offset(bx, y - shellH * 0.88f))
+                    drawCircle(TurtShell3.copy(alpha = 0.35f), (0.9f * s).coerceAtLeast(0.4f),
+                        Offset(bx, y - shellH * 0.88f),
+                        style = Stroke(width = (0.4f * s).coerceAtLeast(0.2f)))
+                }
+            }
+
             // ── HEAD ──────────────────────────────────────────────────────────
             val headR = (3.5f + level * 0.2f) * s
             val headX = x - shellW * 0.55f - headR * 0.7f

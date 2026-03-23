@@ -161,6 +161,47 @@ object WhaleSharkRenderer : CreatureRenderer {
                 )
             }
 
+            // ── LEVEL 3+: Remora companion fish ──────────────────────────────────
+            if (level >= 3) {
+                val remX = x - bodyLen * 0.05f
+                val remY = y - bodyH * 1.08f
+                val rLen = bodyLen * 0.13f
+                val rH   = bodyH * 0.17f
+                val remora = Path().apply {
+                    moveTo(remX - rLen * 0.5f, remY)
+                    cubicTo(remX - rLen * 0.3f, remY - rH, remX + rLen * 0.3f, remY - rH, remX + rLen * 0.5f, remY)
+                    cubicTo(remX + rLen * 0.3f, remY + rH, remX - rLen * 0.3f, remY + rH, remX - rLen * 0.5f, remY)
+                    close()
+                }
+                drawPath(remora, WSharkGill.copy(alpha = 0.72f))
+                // Suction disc stripes on head
+                for (d in 0 until 4) {
+                    drawLine(WSharkSpot.copy(alpha = 0.40f),
+                        Offset(remX - rLen * 0.48f + d * rLen * 0.16f, remY - rH * 0.62f),
+                        Offset(remX - rLen * 0.48f + d * rLen * 0.16f, remY + rH * 0.62f),
+                        strokeWidth = (0.4f * s).coerceAtLeast(0.2f)
+                    )
+                }
+                // Tail
+                val remTail = Path().apply {
+                    moveTo(remX + rLen * 0.5f, remY)
+                    lineTo(remX + rLen * 0.75f, remY - rH)
+                    lineTo(remX + rLen * 0.75f, remY + rH)
+                    close()
+                }
+                drawPath(remTail, WSharkGill.copy(alpha = 0.55f))
+            }
+
+            // ── LEVEL 5+: Bioluminescent photophores along flank ─────────────────
+            if (level >= 5) {
+                val glowPulse = (sin(t * 1.8f * PI.toFloat()) * 0.5f + 0.5f) * 0.35f + 0.15f
+                for (p in 0 until 7) {
+                    val px = x - bodyLen * 0.45f + p * bodyLen * 0.15f
+                    drawCircle(Color(0xFF88DDFF).copy(alpha = glowPulse),
+                        (1.3f * s).coerceAtLeast(0.5f), Offset(px, y - bodyH * 0.10f))
+                }
+            }
+
             // Wide flat head / terminal mouth
             val mouth = Path().apply {
                 moveTo(x - bodyLen, y - bodyH * 0.15f)

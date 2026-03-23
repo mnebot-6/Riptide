@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -87,6 +88,38 @@ object HermitCrabRenderer : CreatureRenderer {
             // Shell outline
             drawPath(shellOuter, HermShellDark.copy(alpha = 0.35f),
                 style = Stroke(width = (0.8f * s).coerceAtLeast(0.3f)))
+
+            // ── LEVEL 3+: Anemone on shell top (symbiotic) ───────────────────────
+            if (level >= 3) {
+                val anemX = shellX + shellR * 0.10f
+                val anemY = shellY - shellR * 0.88f
+                val anemR = shellR * 0.28f
+                // Anemone base
+                drawCircle(Color(0xFFCC5533).copy(alpha = 0.80f), anemR, Offset(anemX, anemY))
+                // Tentacles
+                val tentCount = 6
+                val anemSway = sin(t * 2.2f * PI.toFloat()) * anemR * 0.4f
+                for (i in 0 until tentCount) {
+                    val ta = i.toFloat() / tentCount * 2f * PI.toFloat()
+                    val tx = anemX + cos(ta) * anemR * 0.90f
+                    val ty = anemY + sin(ta) * anemR * 0.90f
+                    drawLine(Color(0xFFFF7755).copy(alpha = 0.75f),
+                        Offset(tx, ty),
+                        Offset(tx + cos(ta) * anemR * 0.6f + anemSway * 0.3f,
+                            ty + sin(ta) * anemR * 0.6f - anemR * 0.5f),
+                        strokeWidth = (0.7f * s).coerceAtLeast(0.3f), cap = StrokeCap.Round)
+                    drawCircle(Color(0xFFFFAA88).copy(alpha = 0.65f),
+                        (0.55f * s).coerceAtLeast(0.25f),
+                        Offset(tx + cos(ta) * anemR * 0.6f + anemSway * 0.3f,
+                            ty + sin(ta) * anemR * 0.6f - anemR * 0.5f))
+                }
+            }
+
+            // ── LEVEL 5+: Bright banding on shell ────────────────────────────────
+            if (level >= 5) {
+                drawCircle(Color(0xFFFFDD88).copy(alpha = 0.22f),
+                    shellR * 0.55f, Offset(shellX - shellR * 0.10f, shellY - shellR * 0.20f))
+            }
 
             // Shell opening (where crab peeks out)
             val openingX = x - shellR * 0.6f

@@ -145,6 +145,22 @@ object ShrimpRenderer : CreatureRenderer {
                 Offset(antBase - antLen * 0.35f + antSway * 0.5f, y + headH2 * 0.8f),
                 strokeWidth = (0.5f * s).coerceAtLeast(0.25f), cap = StrokeCap.Round)
 
+            // ── LEVEL 3+: White cleaner stripe along dorsal ──────────────────────
+            if (level >= 3) {
+                val stripeY = y - archAnim * 0.5f - bodyH * 0.85f
+                drawLine(ShrWhite.copy(alpha = 0.55f),
+                    Offset(x - bodyLen * 0.45f, stripeY),
+                    Offset(x + bodyLen * 0.48f, stripeY - archAnim * 0.3f),
+                    strokeWidth = (1.1f * s).coerceAtLeast(0.5f), cap = StrokeCap.Round)
+            }
+
+            // ── LEVEL 5+: Iridescent highlight on carapace ───────────────────────
+            if (level >= 5) {
+                val shimmer = (sin(t * 2.0f * PI.toFloat()) * 0.5f + 0.5f) * 0.20f + 0.10f
+                drawCircle(Color(0xFFAAFFDD).copy(alpha = shimmer),
+                    bodyH * 1.0f, Offset(x - bodyLen * 0.45f + bodyH * 0.6f, y - bodyH * 0.5f))
+            }
+
             // ── EYE ───────────────────────────────────────────────────────────
             val eyeR = (1.2f + level * 0.07f) * s
             val eyeX = headX - headH2 * 0.55f

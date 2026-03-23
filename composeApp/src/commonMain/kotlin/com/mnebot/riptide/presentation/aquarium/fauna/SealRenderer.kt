@@ -106,6 +106,40 @@ object SealRenderer : CreatureRenderer {
             }
             drawPath(belly, SealBelly.copy(alpha = 0.50f))
 
+            // ── LEVEL 3+: Spot markings (harbour seal pattern) ───────────────────
+            if (level >= 3) {
+                val spotPositions = listOf(
+                    Triple(-0.18f, -0.52f, 1.2f), Triple( 0.06f, -0.60f, 1.0f),
+                    Triple( 0.28f, -0.48f, 1.1f), Triple(-0.08f,  0.52f, 1.0f),
+                    Triple( 0.18f,  0.58f, 0.9f), Triple(-0.30f,  0.38f, 1.1f),
+                    Triple( 0.32f, -0.28f, 1.0f)
+                )
+                for ((spx, spy, sr) in spotPositions) {
+                    drawCircle(SealGrey.copy(alpha = 0.40f),
+                        (sr * s).coerceAtLeast(0.5f),
+                        Offset(x + spx * bodyLen, y + spy * bodyH + bodyWave * 0.3f))
+                }
+            }
+
+            // ── LEVEL 5+: Darker saddle marking on back ───────────────────────────
+            if (level >= 5) {
+                val saddle = Path().apply {
+                    moveTo(x - bodyLen * 0.04f, y - bodyH * 0.82f + bodyWave * 0.3f)
+                    cubicTo(
+                        x + bodyLen * 0.06f, y - bodyH * 1.01f + bodyWave * 0.2f,
+                        x + bodyLen * 0.28f, y - bodyH * 0.90f + bodyWave * 0.15f,
+                        x + bodyLen * 0.40f, y - bodyH * 0.42f + bodyWave * 0.1f
+                    )
+                    cubicTo(
+                        x + bodyLen * 0.24f, y - bodyH * 0.64f + bodyWave * 0.15f,
+                        x + bodyLen * 0.04f, y - bodyH * 0.68f + bodyWave * 0.2f,
+                        x - bodyLen * 0.04f, y - bodyH * 0.60f + bodyWave * 0.3f
+                    )
+                    close()
+                }
+                drawPath(saddle, SealGrey.copy(alpha = 0.32f))
+            }
+
             // ── HEAD (rounded, short snout) ────────────────────────────────────
             val headR = (4.0f + level * 0.22f) * s
             val headX = x - bodyLen * 0.5f

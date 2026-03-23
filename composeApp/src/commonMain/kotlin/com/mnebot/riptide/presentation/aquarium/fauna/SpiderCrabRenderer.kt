@@ -158,6 +158,39 @@ object SpiderCrabRenderer : CreatureRenderer {
             drawPath(carapace, SpidClaw.copy(alpha = 0.45f),
                 style = Stroke(width = (0.6f * s).coerceAtLeast(0.4f)))
 
+            // ── LEVEL 3+: Algae/sponge decoration on carapace (decorator crab) ──
+            if (level >= 3) {
+                val SpongeGreen = Color(0xFF3A6A22)
+                val SpongeYellow = Color(0xFFAABB44)
+                val decoPositions = listOf(
+                    Triple(0f, -0.75f, SpongeGreen),
+                    Triple(-0.55f, -0.20f, SpongeYellow),
+                    Triple(0.55f, -0.20f, SpongeGreen),
+                    Triple(0f,  0.42f, SpongeYellow)
+                )
+                for ((dx, dy, col) in decoPositions) {
+                    drawCircle(col.copy(alpha = 0.65f),
+                        (0.9f * s).coerceAtLeast(0.4f),
+                        Offset(x + dx * bodyW, y + dy * bodyH))
+                }
+            }
+
+            // ── LEVEL 5+: Dense sponge covering (heavily decorated) ───────────────
+            if (level >= 5) {
+                val SpongeOrange = Color(0xFFCC6622)
+                val extraDecoPositions = listOf(
+                    Triple(-0.30f, -0.55f, SpongeOrange),
+                    Triple( 0.35f, -0.50f, SpongeOrange),
+                    Triple(-0.55f,  0.20f, SpongeOrange),
+                    Triple( 0.50f,  0.22f, SpongeOrange)
+                )
+                for ((dx, dy, col) in extraDecoPositions) {
+                    drawCircle(col.copy(alpha = 0.55f),
+                        (0.8f * s).coerceAtLeast(0.35f),
+                        Offset(x + dx * bodyW, y + dy * bodyH))
+                }
+            }
+
             // ════════════════════════════════════════════════════════════════
             // STALKED EYES on top of carapace
             // ════════════════════════════════════════════════════════════════

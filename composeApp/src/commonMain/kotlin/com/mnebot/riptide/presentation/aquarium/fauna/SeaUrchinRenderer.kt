@@ -104,6 +104,33 @@ object SeaUrchinRenderer : CreatureRenderer {
         drawCircle(UrchinSpine.copy(alpha = 0.35f), bodyR, Offset(cx, cy),
             style = Stroke(width = (0.7f * s).coerceAtLeast(0.4f)))
 
+        // ── LEVEL 3+: Fluorescent spine tip highlights ────────────────────────
+        if (level >= 3) {
+            val tipPulse = (sin(t * 1.2f * PI.toFloat()) * 0.5f + 0.5f) * 0.35f + 0.25f
+            val highlightCount = 10
+            for (i in 0 until highlightCount) {
+                val angle = i.toFloat() / highlightCount * 2f * PI.toFloat()
+                if (cy + sin(angle) * (bodyR + (9f + level * 0.8f) * s) > y) continue
+                val tipX = cx + cos(angle) * (bodyR + (9f + level * 0.8f) * s)
+                val tipY = cy + sin(angle) * (bodyR + (9f + level * 0.8f) * s)
+                drawCircle(Color(0xFFCC88FF).copy(alpha = tipPulse),
+                    (0.9f * s).coerceAtLeast(0.4f), Offset(tipX, tipY))
+            }
+        }
+
+        // ── LEVEL 5+: Inter-radial coloured spots at body base ────────────────
+        if (level >= 5) {
+            for (band in 0 until 5) {
+                val midAngle = (band.toFloat() + 0.5f) / 5f * 2f * PI.toFloat() - PI.toFloat() / 2f
+                val bx = cx + cos(midAngle) * bodyR * 0.72f
+                val by = cy + sin(midAngle) * bodyR * 0.72f
+                if (by < y) {
+                    drawCircle(Color(0xFF8844AA).copy(alpha = 0.50f),
+                        (1.0f * s).coerceAtLeast(0.5f), Offset(bx, by))
+                }
+            }
+        }
+
         // ════════════════════════════════════════════════════════════════
         // MOUTH — tiny circle at top
         // ════════════════════════════════════════════════════════════════

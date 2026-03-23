@@ -125,6 +125,31 @@ object SquidRenderer : CreatureRenderer {
             }
             drawPath(belly, SqBelly.copy(alpha = 0.30f))
 
+            // ── LEVEL 3+: Photophores (bioluminescent ventral dots) ──────────────
+            if (level >= 3) {
+                val glow = (sin(t * 2.2f * PI.toFloat()) * 0.5f + 0.5f) * 0.40f + 0.20f
+                val photoPositions = listOf(-0.30f, -0.12f, 0.08f, 0.26f)
+                for (px in photoPositions) {
+                    drawCircle(Color(0xFFAAEEFF).copy(alpha = glow),
+                        (1.0f * s).coerceAtLeast(0.4f),
+                        Offset(x + px * mantleLen, y + mantleH * 0.72f))
+                }
+            }
+
+            // ── LEVEL 5+: Luminescent edge on lateral fins ────────────────────────
+            if (level >= 5) {
+                val finGlow = (sin(t * 1.5f * PI.toFloat()) * 0.5f + 0.5f) * 0.30f + 0.18f
+                val finX = x + mantleLen * 0.25f
+                drawLine(Color(0xFF88CCFF).copy(alpha = finGlow),
+                    Offset(finX + mantleLen * 0.30f, y),
+                    Offset(finX, y - mantleH * 1.40f),
+                    strokeWidth = (1.2f * s).coerceAtLeast(0.5f), cap = StrokeCap.Round)
+                drawLine(Color(0xFF88CCFF).copy(alpha = finGlow),
+                    Offset(finX + mantleLen * 0.30f, y),
+                    Offset(finX, y + mantleH * 1.40f),
+                    strokeWidth = (1.2f * s).coerceAtLeast(0.5f), cap = StrokeCap.Round)
+            }
+
             // ── CHROMATOPHORE STRIPES ─────────────────────────────────────────
             val stripeCount = 5 + level
             val chromAnim = (sin(t * 2.5f * PI.toFloat()) * 0.5f + 0.5f) * 0.30f

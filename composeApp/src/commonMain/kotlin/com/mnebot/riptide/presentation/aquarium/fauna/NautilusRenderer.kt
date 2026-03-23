@@ -81,6 +81,22 @@ object NautilusRenderer : CreatureRenderer {
                 style = Stroke(width = (1.0f * s).coerceAtLeast(0.5f))
             )
 
+            // ── LEVEL 3+: Iridescent nacre shimmer ───────────────────────────────
+            if (level >= 3) {
+                val shimmer = (sin(t * 1.4f * PI.toFloat()) * 0.5f + 0.5f) * 0.18f + 0.08f
+                drawCircle(Color(0xFFAAEEFF).copy(alpha = shimmer),
+                    shellR * 0.70f, Offset(x - shellR * 0.15f, y - shellR * 0.20f))
+            }
+
+            // ── LEVEL 5+: Vivid stripe accent on leading edge ────────────────────
+            if (level >= 5) {
+                drawCircle(Color(0xFFFF8844).copy(alpha = 0.30f),
+                    shellR * 0.22f, Offset(x - shellR * 0.72f, y))
+                drawCircle(Color(0xFFFF8844).copy(alpha = 0.20f),
+                    shellR * 0.35f, Offset(x - shellR * 0.72f, y),
+                    style = Stroke(width = (0.7f * s).coerceAtLeast(0.3f)))
+            }
+
             // ── APERTURE (opening, to the left) ──────────────────────────────
             // The opening is on the left side when moving right
             val apertureX = x - shellR * 0.75f

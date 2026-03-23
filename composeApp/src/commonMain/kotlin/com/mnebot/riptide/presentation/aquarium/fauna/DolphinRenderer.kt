@@ -132,6 +132,36 @@ object DolphinRenderer : CreatureRenderer {
             }
             drawPath(belly, DolBelly.copy(alpha = 0.55f))
 
+            // ── LEVEL 3+: Lateral flank stripe (bottlenose melon-yellow marking) ──
+            if (level >= 3) {
+                val stripe = Path().apply {
+                    moveTo(x - bodyLen * 0.40f, y - bodyH * 0.28f + bodyArc * 0.3f)
+                    cubicTo(
+                        x - bodyLen * 0.10f, y - bodyH * 0.52f + bodyArc * 0.2f,
+                        x + bodyLen * 0.15f, y - bodyH * 0.48f + bodyArc * 0.15f,
+                        x + bodyLen * 0.45f, y - bodyH * 0.22f + bodyArc * 0.12f
+                    )
+                    cubicTo(
+                        x + bodyLen * 0.15f, y - bodyH * 0.36f + bodyArc * 0.15f,
+                        x - bodyLen * 0.10f, y - bodyH * 0.38f + bodyArc * 0.2f,
+                        x - bodyLen * 0.40f, y - bodyH * 0.16f + bodyArc * 0.3f
+                    )
+                    close()
+                }
+                drawPath(stripe, Color(0xFFD4A840).copy(alpha = 0.28f))
+            }
+
+            // ── LEVEL 5+: Iridescent dorsal sheen ────────────────────────────────
+            if (level >= 5) {
+                val sheenPulse = (sin(t * 1.6f * PI.toFloat()) * 0.5f + 0.5f) * 0.15f + 0.12f
+                drawLine(
+                    DolBelly.copy(alpha = sheenPulse),
+                    Offset(x - bodyLen * 0.28f, y - bodyH * 0.88f + bodyArc * 0.25f),
+                    Offset(x + bodyLen * 0.28f, y - bodyH * 0.85f + bodyArc * 0.12f),
+                    strokeWidth = (3.0f * s).coerceAtLeast(1.2f), cap = StrokeCap.Round
+                )
+            }
+
             // Smile / jaw line
             val smile = Path().apply {
                 moveTo(x - bodyLen * 0.5f - beakLen, y + bodyArc * 0.5f + bodyH * 0.10f)
