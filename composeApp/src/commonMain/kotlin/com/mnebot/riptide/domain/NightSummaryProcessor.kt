@@ -66,9 +66,10 @@ class NightSummaryProcessor(
         val score = if (total > 0) completed.toFloat() / total.toFloat() else 0f
 
         val blockIds = evaluable.mapNotNull { it.blockId }.distinct()
-        val streaks = blockStreakProcessor?.processDay(date, blockIds) ?: emptyMap()
+        val streakUpdates = blockStreakProcessor?.processDay(date, blockIds) ?: emptyMap()
+        val streaksByBlock: Map<String, Int> = streakUpdates.mapValues { it.value.currentStreak }
 
-        val message = buildMessage(score, total, completed, streaks, blockNames)
+        val message = buildMessage(score, total, completed, streaksByBlock, blockNames)
 
         daySummaryRepository.insert(
             DaySummary(
@@ -82,14 +83,23 @@ class NightSummaryProcessor(
             )
         )
 
-        val bestStreak = streaks.values.maxOrNull() ?: 0
+        val bestStreak = streaksByBlock.values.maxOrNull() ?: 0
         val allCategories = evaluable
             .mapNotNull { it.blockId }
             .flatMap { blockId -> blockCategories[blockId] ?: emptyList() }
             .distinct()
 
-        val newLootboxes: List<PendingLootbox> =
+        val ecosystemLootboxes: List<PendingLootbox> =
             ecosystemProcessor?.addNightBonus(score, bestStreak, allCategories) ?: emptyList()
+
+        // Lootboxes por hitos de racha (7/14/30 días consecutivos en un bloque)
+        val streakLootboxes: List<PendingLootbox> = streakUpdates.entries.flatMap { (blockId, update) ->
+            if (update.milestonesReached.isEmpty()) return@flatMap emptyList()
+            val category = blockCategories[blockId]?.firstOrNull() ?: return@flatMap emptyList()
+            update.milestonesReached.map { milestone -> PendingLootbox(category, milestone) }
+        }
+
+        val newLootboxes = ecosystemLootboxes + streakLootboxes
 
         if (newLootboxes.isNotEmpty() && userPreferencesRepository != null) {
             val existing = userPreferencesRepository.getPendingLootboxes()
