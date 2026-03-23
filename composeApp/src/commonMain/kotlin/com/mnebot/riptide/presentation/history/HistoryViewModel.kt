@@ -17,6 +17,8 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
+private const val HISTORY_DAYS = 89 // 90 días inclusive
+
 class HistoryViewModel(
     private val dayTaskRepository: DayTaskRepository,
     private val daySummaryRepository: DaySummaryRepository,
@@ -30,17 +32,12 @@ class HistoryViewModel(
         load()
     }
 
-    fun selectRange(range: HistoryRange) {
-        _uiState.update { it.copy(range = range) }
-        load()
-    }
-
     private fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val today = currentDate()
-            val from = today.minus(_uiState.value.range.days - 1, DateTimeUnit.DAY)
+            val from = today.minus(HISTORY_DAYS, DateTimeUnit.DAY)
 
             val tasks = dayTaskRepository.getCompletedRange(from, today)
             val summaries = daySummaryRepository.getRange(from, today)

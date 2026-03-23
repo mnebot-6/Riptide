@@ -35,7 +35,6 @@ private val CardBackground = Color(0x22FFFFFF)
 @Composable
 fun HistoryScreen(
     uiState: HistoryUiState,
-    onRangeSelected: (HistoryRange) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val blocksById = uiState.blocks.associateBy { it.id }
@@ -75,36 +74,6 @@ fun HistoryScreen(
                 )
             }
 
-            // Range toggle
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(CardBackground)
-                    .padding(4.dp)
-            ) {
-                HistoryRange.entries.forEach { range ->
-                    val selected = uiState.range == range
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) Color(0xFF1A73E8) else Color.Transparent)
-                            .clickable { onRangeSelected(range) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.history_range_days, range.days),
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
             when {
                 uiState.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -126,7 +95,7 @@ fun HistoryScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(Res.string.history_no_data, uiState.range.days),
+                            text = stringResource(Res.string.history_no_data),
                             color = TextSecondary,
                             fontSize = 14.sp
                         )
@@ -184,7 +153,6 @@ private fun DayHistoryCard(
             .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
     ) {
-        // Date header row
         Row(
             modifier = Modifier
                 .fillMaxWidth()

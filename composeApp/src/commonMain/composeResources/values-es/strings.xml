@@ -200,8 +200,7 @@
 
     <!-- HistoryScreen -->
     <string name="title_history">Historial</string>
-    <string name="history_range_days">%1$d días</string>
-    <string name="history_no_data">Sin tareas completadas en los últimos %1$d días</string>
+    <string name="history_no_data">Sin tareas completadas en los últimos 90 días</string>
 
     <!-- Nombres cortos de meses (gráficos y fechas del historial) -->
     <string name="month_jan">Ene</string>

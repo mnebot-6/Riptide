@@ -233,6 +233,7 @@ fun MainScreen(
                         selectedDate = uiState.selectedDate,
                         today = currentDate(),
                         tasksByBlock = uiState.tasksByBlock,
+                        globalStreak = uiState.globalStreak,
                         onCalendarClick = { showDatePicker = true },
                         onTodayClick = { viewModel.selectDate(currentDate()) },
                         onAddTaskClick = { showTaskSheet = true },
@@ -720,6 +721,7 @@ private fun MainHeader(
     selectedDate: LocalDate,
     today: LocalDate,
     tasksByBlock: Map<String?, List<DayTask>>,
+    globalStreak: Int = 0,
     onCalendarClick: () -> Unit,
     onTodayClick: () -> Unit,
     onAddTaskClick: () -> Unit,
@@ -761,6 +763,21 @@ private fun MainHeader(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
+
+            // Racha global (solo visible si >= 2 días consecutivos)
+            if (globalStreak >= 2) {
+                Text(
+                    text = "🔥 $globalStreak",
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CardBackground)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
 
             // Volver a hoy (solo visible si no estamos en hoy)
             if (selectedDate != today) {

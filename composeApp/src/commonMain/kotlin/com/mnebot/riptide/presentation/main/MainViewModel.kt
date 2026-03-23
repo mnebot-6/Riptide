@@ -263,11 +263,14 @@ class MainViewModel(
                 }
                 val creatureLevelBySpecies = allCreaturesFromDb.associate { it.species to it.creatureLevel }
 
+                val globalStreak = calculateGlobalStreak(date)
+
                 _uiState.update {
                     it.copy(
                         blocks = blocks,
                         tasksByBlock = tasksByBlock,
                         streaksByBlock = streaksByBlock,
+                        globalStreak = globalStreak,
                         isLoading = false,
                         error = null,
                         ecosystemByCategory = ecosystemByCategory,
@@ -291,6 +294,25 @@ class MainViewModel(
                 marineCategories = categoriesByBlock[block.id]?.map { it.category } ?: emptyList()
             )
         }
+    }
+
+    private suspend fun calculateGlobalStreak(referenceDate: LocalDate): Int {
+        val from = referenceDate.minus(89, DateTimeUnit.DAY)
+        val summaries = daySummaryRepository.getRange(from, referenceDate)
+        val summaryByDate = summaries.associateBy { it.date }
+        // Start from yesterday — today's summary hasn't been generated yet
+        var date = referenceDate.minus(1, DateTimeUnit.DAY)
+        var streak = 0
+        while (date >= from) {
+            val summary = summaryByDate[date]
+            if (summary != null && summary.tasksCompleted > 0) {
+                streak++
+                date = date.minus(1, DateTimeUnit.DAY)
+            } else {
+                break
+            }
+        }
+        return streak
     }
 
     private suspend fun checkPendingSummary() {

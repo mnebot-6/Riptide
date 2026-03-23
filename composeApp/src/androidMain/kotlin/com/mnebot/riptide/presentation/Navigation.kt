@@ -148,7 +148,6 @@ fun NavGraphBuilder.mainGraph(
         val uiState by historyViewModel.uiState.collectAsState()
         HistoryScreen(
             uiState = uiState,
-            onRangeSelected = { range -> historyViewModel.selectRange(range) },
             onNavigateBack = { navController.popBackStack() }
         )
     }

@@ -19,6 +19,7 @@ data class MainUiState(
     val ecosystemByCategory: Map<MarineCategory, EcosystemState> = emptyMap(),
     val creatureLevelBySpecies: Map<CreatureSpecies, Int> = emptyMap(),
     val creaturesData: List<MarineCreature> = emptyList(),
+    val globalStreak: Int = 0,
     val pendingSummary: DaySummary? = null,
     // Nuevo sistema de lootbox
     val pendingLootboxes: List<PendingLootbox> = emptyList(),

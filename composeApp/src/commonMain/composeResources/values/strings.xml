@@ -200,8 +200,7 @@
 
     <!-- HistoryScreen -->
     <string name="title_history">History</string>
-    <string name="history_range_days">%1$d days</string>
-    <string name="history_no_data">No completed tasks in the last %1$d days</string>
+    <string name="history_no_data">No completed tasks in the last 90 days</string>
 
     <!-- Short month names (charts and history dates) -->
     <string name="month_jan">Jan</string>
