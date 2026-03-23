@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -26,6 +27,7 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_PENDING_UNLOCKS = stringPreferencesKey("pending_unlocks")
         private val KEY_PENDING_LOOTBOXES = stringPreferencesKey("pending_lootboxes")
         private val KEY_DISMISSED_SUMMARY_DATE = stringPreferencesKey("dismissed_summary_date")
+        private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val SEPARATOR = "|"
@@ -86,6 +88,15 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
     override suspend fun setLastDismissedSummaryDate(date: LocalDate) {
         context.dataStore.edit { prefs ->
             prefs[KEY_DISMISSED_SUMMARY_DATE] = date.toString()
+        }
+    }
+
+    override fun hasCompletedOnboarding(): Flow<Boolean> =
+        context.dataStore.data.map { prefs -> prefs[KEY_ONBOARDING_COMPLETED] ?: false }
+
+    override suspend fun setOnboardingCompleted() {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ONBOARDING_COMPLETED] = true
         }
     }
 }

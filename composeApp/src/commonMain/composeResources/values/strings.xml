@@ -157,4 +157,22 @@
     <string name="species_treasure_chest">Treasure Chest</string>
     <string name="species_anchor">Anchor</string>
     <string name="species_sunken_ship">Sunken Ship</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Riptide</string>
+    <string name="onboarding_welcome_body">Consistency builds something beautiful.\nAbandonment pauses it. It never destroys it.</string>
+    <string name="onboarding_how_title">How it works</string>
+    <string name="onboarding_how_body">Every day has three moments.</string>
+    <string name="onboarding_how_morning">Morning: assign tasks to your day.</string>
+    <string name="onboarding_how_day">During the day: mark them as completed.</string>
+    <string name="onboarding_how_night">Night: receive an emotional summary of your day.</string>
+    <string name="onboarding_ecosystem_title">Your marine ecosystem</string>
+    <string name="onboarding_ecosystem_body">Completing tasks makes your tank grow.</string>
+    <string name="onboarding_ecosystem_lootbox">Level up and earn lootboxes.</string>
+    <string name="onboarding_ecosystem_species">Discover 40 unique species.</string>
+    <string name="onboarding_ecosystem_nopressure">No pressure: the ecosystem waits, it never goes back.</string>
+    <string name="onboarding_ready_title">Ready to start</string>
+    <string name="onboarding_ready_body">Create your first block to organise your day and start building your marine ecosystem.</string>
+    <string name="onboarding_btn_next">Next →</string>
+    <string name="onboarding_btn_start">Let\'s go 🌊</string>
 </resources>

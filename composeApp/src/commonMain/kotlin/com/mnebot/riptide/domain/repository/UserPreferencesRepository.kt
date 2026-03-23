@@ -19,4 +19,8 @@ interface UserPreferencesRepository {
 
     suspend fun getLastDismissedSummaryDate(): LocalDate?
     suspend fun setLastDismissedSummaryDate(date: LocalDate)
+
+    // Onboarding
+    fun hasCompletedOnboarding(): Flow<Boolean>
+    suspend fun setOnboardingCompleted()
 }

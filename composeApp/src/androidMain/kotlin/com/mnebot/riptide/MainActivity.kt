@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val scheduler = NightSummarySchedulerImpl(applicationContext)
+        val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
 
         lifecycleScope.launch {
             val db = DatabaseProvider.getDatabase(applicationContext)
@@ -63,7 +64,6 @@ class MainActivity : ComponentActivity() {
                 blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao())
             )
             val ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo)
-            val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
 
             val processor = NightSummaryProcessor(
                 dayTaskRepository = DayTaskRepositoryImpl(db.dayTaskDao()),
@@ -87,7 +87,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 viewModel = viewModel,
-                nightSummaryScheduler = scheduler
+                nightSummaryScheduler = scheduler,
+                userPreferencesRepository = userPreferencesRepository
             )
         }
     }

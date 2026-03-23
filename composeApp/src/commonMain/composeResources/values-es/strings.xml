@@ -157,4 +157,22 @@
     <string name="species_treasure_chest">Cofre del tesoro</string>
     <string name="species_anchor">Ancla</string>
     <string name="species_sunken_ship">Barco hundido</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Bienvenido a Riptide</string>
+    <string name="onboarding_welcome_body">La constancia construye algo bonito.\nEl abandono lo pausa. Nunca lo destruye.</string>
+    <string name="onboarding_how_title">Cómo funciona</string>
+    <string name="onboarding_how_body">Cada día tiene tres momentos.</string>
+    <string name="onboarding_how_morning">Mañana: asigna tareas a tu día.</string>
+    <string name="onboarding_how_day">Durante el día: márcalas como completadas.</string>
+    <string name="onboarding_how_night">Noche: recibe un resumen emocional de tu jornada.</string>
+    <string name="onboarding_ecosystem_title">Tu ecosistema marino</string>
+    <string name="onboarding_ecosystem_body">Completar tareas hace crecer tu estanque.</string>
+    <string name="onboarding_ecosystem_lootbox">Sube de nivel y gana lootboxes.</string>
+    <string name="onboarding_ecosystem_species">Descubre 40 especies únicas.</string>
+    <string name="onboarding_ecosystem_nopressure">Sin presión: el ecosistema espera, no retrocede.</string>
+    <string name="onboarding_ready_title">Listo para empezar</string>
+    <string name="onboarding_ready_body">Crea tu primer bloque para organizar tu día y comienza a construir tu ecosistema marino.</string>
+    <string name="onboarding_btn_next">Siguiente →</string>
+    <string name="onboarding_btn_start">Empezar 🌊</string>
 </resources>

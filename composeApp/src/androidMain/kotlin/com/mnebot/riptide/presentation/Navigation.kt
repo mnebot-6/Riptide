@@ -8,8 +8,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.compose.runtime.rememberCoroutineScope
 import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import com.mnebot.riptide.presentation.aquarium.EcosystemScreen
 import com.mnebot.riptide.presentation.block.BlockFormResult
 import com.mnebot.riptide.presentation.block.BlockFormScreen
@@ -17,12 +19,32 @@ import com.mnebot.riptide.presentation.block.BlockFormViewModel
 import com.mnebot.riptide.presentation.block.BlockFormViewModelFactory
 import com.mnebot.riptide.presentation.main.MainScreen
 import com.mnebot.riptide.presentation.main.MainViewModel
+import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 
+const val ROUTE_ONBOARDING = "onboarding"
 const val ROUTE_MAIN = "main"
 const val ROUTE_BLOCK_CREATE = "block/create"
 const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
 const val ROUTE_ECOSYSTEM = "ecosystem"
+
+fun NavGraphBuilder.onboardingGraph(
+    userPreferencesRepository: UserPreferencesRepository,
+    navController: NavController
+) {
+    composable(ROUTE_ONBOARDING) {
+        val scope = rememberCoroutineScope()
+        OnboardingScreen(
+            onComplete = {
+                scope.launch { userPreferencesRepository.setOnboardingCompleted() }
+                navController.navigate(ROUTE_MAIN) {
+                    popUpTo(ROUTE_ONBOARDING) { inclusive = true }
+                }
+            }
+        )
+    }
+}
 
 fun NavGraphBuilder.mainGraph(
     mainViewModel: MainViewModel,

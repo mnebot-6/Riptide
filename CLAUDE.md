@@ -99,10 +99,10 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **17 renderers Canvas** (sprint i18n): 13 nuevos (`fauna/`: Surgeonfish, Lionfish, Sunfish, Hammerhead, Barracuda, Manatee, SpiderCrab, Cuttlefish, BlueRingedOctopus, SeaUrchin, Barnacle; `flora/`: Posidonia, FanCoral)
 - **Conversión de densidad para Canvas swimmers**: `renderSize = iconSize * density` iguala tamaño visual con emojis; `sizeMultiplier` recalibrado por especie según extensión visual del renderer
 - **40 renderers Canvas (cobertura total)**: 23 renderers adicionales para las criaturas restantes — todas las 40 especies tienen Canvas renderer propio. Emoji field queda sólo como fallback de texto.
+- **Onboarding**: flujo de 4 pasos (Bienvenida → Cómo funciona → Ecosistema → Listo), `AnimatedContent` con slide+fade, `DataStore` key `onboarding_completed`, se muestra solo en primer lanzamiento. `UserPreferencesRepository.hasCompletedOnboarding()` + `setOnboardingCompleted()`. `App.kt` determina `startDestination` según el estado; `OnboardingScreen.kt` en `presentation/onboarding/`.
 
 **Próximo (v3):**
 - Tests unitarios e instrumentados
-- Onboarding
 - Animaciones de transición
 
 ---
@@ -123,10 +123,11 @@ composeApp/src/
 │       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino
 │       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
 │       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación 60fps, hit-testing
-│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (17 renderers) + CreatureIcon composable
+│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (40 renderers, cobertura total) + CreatureIcon composable
 │       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
 │       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer, PosidoniaRenderer, FanCoralRenderer
 │       ├── aquarium/fauna/                 # 35 renderers — COBERTURA TOTAL: todas las 40 especies (5 son flora/)
+│       ├── onboarding/OnboardingScreen.kt  # Flujo 4 pasos: bienvenida, cómo funciona, ecosistema, listo
 │       └── theme/Theme.kt                  # Paleta de colores marina
 └── androidMain/kotlin/com/mnebot/riptide/
     └── data/local/

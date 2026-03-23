@@ -83,7 +83,8 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | Sprint lootbox — Rareza, 40 especies, lootbox, EcosystemScreen overhaul | ✅ |
 | Sprint i18n + renderers — Traducciones EN/ES, 13 nuevos renderers Canvas | ✅ |
 | Sprint renderers total — 23 renderers adicionales, cobertura 100% (40/40 especies) | ✅ |
-| v3 — Onboarding, animaciones, testing | ⬜ |
+| Sprint onboarding — Flujo 4 pasos, DataStore, AnimatedContent, i18n EN/ES | ✅ |
+| v3 — Animaciones de transición, testing | ⬜ |
 | v4 — Fondo de pantalla dinámico | ⬜ |
 | v5 — Backend + social | ⬜ |
 | v6 — iOS completo | ⬜ |
