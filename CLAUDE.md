@@ -98,8 +98,15 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **Tests automatizados**: 37 tests en `commonTest` — `EcosystemLevelCalculatorTest` (16), `BlockStreakProcessorTest` (12), `NightSummaryProcessorTest` (9). Fakes in-memory, `kotlinx-coroutines-test`
 - **Iconografía Lucide**: 18 vector drawables stroke-based (`ic_*.xml`). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
 
-**Próximo (v3):**
-- Preparar firma de la app (keystore, release build)
+**Próximo (→ Play Store):**
+- Sprint Logo & Branding (ola/corriente como concepto de impulso constante, adaptive icon, splash, feature graphic)
+- Sprint Widget Android (Glance, tareas del día + progreso)
+- Sprint Backend (Ktor + PostgreSQL + API REST + auth)
+- Sprint Sync (offline-first, updatedAt, conflict resolution, export/import JSON)
+- Sprint QA & Polish (tests integración, accesibilidad, performance)
+- Sprint Store Prep (firma, privacy policy, screenshots, listing)
+- 🚀 Play Store
+- Sprint iOS (post-launch, sin prisa)
 
 ---
 

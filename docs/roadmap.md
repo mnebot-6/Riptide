@@ -274,36 +274,92 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ---
 
-## v3 — Pulido, evolución y recompensas
+## Fase 1 — Producto completo
 
-- **Preparar firma de la app** para distribución (keystore, release build).
+### Sprint Logo & Branding ← SIGUIENTE
+
+- **Concepto**: ola/corriente marina dinámica — simboliza impulso constante, no empujón aislado. No es un momento, es una tendencia.
+- Logo Riptide (vector SVG → Android Vector Drawable)
+- Adaptive Icon Android (foreground vector + background color/gradient)
+- Splash screen
+- Header (`MainScreen` + `MainDrawer`) con logo real (`ic_waves` queda solo para el botón del drawer)
+- Feature graphic 1024×500 para Play Store
+
+### Sprint Widget Android
+
+- Widget Glance: tareas del día + barra de progreso
+- Actualización vía WorkManager
+- Tema consistente con la paleta marina de la app
+
+### Sprint Backend
+
+- Proyecto Ktor (routing, content negotiation, CORS)
+- PostgreSQL schema (mirror de Room + tabla users)
+- API REST (CRUD: blocks, tasks, recurring defs, creatures, ecosystem states, summaries, streaks)
+- Autenticación (a decidir: Google Sign-In / email+password → JWT)
+- Hosting (a decidir: Railway / Render / VPS)
+
+### Sprint Sync
+
+- Campo `updatedAt` en entidades + Room migration
+- Lógica offline-first: write local → push al server en background
+- Pull on launch + resolución de conflictos (last-write-wins o merge)
+- Estado de sincronización visible en UI
+- Export/import JSON local como fallback
 
 ---
 
-## v4 — Widget y fondo de pantalla
+## Fase 2 — Calidad
 
-- **Widget Android (Glance)**: widget de pantalla de inicio con tareas pendientes del día y barra de progreso. Actualización vía `WorkManager`.
-- **Live wallpaper del acuario** (`WallpaperService` Android): el ecosistema como fondo de pantalla animado.
+### Sprint QA & Testing
+
+- Tests de integración (flujos completos con fake backend)
+- Edge cases UX (sin internet, primer uso, migración datos)
+- Accesibilidad (`contentDescription`, contraste WCAG, touch targets 48dp)
+- Ampliar cobertura de unit tests (repositories, sync logic)
+
+### Sprint Polish
+
+- Performance audit (recomposiciones innecesarias, lazy lists)
+- Animaciones de transición entre pantallas
+- Haptic feedback en interacciones clave
+- Bug fixing final
 
 ---
 
-## v5 — Backend y social
+## Fase 3 — Lanzamiento Play Store
 
-- Backend Ktor + PostgreSQL
-- Sincronización offline-first (IDs UUID ya preparados)
-- Perfiles de usuario
-- Google Sign-In
-- Visitar el estanque de un amigo (solo ver, nunca competir)
-- Backup y exportación de datos (JSON / Google Drive)
+### Sprint Store Prep
+
+- Keystore + release build + ProGuard/R8
+- Privacy policy + Terms of Service (hosted)
+- Screenshots (6+ pantallas, EN + ES)
+- Store listing (descripción, categoría, tags)
+- Internal testing track → closed beta → production
+- Cuenta de desarrollador Google Play (25$ one-time)
+
+### 🚀 PUBLISH PLAY STORE
 
 ---
 
-## v6 — iOS completo
+## Fase 4 — iOS (post-launch, sin prisa)
 
-- Implementación real de `AquariumCreature.ios.kt`
+### Sprint iOS
+
+- `expect/actual` reales: Room → alternativa iOS, WorkManager → `BGTaskScheduler`
 - Pickers nativos iOS (`TimePickerDialogWrapper`, `DatePickerDialogWrapper`)
-- `NightSummaryScheduler` con notificaciones locales iOS (`UNUserNotificationCenter`)
-- `BGTaskScheduler` equivalente a WorkManager para resumen nocturno y avisos
+- Notificaciones locales (`UNUserNotificationCenter`)
+- `NightSummaryScheduler` con background tasks iOS
+- Apple Developer Account (99$/año)
+- App Store listing + review
+
+---
+
+## Fase 5 — Post-launch
+
+- Live wallpaper del acuario (`WallpaperService` Android)
+- Social: visitar el estanque de un amigo (solo ver, nunca competir)
+- Iteraciones según feedback real de usuarios
 
 ---
 
