@@ -39,7 +39,6 @@ private val TextSecondary = Color(0xB3FFFFFF)
 private val Accent = Color(0xFF4FC3F7)
 private val CompletedGreen = Color(0xFF81C784)
 private val CheckCyan = Color(0xFF4DD0E1)
-private val CrossMuted = Color(0x55FFFFFF)
 private val RowBg = Color(0x22FFFFFF)
 private val NoBlockStripe = Color(0x33FFFFFF)
 
@@ -76,8 +75,7 @@ class RiptideWidget : GlanceAppWidget() {
                         blockName = entity.blockId?.let { blockMap[it]?.name },
                         blockColor = parsedColor,
                         isCompleted = entity.status == "COMPLETED",
-                        time = entity.time,
-                        sourceTaskId = entity.sourceTaskId
+                        time = entity.time
                     )
                 }
                 .sortedWith(compareBy({ it.isCompleted }, { it.time ?: "99:99" }, { it.title }))
@@ -108,8 +106,7 @@ data class WidgetTask(
     val blockName: String?,
     val blockColor: Color,
     val isCompleted: Boolean,
-    val time: String?,
-    val sourceTaskId: String?
+    val time: String?
 )
 
 @Composable
@@ -245,87 +242,86 @@ private fun WidgetContent(
 
 @Composable
 private fun WidgetTaskRow(task: WidgetTask) {
-    Row(
+    // Outer box provides the gap between rows
+    Box(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
-            .cornerRadius(8.dp)
-            .background(ColorProvider(RowBg))
-            .clickable(
-                actionRunCallback<ToggleTaskAction>(
-                    actionParametersOf(ToggleTaskAction.TaskIdKey to task.id)
-                )
-            )
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(bottom = 5.dp)
     ) {
-        // Status indicator: ✓ or ✗
-        Text(
-            text = if (task.isCompleted) "✓" else "✗",
-            style = TextStyle(
-                color = ColorProvider(if (task.isCompleted) CheckCyan else CrossMuted),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-        )
-
-        Spacer(modifier = GlanceModifier.width(6.dp))
-
-        // Block color stripe
-        Box(
+        Row(
             modifier = GlanceModifier
-                .width(4.dp)
-                .height(32.dp)
-                .cornerRadius(2.dp)
-                .background(ColorProvider(task.blockColor))
-        ) {}
-
-        Spacer(modifier = GlanceModifier.width(8.dp))
-
-        // Task title + block name
-        Column(modifier = GlanceModifier.defaultWeight()) {
-            Text(
-                text = task.title,
-                style = TextStyle(
-                    color = ColorProvider(if (task.isCompleted) TextSecondary else TextPrimary),
-                    fontSize = 13.sp
-                ),
-                maxLines = 1
-            )
-            if (task.blockName != null) {
+                .fillMaxWidth()
+                .clickable(
+                    actionRunCallback<ToggleTaskAction>(
+                        actionParametersOf(ToggleTaskAction.TaskIdKey to task.id)
+                    )
+                )
+                .cornerRadius(8.dp)
+                .background(ColorProvider(RowBg))
+                .padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Status indicator: ✓ for completed, fixed-width space for pending
+            if (task.isCompleted) {
                 Text(
-                    text = task.blockName,
+                    text = "✓",
                     style = TextStyle(
-                        color = ColorProvider(task.blockColor),
-                        fontSize = 10.sp
+                        color = ColorProvider(CheckCyan),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            } else {
+                Spacer(modifier = GlanceModifier.width(13.dp))
+            }
+
+            Spacer(modifier = GlanceModifier.width(6.dp))
+
+            // Block color stripe
+            Box(
+                modifier = GlanceModifier
+                    .width(4.dp)
+                    .height(32.dp)
+                    .cornerRadius(2.dp)
+                    .background(ColorProvider(task.blockColor))
+            ) {}
+
+            Spacer(modifier = GlanceModifier.width(8.dp))
+
+            // Task title + block name
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                Text(
+                    text = task.title,
+                    style = TextStyle(
+                        color = ColorProvider(if (task.isCompleted) TextSecondary else TextPrimary),
+                        fontSize = 13.sp
                     ),
                     maxLines = 1
                 )
+                if (task.blockName != null) {
+                    Text(
+                        text = task.blockName,
+                        style = TextStyle(
+                            color = ColorProvider(task.blockColor),
+                            fontSize = 10.sp
+                        ),
+                        maxLines = 1
+                    )
+                }
             }
-        }
 
-        // Recurring indicator
-        if (task.sourceTaskId != null) {
-            Text(
-                text = "\u21BB",
-                style = TextStyle(
-                    color = ColorProvider(TextSecondary),
-                    fontSize = 11.sp
+            // Time (at the end)
+            val timeDisplay = task.time?.take(5)
+            if (timeDisplay != null) {
+                Spacer(modifier = GlanceModifier.width(6.dp))
+                Text(
+                    text = timeDisplay,
+                    style = TextStyle(
+                        color = ColorProvider(TextSecondary),
+                        fontSize = 11.sp
+                    )
                 )
-            )
-            Spacer(modifier = GlanceModifier.width(4.dp))
-        }
-
-        // Time (at the end)
-        val timeDisplay = task.time?.take(5)
-        if (timeDisplay != null) {
-            Text(
-                text = timeDisplay,
-                style = TextStyle(
-                    color = ColorProvider(TextSecondary),
-                    fontSize = 11.sp
-                )
-            )
+            }
         }
     }
 }
