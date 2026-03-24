@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
 import com.mnebot.riptide.data.repository.BlockStreakRepositoryImpl
@@ -24,6 +25,7 @@ import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.NightSummaryProcessor
 import com.mnebot.riptide.presentation.main.MainViewModelFactory
+import com.mnebot.riptide.widget.WidgetUpdater
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -100,6 +102,13 @@ class MainActivity : ComponentActivity() {
             scheduler.scheduleWorker(nightTime)
 
             viewModel.reload()
+        }
+
+        // Refresh widget whenever the app comes to the foreground
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                WidgetUpdater.refreshAll(applicationContext)
+            }
         }
 
         setContent {

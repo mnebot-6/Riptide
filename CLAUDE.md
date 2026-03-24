@@ -98,9 +98,9 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **Tests automatizados**: 37 tests en `commonTest` — `EcosystemLevelCalculatorTest` (16), `BlockStreakProcessorTest` (12), `NightSummaryProcessorTest` (9). Fakes in-memory, `kotlinx-coroutines-test`
 - **Iconografía Lucide**: 18 vector drawables stroke-based (`ic_*.xml`). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
 - **Logo & Branding "Rising Currents"**: 3 olas ascendentes con ondulación, adaptive icon (foreground + background azul océano), logo in-app 24dp, icono notificación, splash screen (`core-splashscreen` 1.0.1, tema `Theme.Riptide.Splash`)
+- **Widget Android**: Glance widget con tareas del día, barra de progreso, paleta marina. `WidgetUpdater.refreshAll()` en `onResume`. Metadata 3×3 celdas, redimensionable, auto-update 30min.
 
 **Próximo (→ Play Store):**
-- Sprint Widget Android (Glance, tareas del día + progreso)
 - Sprint Backend (Ktor + PostgreSQL + API REST + auth)
 - Sprint Sync (offline-first, updatedAt, conflict resolution, export/import JSON)
 - Sprint QA & Polish (tests integración, accesibilidad, performance)
@@ -142,6 +142,9 @@ composeApp/src/
     ├── MorningReminderWorker.kt        # Aviso matutino + auto-reprogramación diaria
     ├── TaskReminderWorker.kt           # One-shot a la hora de la tarea
     ├── TaskReminderSchedulerImpl.kt    # WorkManager REPLACE + rescheduleAll()
+    ├── widget/RiptideWidget.kt        # GlanceAppWidget — tareas del día + progreso
+    ├── widget/RiptideWidgetReceiver.kt # GlanceAppWidgetReceiver
+    ├── widget/WidgetUpdater.kt        # refreshAll() — refresca widgets desde la app
     ├── presentation/stats/StatsViewModelFactory.kt
     ├── presentation/history/HistoryViewModelFactory.kt
     └── data/local/

@@ -286,13 +286,20 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ---
 
+## ✅ Sprint Widget Android
+
+- **Widget Glance** (`RiptideWidget`): tareas del día agrupadas por bloque con color, barra de progreso completadas/total, indicador de estado (punto verde completada / gris pendiente), hora de la tarea, nombre del bloque coloreado.
+- **`RiptideWidgetReceiver`**: broadcast receiver registrado en AndroidManifest.
+- **Metadata** (`riptide_widget_info.xml`): 3×3 celdas, redimensionable, actualización cada 30 min.
+- **Layout de carga** (`widget_loading.xml`): fondo oceánico con "Riptide" mientras carga.
+- **`WidgetUpdater`**: utility para refrescar todos los widgets desde la app. Se ejecuta en `onResume` de `MainActivity` via `repeatOnLifecycle`.
+- **Paleta marina**: fondo `OceanDeep`, barra de progreso `Accent`/`CompletedGreen`, textos blancos — consistente con la app.
+- **Dependencias**: `androidx.glance:glance-appwidget:1.1.1` + `glance-material3`.
+- **Strings EN + ES**: `widget_description`, `widget_no_tasks`, `widget_all_done`.
+
+---
+
 ## Fase 1 — Producto completo
-
-### Sprint Widget Android ← SIGUIENTE
-
-- Widget Glance: tareas del día + barra de progreso
-- Actualización vía WorkManager
-- Tema consistente con la paleta marina de la app
 
 ### Sprint Backend
 

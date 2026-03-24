@@ -35,6 +35,8 @@ kotlin {
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.androidx.core.splashscreen)
+            implementation(libs.androidx.glance.appwidget)
+            implementation(libs.androidx.glance.material3)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
