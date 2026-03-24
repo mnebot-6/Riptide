@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.components.TimeInputField
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
@@ -62,7 +65,12 @@ fun MainDrawer(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("🌊", fontSize = 28.sp)
+            Icon(
+                painter = painterResource(Res.drawable.ic_waves),
+                contentDescription = null,
+                tint = TextPrimary,
+                modifier = Modifier.size(28.dp)
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Text(stringResource(Res.string.app_name), color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
@@ -82,7 +90,7 @@ fun MainDrawer(
             blocks.forEach { block ->
                 DrawerBlockItem(block = block, onClick = { onEditBlock(block.id) })
             }
-            DrawerItem(icon = "➕", label = stringResource(Res.string.btn_add_block), onClick = onAddBlock)
+            DrawerItem(painter = painterResource(Res.drawable.ic_plus), label = stringResource(Res.string.btn_add_block), onClick = onAddBlock)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)
@@ -90,7 +98,7 @@ fun MainDrawer(
 
             SectionTitle(stringResource(Res.string.section_ecosystem))
             Spacer(modifier = Modifier.height(8.dp))
-            DrawerItem(icon = "🐠", label = stringResource(Res.string.btn_my_ecosystem), onClick = onNavigateToEcosystem)
+            DrawerItem(painter = painterResource(Res.drawable.ic_fish), label = stringResource(Res.string.btn_my_ecosystem), onClick = onNavigateToEcosystem)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)
@@ -98,8 +106,8 @@ fun MainDrawer(
 
             SectionTitle(stringResource(Res.string.section_progress))
             Spacer(modifier = Modifier.height(8.dp))
-            DrawerItem(icon = "📊", label = stringResource(Res.string.btn_stats), onClick = onNavigateToStats)
-            DrawerItem(icon = "📋", label = stringResource(Res.string.btn_history), onClick = onNavigateToHistory)
+            DrawerItem(painter = painterResource(Res.drawable.ic_bar_chart), label = stringResource(Res.string.btn_stats), onClick = onNavigateToStats)
+            DrawerItem(painter = painterResource(Res.drawable.ic_history), label = stringResource(Res.string.btn_history), onClick = onNavigateToHistory)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)
@@ -138,7 +146,12 @@ private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (Loca
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("🌙", fontSize = 18.sp)
+        Icon(
+            painter = painterResource(Res.drawable.ic_moon),
+            contentDescription = null,
+            tint = TextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(stringResource(Res.string.label_night_summary), color = TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         TimeInputField(
@@ -156,7 +169,12 @@ private fun MorningReminderSetting(currentTime: LocalTime?, onTimeChanged: (Loca
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("🌅", fontSize = 18.sp)
+        Icon(
+            painter = painterResource(Res.drawable.ic_sun),
+            contentDescription = null,
+            tint = TextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             stringResource(Res.string.label_morning_reminder),
@@ -201,12 +219,17 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun DrawerItem(icon: String, label: String, onClick: () -> Unit) {
+private fun DrawerItem(painter: Painter, label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(icon, fontSize = 18.sp)
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = TextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(text = label, color = TextSecondary, fontSize = 15.sp)
     }

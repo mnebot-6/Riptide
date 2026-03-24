@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.displayNameRes
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
@@ -221,7 +223,7 @@ fun MainScreen(
                         contentColor = TextPrimary,
                         shape = CircleShape,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                    ) { Text("✕", fontSize = 20.sp) }
+                    ) { Icon(painter = painterResource(Res.drawable.ic_x), contentDescription = null, modifier = Modifier.size(20.dp)) }
                 }
             }
             else -> {
@@ -277,7 +279,10 @@ fun MainScreen(
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ContextMenuItem(stringResource(Res.string.menu_edit)) {
+                        ContextMenuItem(
+                            label = stringResource(Res.string.menu_edit),
+                            painter = painterResource(Res.drawable.ic_pencil)
+                        ) {
                             if (task.sourceTaskId != null) {
                                 editingScopeTask = task
                             } else {
@@ -286,12 +291,19 @@ fun MainScreen(
                             contextMenuTask = null
                         }
                         if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
-                            ContextMenuItem(stringResource(Res.string.menu_postpone)) {
+                            ContextMenuItem(
+                                label = stringResource(Res.string.menu_postpone),
+                                painter = painterResource(Res.drawable.ic_clock)
+                            ) {
                                 postponingTask = task
                                 contextMenuTask = null
                             }
                         }
-                        ContextMenuItem(stringResource(Res.string.menu_delete), tint = Color(0xFFEA4335)) {
+                        ContextMenuItem(
+                            label = stringResource(Res.string.menu_delete),
+                            painter = painterResource(Res.drawable.ic_trash),
+                            tint = Color(0xFFEA4335)
+                        ) {
                             if (task.sourceTaskId != null) {
                                 deletingRecurringTask = task
                             } else {
@@ -754,7 +766,12 @@ private fun MainHeader(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("🌊", fontSize = 22.sp)
+            Icon(
+                painter = painterResource(Res.drawable.ic_waves),
+                contentDescription = null,
+                tint = TextPrimary,
+                modifier = Modifier.size(22.dp)
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 stringResource(Res.string.app_name),
@@ -766,30 +783,41 @@ private fun MainHeader(
 
             // Racha global (solo visible si >= 2 días consecutivos)
             if (globalStreak >= 2) {
-                Text(
-                    text = "🔥 $globalStreak",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(CardBackground)
                         .padding(horizontal = 10.dp, vertical = 4.dp)
-                )
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_flame),
+                        contentDescription = null,
+                        tint = TextPrimary,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "$globalStreak",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 Spacer(modifier = Modifier.width(6.dp))
             }
 
             // Volver a hoy (solo visible si no estamos en hoy)
             if (selectedDate != today) {
-                HeaderIconButton(icon = "⟳", onClick = onTodayClick)
+                HeaderIconButton(painter = painterResource(Res.drawable.ic_history), onClick = onTodayClick)
                 Spacer(modifier = Modifier.width(4.dp))
             }
 
-            HeaderIconButton(icon = "📅", onClick = onCalendarClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_calendar), onClick = onCalendarClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(icon = "➕", onClick = onAddTaskClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_plus), onClick = onAddTaskClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(icon = "☰", onClick = onDrawerClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_waves), onClick = onDrawerClick)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -806,7 +834,7 @@ private fun MainHeader(
 }
 
 @Composable
-private fun HeaderIconButton(icon: String, onClick: () -> Unit) {
+private fun HeaderIconButton(painter: Painter, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -815,7 +843,12 @@ private fun HeaderIconButton(icon: String, onClick: () -> Unit) {
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(icon, fontSize = 16.sp)
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = TextPrimary,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -889,21 +922,35 @@ private fun MainContent(
             contentColor = TextPrimary,
             shape = CircleShape,
             elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) { Text("🐟", fontSize = 20.sp) }
+        ) { Icon(painter = painterResource(Res.drawable.ic_fish), contentDescription = null, modifier = Modifier.size(20.dp)) }
     }
 }
 
 @Composable
-private fun ContextMenuItem(label: String, tint: Color = TextPrimary, onClick: () -> Unit) {
-    Text(
-        text = label,
-        color = tint,
-        fontSize = 15.sp,
+private fun ContextMenuItem(
+    label: String,
+    painter: Painter? = null,
+    tint: Color = TextPrimary,
+    onClick: () -> Unit
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 10.dp)
-    )
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (painter != null) {
+            Icon(
+                painter = painter,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+        }
+        Text(text = label, color = tint, fontSize = 15.sp)
+    }
 }
 
 @Composable
@@ -967,12 +1014,21 @@ private fun BlockHeader(
                 Text("${slot.startTime} - ${slot.endTime}", color = TextSecondary, fontSize = 12.sp)
             }
             if (streak >= 2) {
-                Text(
-                    text = stringResource(Res.string.msg_streak, streak),
-                    color = Color(0xFFFFB347),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_flame),
+                        contentDescription = null,
+                        tint = Color(0xFFFFB347),
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        text = stringResource(Res.string.msg_streak, streak),
+                        color = Color(0xFFFFB347),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
@@ -1038,11 +1094,21 @@ private fun TaskCard(
             }
         }
         when {
-            isPostponed -> Text("⏰", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+            isPostponed -> Icon(
+                painter = painterResource(Res.drawable.ic_clock),
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isExpired) {
-                        Text("⌛", fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_clock),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                     Checkbox(
                         checked = isCompleted,
@@ -1076,7 +1142,14 @@ private fun UnassignedSection(
                     .clip(CircleShape)
                     .background(Color(0x33FFFFFF)),
                 contentAlignment = Alignment.Center
-            ) { Text("📋", fontSize = 18.sp) }
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_box),
+                    contentDescription = null,
+                    tint = TextPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(10.dp))
             Text(stringResource(Res.string.section_no_block), color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }

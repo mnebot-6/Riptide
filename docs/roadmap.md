@@ -218,12 +218,64 @@
 
 ---
 
+## ✅ Sprint B — Recompensas de racha
+
+- **`BlockStreakUpdate`**: data class `(currentStreak: Int, milestonesReached: List<Int>)`. `STREAK_MILESTONES = [7, 14, 30]`.
+- **`BlockStreakProcessor.processDay()`**: devuelve `Map<String, BlockStreakUpdate>` (antes `Map<String, Int>`). Detecta hitos cruzados en el rango `(oldStreak+1)..newStreak`.
+- **`NightSummaryProcessor`**: adaptado al nuevo tipo. Genera `PendingLootbox(category, milestone)` por cada hito alcanzado en cualquier bloque. Combinado con `ecosystemLootboxes` en `newLootboxes`.
+- **`blockCategories`** map: construido desde las categorías asignadas a cada bloque para mapear `blockId → MarineCategory`.
+
+---
+
+## ✅ Sprint A — Evolución visual de criaturas
+
+Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tenían escalado continuo:
+
+| Renderer | Nivel 3+ | Nivel 5+ |
+|---|---|---|
+| `DolphinRenderer` | Franja lateral amarilla | Brillo iridiscente dorsal (sin animado) |
+| `SeaTurtleRenderer` | 5 parches de algas en el caparazón | 5 círculos de barnáculos en el borde frontal |
+| `WhaleSharkRenderer` | Rémora compañera (oval + ventosa) | 7 fotóforos bioluminiscentes pulsantes |
+| `SquidRenderer` | 4 fotóforos ventrales con brillo | Bordes luminiscentes en aletas laterales |
+| `SealRenderer` | 7 manchas de foca de puerto | Silla dorsal oscura (cubicTo) |
+| `SeaUrchinRenderer` | 10 puntas de espina fluorescentes (pulso) | 5 manchas inter-radiales |
+| `NautilusRenderer` | Overlay de nácar iridiscente (70% concha) | Círculo naranja en el borde frontal |
+| `HermitCrabRenderer` | Anémona simbiótica en la concha (6 tentáculos animados) | Overlay dorado en la concha |
+| `ShrimpRenderer` | Franja dorsal blanca de limpiador | Brillo iridiscente del caparazón |
+| `SpiderCrabRenderer` | 4 blobs de algas/esponja | 4 blobs de esponja naranja adicionales |
+
+- **Fix `HermitCrabRenderer`**: añadido `import kotlin.math.cos` (faltaba antes de los tentáculos).
+
+---
+
+## ✅ Sprint C — Tests unitarios automatizados
+
+- **Dependencia**: `kotlinx-coroutines-test:1.10.2` en `commonTest` (libs.versions.toml + build.gradle.kts).
+- **Fakes in-memory** (sin librería de mocking):
+  - `FakeDayTaskRepository` — lista mutable, implementa `getByDate`, `getByDateAndBlock`, `updateStatus`, `insert`, `update`, `delete`
+  - `FakeBlockStreakRepository` — mapa `blockId→BlockStreak`, implementa 4 métodos, expone `getAll_snapshot()`
+  - `FakeDaySummaryRepository` — mapa `LocalDate→DaySummary`, expone `inserted()`
+- **37 tests — 0 fallos**:
+  - `EcosystemLevelCalculatorTest` (16): `xpForLevel` base, `levelForXp` inversa, estrictamente creciente, `nightBonus` por umbrales (0 / 0.39 / 0.40 / 0.70 / 1.0 / con racha), constante `XP_PER_TASK`
+  - `BlockStreakProcessorTest` (12): primera finalización, días consecutivos/no-consecutivos, neutral sin tareas, reset a 0, hitos 7/14/30, sin falso positivo, hito ya pasado, independencia multi-bloque, idempotencia mismo día
+  - `NightSummaryProcessorTest` (9): no-op ya procesado, no-op sin tareas, score=1 todos completados, score=0.5 parcial, exclusión pospuestas, sin tareas evaluables, PENDING→EXPIRED, blockId nulo contado, score=0 todos pendientes
+
+---
+
+## ✅ Sprint Lucide Icons — Iconografía minimal
+
+- **18 Vector Drawables** (`composeResources/drawable/ic_*.xml`): `pencil`, `trash`, `clock`, `plus`, `x`, `arrow_left`, `bar_chart`, `history`, `bell`, `lock`, `waves`, `fish`, `flame`, `gift`, `moon`, `sun`, `calendar`, `box`. Formato stroke-based, viewport 24×24, `strokeWidth=2`, `strokeLineCap/Join=round`, `fillColor` transparente — compatibles con `Icon(painter, tint=…)`.
+- **`strings.xml` (EN + ES)**: eliminado emoji de `menu_edit`, `menu_postpone`, `menu_delete`, `msg_streak`.
+- **`MainDrawer.kt`**: header 🌊→`ic_waves`, ítems de navegación `ic_fish/ic_bar_chart/ic_history`, ajustes `ic_moon/ic_sun`. `DrawerItem` acepta `Painter` en vez de `String`.
+- **`MainScreen.kt`**: `HeaderIconButton` acepta `Painter` (⟳→`ic_history`, 📅→`ic_calendar`, ➕→`ic_plus`, ☰→`ic_waves`). FAB close ✕→`ic_x`, FAB acuario 🐟→`ic_fish`. Streak badge 🔥→Row con `ic_flame`. ⏰/⌛ status→`ic_clock`. Sección sin bloque 📋→`ic_box`. `ContextMenuItem` con `painter?` opcional (lápiz/reloj/papelera).
+- **`TaskFormSheet.kt`**: 🔔×2 → Row `Icon(ic_bell)` + Text.
+- **`StatsScreen.kt`**: 🔥 → Row `Icon(ic_flame)` naranja + número.
+- **`EcosystemScreen.kt`**: 🔒 → `Icon(ic_lock, size=11.dp)`.
+
+---
+
 ## v3 — Pulido, evolución y recompensas
 
-- **Racha global en pantalla principal**: días consecutivos de uso visible en el header de `MainScreen`. Basado en `DaySummary` existente.
-- **Evolución visual de criaturas**: el renderer cambia según `creatureLevel` (tamaño, colores, efectos extra). Ya preparado con `sizeScale` y `speedMultiplier`; ampliar a efectos Canvas.
-- **Recompensas automáticas de racha**: lootbox adicional al alcanzar hitos de racha (7, 14, 30 días) en un bloque. Infraestructura `BlockStreak` ya disponible.
-- **Testing automatizado**: dominio (`EcosystemProcessor`, `NightSummaryProcessor`, `EcosystemLevelCalculator`) + manual de flujos principales.
 - **Preparar firma de la app** para distribución (keystore, release build).
 
 ---

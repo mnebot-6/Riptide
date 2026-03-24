@@ -90,16 +90,16 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **i18n**: EN + ES, `LocalizationExtensions.kt` con extension functions para enums
 - **40 renderers Canvas** (cobertura total): todas las 40 especies tienen Canvas renderer propio
 - **Onboarding**: flujo de 4 pasos con `AnimatedContent`, DataStore key `onboarding_completed`, se muestra solo en primer lanzamiento
-- **Notificaciones push** ✅: `NotificationHelper` (3 canales), push resumen nocturno + matutino + por tarea, `TaskReminderSchedulerImpl` (WorkManager, `rescheduleAll()`), `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), permiso `POST_NOTIFICATIONS`, strings EN + ES (Compose resources + `androidMain/res/values-es`)
-- **Estadísticas**: `StatsScreen` con gráfico de barras Canvas (coloreado por % completado, etiquetas localizadas), toggle Semana/Mes, tarjetas de resumen, rachas por bloque
-- **Historial**: `HistoryScreen` con selector 30/60/90 días, LazyColumn de días agrupados, badge completadas/totales, meses localizados (EN/ES)
+- **Notificaciones push**: `NotificationHelper` (3 canales), push resumen nocturno + matutino + por tarea, `TaskReminderSchedulerImpl` (WorkManager, `rescheduleAll()`), `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), permiso `POST_NOTIFICATIONS`
+- **Estadísticas**: `StatsScreen` con gráfico de barras Canvas, toggle Semana/Mes, tarjetas de resumen, rachas por bloque
+- **Historial**: `HistoryScreen` con selector 30/60/90 días, LazyColumn de días agrupados, badge completadas/totales
+- **Recompensas de racha**: `BlockStreakUpdate` con `milestonesReached`, hitos [7, 14, 30], `PendingLootbox` generados en `NightSummaryProcessor`
+- **Evolución visual de criaturas**: efectos discretos en nivel 3+ y nivel 5+ en 10 renderers de fauna (marcas, brillos, compañeros, bioluminiscencia)
+- **Tests automatizados**: 37 tests en `commonTest` — `EcosystemLevelCalculatorTest` (16), `BlockStreakProcessorTest` (12), `NightSummaryProcessorTest` (9). Fakes in-memory, `kotlinx-coroutines-test`
+- **Iconografía Lucide**: 18 vector drawables stroke-based (`ic_*.xml`). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
 
 **Próximo (v3):**
-- Racha global en pantalla principal (días consecutivos de uso)
-- Evolución visual de criaturas por nivel en renderers
-- Recompensas automáticas de racha (lootbox en hitos 7/14/30 días)
-- Tests unitarios e instrumentados
-- Preparar firma de la app
+- Preparar firma de la app (keystore, release build)
 
 ---
 

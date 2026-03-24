@@ -32,10 +32,10 @@
     <!-- MainScreen — task list -->
     <string name="section_no_block">No block</string>
     <string name="msg_no_tasks">No tasks for today 🌊</string>
-    <string name="menu_edit">✏️ Edit</string>
-    <string name="menu_postpone">⏰ Postpone</string>
-    <string name="menu_delete">🗑️ Delete</string>
-    <string name="msg_streak">🔥 %1$d days</string>
+    <string name="menu_edit">Edit</string>
+    <string name="menu_postpone">Postpone</string>
+    <string name="menu_delete">Delete</string>
+    <string name="msg_streak">%1$d days</string>
     <string name="msg_error">Error: %1$s</string>
 
     <!-- MainDrawer -->

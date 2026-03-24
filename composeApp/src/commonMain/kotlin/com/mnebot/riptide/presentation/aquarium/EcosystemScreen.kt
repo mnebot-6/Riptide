@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.displayNameRes
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
@@ -172,7 +174,12 @@ private fun EcosystemCategorySection(
                 modifier = Modifier.weight(1f)
             )
             if (!isUnlocked) {
-                Text("🔒", fontSize = 11.sp)
+                Icon(
+                    painter = painterResource(Res.drawable.ic_lock),
+                    contentDescription = null,
+                    tint = SectionLabel,
+                    modifier = Modifier.size(11.dp)
+                )
             } else {
                 Text(
                     text = stringResource(Res.string.label_category_level, categoryLevel),

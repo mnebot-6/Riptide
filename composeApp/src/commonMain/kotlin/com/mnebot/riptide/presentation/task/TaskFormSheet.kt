@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import com.mnebot.riptide.presentation.main.currentDate
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
@@ -171,11 +173,20 @@ fun TaskFormSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "🔔 ${stringResource(Res.string.label_notify_at_time)}",
-                            color = TextSecondary,
-                            fontSize = 14.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_bell),
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(Res.string.label_notify_at_time),
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
                         Switch(
                             checked = notificationsEnabled,
                             onCheckedChange = { notificationsEnabled = it },
@@ -201,11 +212,20 @@ fun TaskFormSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "🔔 ${stringResource(Res.string.label_notify_at_time)}",
-                            color = TextSecondary,
-                            fontSize = 14.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_bell),
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(Res.string.label_notify_at_time),
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
                         Switch(
                             checked = notificationsEnabled,
                             onCheckedChange = { notificationsEnabled = it },
