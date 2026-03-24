@@ -46,6 +46,7 @@ fun MainDrawer(
     onNightSummaryTimeChanged: (LocalTime) -> Unit,
     onMorningReminderTimeChanged: (LocalTime?) -> Unit,
     onNavigateToEcosystem: () -> Unit,
+    onSetLiveWallpaper: () -> Unit,
     onNavigateToStats: () -> Unit,
     onNavigateToHistory: () -> Unit
 ) {
@@ -99,6 +100,7 @@ fun MainDrawer(
             SectionTitle(stringResource(Res.string.section_ecosystem))
             Spacer(modifier = Modifier.height(8.dp))
             DrawerItem(painter = painterResource(Res.drawable.ic_fish), label = stringResource(Res.string.btn_my_ecosystem), onClick = onNavigateToEcosystem)
+            DrawerItem(painter = painterResource(Res.drawable.ic_waves), label = stringResource(Res.string.btn_live_wallpaper), onClick = onSetLiveWallpaper)
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(color = DividerColor)

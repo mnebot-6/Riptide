@@ -116,6 +116,7 @@ fun MainScreen(
     onNavigateToCreateBlock: () -> Unit,
     onNavigateToEditBlock: (String) -> Unit,
     onNavigateToEcosystem: () -> Unit,
+    onSetLiveWallpaper: () -> Unit,
     onNavigateToStats: () -> Unit,
     onNavigateToHistory: () -> Unit
 ) {
@@ -597,6 +598,13 @@ fun MainScreen(
                             showDrawer = false
                         }
                         onNavigateToEcosystem()
+                    },
+                    onSetLiveWallpaper = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onSetLiveWallpaper()
                     },
                     onNavigateToStats = {
                         scope.launch {

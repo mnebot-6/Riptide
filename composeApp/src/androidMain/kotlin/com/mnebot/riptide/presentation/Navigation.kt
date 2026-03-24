@@ -26,7 +26,11 @@ import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
 import com.mnebot.riptide.presentation.stats.StatsScreen
 import com.mnebot.riptide.presentation.stats.StatsViewModel
 import com.mnebot.riptide.presentation.stats.StatsViewModelFactory
+import android.app.WallpaperManager
+import android.content.ComponentName
+import android.content.Intent
 import androidx.compose.runtime.collectAsState
+import com.mnebot.riptide.wallpaper.RiptideWallpaperService
 import kotlinx.coroutines.launch
 
 const val ROUTE_ONBOARDING = "onboarding"
@@ -60,6 +64,7 @@ fun NavGraphBuilder.mainGraph(
     navController: NavController
 ) {
     composable(ROUTE_MAIN) {
+        val context = LocalContext.current
         MainScreen(
             viewModel = mainViewModel,
             nightSummaryScheduler = nightSummaryScheduler,
@@ -68,6 +73,15 @@ fun NavGraphBuilder.mainGraph(
                 navController.navigate("block/edit/$blockId")
             },
             onNavigateToEcosystem = { navController.navigate(ROUTE_ECOSYSTEM) },
+            onSetLiveWallpaper = {
+                val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                    putExtra(
+                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                        ComponentName(context, RiptideWallpaperService::class.java)
+                    )
+                }
+                context.startActivity(intent)
+            },
             onNavigateToStats = { navController.navigate(ROUTE_STATS) },
             onNavigateToHistory = { navController.navigate(ROUTE_HISTORY) }
         )

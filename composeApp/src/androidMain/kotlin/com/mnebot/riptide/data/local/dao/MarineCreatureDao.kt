@@ -9,6 +9,9 @@ import com.mnebot.riptide.data.local.entity.MarineCreatureEntity
 
 @Dao
 interface MarineCreatureDao {
+    @Query("SELECT * FROM marine_creatures")
+    suspend fun getAll(): List<MarineCreatureEntity>
+
     @Query("SELECT * FROM marine_creatures WHERE ecosystemId = :ecosystemId")
     suspend fun getByEcosystem(ecosystemId: String): List<MarineCreatureEntity>
 

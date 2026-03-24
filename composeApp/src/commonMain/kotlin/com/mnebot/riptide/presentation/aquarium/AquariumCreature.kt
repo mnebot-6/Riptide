@@ -24,6 +24,9 @@ private const val PI  = 3.14159265f
 private const val TAU = 6.28318530f
 private const val PHI = 1.61803398f   // número áureo — frecuencia secundaria irracional
 
+// Factor de velocidad global: >1 = más lento. 2.0 = la mitad de velocidad.
+private const val GLOBAL_SPEED_MULTIPLIER = 2.0f
+
 // ── Oscilador base ────────────────────────────────────────────────────────────
 //
 // La clave matemática de que no haya teleportación jamás:
@@ -40,7 +43,7 @@ private const val PHI = 1.61803398f   // número áureo — frecuencia secundari
 // Cada oscilador tiene su propio período independiente.
 // No comparten ningún reloj global que reinicie.
 //
-private fun osc(elapsedMs: Long, periodMs: Long, phaseOffset: Float = 0f): Float {
+internal fun osc(elapsedMs: Long, periodMs: Long, phaseOffset: Float = 0f): Float {
     if (periodMs <= 0L) return 0f
     val phase = (elapsedMs % periodMs).toFloat() / periodMs.toFloat()
     return sin(phase * TAU + phaseOffset * TAU)
@@ -59,7 +62,7 @@ private fun osc(elapsedMs: Long, periodMs: Long, phaseOffset: Float = 0f): Float
 //
 enum class EasingType { SMOOTH, BURST, CRAWL }
 
-private fun applyEasing(t: Float, type: EasingType): Float {
+internal fun applyEasing(t: Float, type: EasingType): Float {
     val tc = t.coerceIn(0f, 1f)
     return when (type) {
         EasingType.SMOOTH -> (1f - cos(tc * PI)) / 2f
@@ -495,13 +498,13 @@ val allCreatures = listOf(
 )
 
 // ── Posición X de criaturas fijas ─────────────────────────────────────────────
-private fun fixedX(fixedIndex: Int, totalFixed: Int): Float {
+internal fun fixedX(fixedIndex: Int, totalFixed: Int): Float {
     val step = 0.80f / (totalFixed + 1).toFloat()
     return 0.10f + step * (fixedIndex + 1)
 }
 
 // Distribución Fibonacci → fases bien separadas, sin agrupamiento visible
-private fun phaseOffset(index: Int): Float = (index * 0.618f) % 1f
+internal fun phaseOffset(index: Int): Float = (index * 0.618f) % 1f
 
 // ── Variación por instancia ──────────────────────────────────────────────────
 //
@@ -509,13 +512,13 @@ private fun phaseOffset(index: Int): Float = (index * 0.618f) % 1f
 // Cada (index, seed) produce un valor distinto pero estable entre frames.
 // Esto hace que dos criaturas de la misma especie nunca sean idénticas.
 //
-private fun instanceNoise(index: Int, seed: Int): Float {
+internal fun instanceNoise(index: Int, seed: Int): Float {
     return ((index * 7919 + seed * 104729) % 1000) / 500f - 1f
 }
 
 // Aplica variación ±pct sobre un valor base.
 // instanceNoise ∈ [-1,1], pct = 0.12 → resultado ∈ [base×0.88, base×1.12]
-private fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float {
+internal fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float {
     return base * (1f + instanceNoise(index, seed) * pct)
 }
 
@@ -537,7 +540,7 @@ private fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float 
 // pacePeriodMs: período del modulador (~37s base, variado por phase).
 //   Largo para que el cambio de ritmo sea gradual e imperceptible como ciclo.
 //
-private fun warpTime(
+internal fun warpTime(
     t: Long,
     tempoVar: Float,
     pacePeriodMs: Long,
@@ -596,6 +599,202 @@ private fun findHitCreature(
         dx * dx + dy * dy
     }
     ?.species
+
+// ── Standalone rendering function (shared between Composable and WallpaperService) ──
+
+/**
+ * Draws all unlocked aquarium creatures into the current DrawScope.
+ * Extracted so it can be reused from WallpaperService via CanvasDrawScope bridge.
+ *
+ * @param unlockedCreatures specs of all unlocked creatures
+ * @param fixedCreatures subset of unlocked that have swimDuration == 0
+ * @param creatureLevelBySpecies creature levels for scaling
+ * @param elapsedMs monotonic time in milliseconds
+ * @return list of creature positions for hit-testing (ignored by wallpaper)
+ */
+fun DrawScope.drawAquariumCreatures(
+    unlockedCreatures: List<CreatureSpec>,
+    fixedCreatures: List<CreatureSpec>,
+    creatureLevelBySpecies: Map<CreatureSpecies, Int>,
+    elapsedMs: Long
+): List<CreaturePosition> {
+    val positions = mutableListOf<CreaturePosition>()
+
+    // Pre-calcular distribución de flora Canvas (múltiples instancias, interleaved)
+    val fixedEmojiCreatures = fixedCreatures.filter { rendererFor(it.species) == null }
+    val fixedCanvasCreatures = fixedCreatures.filter { rendererFor(it.species) != null }
+    val totalFloraSlots = fixedCanvasCreatures.sumOf { it.instanceCount }
+
+    // Round-robin: intercalar especies en vez de agruparlas por secciones
+    val floraSlotMap = mutableMapOf<CreatureSpecies, List<Int>>()
+    run {
+        val maxInstances = fixedCanvasCreatures.maxOfOrNull { it.instanceCount } ?: 0
+        val tempMap = mutableMapOf<CreatureSpecies, MutableList<Int>>()
+        fixedCanvasCreatures.forEach { tempMap[it.species] = mutableListOf() }
+        var slotIdx = 0
+        for (round in 0 until maxInstances) {
+            for (spec in fixedCanvasCreatures) {
+                if (round < spec.instanceCount) {
+                    tempMap[spec.species]!!.add(slotIdx)
+                    slotIdx++
+                }
+            }
+        }
+        tempMap.forEach { (k, v) -> floraSlotMap[k] = v }
+    }
+
+    unlockedCreatures.forEachIndexed { index, spec ->
+        val w = size.width
+        val h = size.height
+
+        val creatureLevel = creatureLevelBySpecies[spec.species] ?: 1
+        val sizeScale = 0.8f + (creatureLevel - 1) * 0.10f
+        val baseSize = 28f * 1.2f
+        val iconSize = baseSize * sizeScale * spec.sizeMultiplier
+
+        val tRaw = elapsedMs
+
+        val phase = phaseOffset(index)
+        val zoneCenter = h * spec.swimZone.centerFraction
+        val zoneBand = h * spec.swimZone.bandFraction
+
+        val personalY = zoneCenter + (spec.personalYFraction - 0.5f) * zoneBand
+
+        var x: Float = 0f
+        var y: Float = 0f
+        var hitboxAdded = false
+
+        if (spec.swimDuration == 0) {
+            val floorY = AquariumBounds.floorY(h)
+            val renderer = rendererFor(spec.species)
+
+            if (renderer != null) {
+                val slots = floraSlotMap[spec.species] ?: emptyList()
+                val renderSize = iconSize * 3.2f
+
+                for (i in 0 until spec.instanceCount) {
+                    val slotIndex = slots.getOrElse(i) { i }
+                    val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
+                    val instanceAnim = tRaw + i * 5000L
+                    with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
+                    positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
+                }
+                hitboxAdded = true
+            } else {
+                val emojiIdx = fixedEmojiCreatures.indexOf(spec)
+                x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
+                val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
+                y = floorY - iconSize * 0.3f + wobble
+                drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
+            }
+        } else {
+            val variedDuration = vary(spec.swimDuration.toFloat(), index, 1).toLong()
+            val variedWobble = vary(spec.wobbleAmplitude, index, 2)
+            val variedDriftSpeed = vary(spec.driftSpeed, index, 3)
+            val variedTempoVar = vary(spec.tempoVariation, index, 4, pct = 0.15f)
+
+            val speedMult = max(0.3f, 1f + (creatureLevel - 1) * spec.speedScalePerLevel)
+            val cycleDuration = (variedDuration * GLOBAL_SPEED_MULTIPLIER / speedMult).toLong().coerceAtLeast(2000L)
+
+            val pacePeriodMs = (37000f * (1f + phase * 0.4f)).toLong()
+            val tSwim = warpTime(tRaw, variedTempoVar, pacePeriodMs, phase)
+
+            val phaseMs = (phase * cycleDuration).toLong()
+            val rawProgress = ((tSwim + phaseMs) % cycleDuration).toFloat() / cycleDuration.toFloat()
+
+            val pf = spec.pauseFraction
+            val swimFraction = (0.5f - pf).coerceAtLeast(0.01f)
+            val goingRight: Boolean
+            val swimProgress: Float
+
+            when {
+                rawProgress < pf -> {
+                    goingRight = true
+                    swimProgress = 0f
+                }
+                rawProgress < 0.5f -> {
+                    goingRight = true
+                    val localT = ((rawProgress - pf) / swimFraction).coerceIn(0f, 1f)
+                    swimProgress = applyEasing(localT, spec.easingType)
+                }
+                rawProgress < 0.5f + pf -> {
+                    goingRight = false
+                    swimProgress = 1f
+                }
+                else -> {
+                    goingRight = false
+                    val localT = ((rawProgress - (0.5f + pf)) / swimFraction).coerceIn(0f, 1f)
+                    swimProgress = 1f - applyEasing(localT, spec.easingType)
+                }
+            }
+
+            val xPert = if (spec.xErraticness > 0f) {
+                val xPertPeriod = (cycleDuration.toFloat() / (5f * PHI)).toLong().coerceAtLeast(200L)
+                osc(tSwim + phaseMs, xPertPeriod, phase * PHI) * spec.xErraticness * 0.05f
+            } else 0f
+
+            val halfIcon = iconSize / 2f
+            val xMin = halfIcon + w * 0.01f
+            val xMax = w - halfIcon - w * 0.01f
+            x = (xMin + (xMax - xMin) * swimProgress + w * xPert)
+                .coerceIn(xMin, xMax)
+
+            val primaryPeriod = (cycleDuration / spec.waveCount.toLong().coerceAtLeast(1L))
+                .coerceAtLeast(200L)
+            val primaryWave = osc(tSwim + phaseMs, primaryPeriod, phase)
+
+            val secPeriod = (cycleDuration.toFloat() / (spec.waveCount.toFloat() * PHI))
+                .toLong().coerceAtLeast(200L)
+            val secondaryWave = osc(tSwim + phaseMs, secPeriod, phase * PHI)
+
+            val waveY = (primaryWave * (1f - spec.erraticness) +
+                    secondaryWave * spec.erraticness) *
+                    zoneBand * variedWobble
+
+            val driftPeriod = (12000f / variedDriftSpeed.coerceAtLeast(0.01f))
+                .toLong().coerceAtLeast(1000L)
+            val drift = osc(tRaw, driftPeriod, phase) * zoneBand * spec.driftAmplitude
+
+            val coupledArc = -sin(swimProgress * PI) * zoneBand * spec.verticalCoupling
+            val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
+
+            val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
+                val floorY = AquariumBounds.floorY(h)
+                val bottomCoupling = h * 0.10f
+                val heightOffset = (1f - spec.personalYFraction) * h * 0.06f
+                val coupledArcBottom = -sin(swimProgress * PI) * bottomCoupling * spec.verticalCoupling
+                floorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
+            } else {
+                (personalY + waveY + drift + coupledArc + micro).coerceIn(
+                    personalY - zoneBand * 1.15f,
+                    personalY + zoneBand * 1.15f
+                )
+            }
+
+            val surfaceLimit = if (spec.swimZone == SwimZone.SURFACE) {
+                halfIcon
+            } else {
+                AquariumBounds.surfaceY(h) + halfIcon
+            }
+            val floorLimit = AquariumBounds.floorY(h) - halfIcon
+            y = rawY.coerceIn(surfaceLimit, floorLimit)
+
+            val renderer = rendererFor(spec.species)
+            if (renderer != null) {
+                val renderSize = iconSize * density
+                with(renderer) { render(x, y, renderSize, creatureLevel, tRaw, goingRight) }
+            } else {
+                drawEmoji(spec.emoji, x, y, iconSize, mirrored = goingRight, rotation = spec.emojiRotation)
+            }
+        }
+
+        if (!hitboxAdded) {
+            positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2.5f, 75f)))
+        }
+    }
+
+    return positions
+}
 
 // ── Composable principal ──────────────────────────────────────────────────────
 
@@ -674,7 +873,6 @@ fun AquariumCreatures(
                 val totalFloraSlots = fixedCanvasCreatures.sumOf { it.instanceCount }
 
                 // Round-robin: intercalar especies en vez de agruparlas por secciones
-                // Ej: BC#0, AN#0, KE#0, BC#1, AN#1, KE#1, BC#2, KE#2, BC#3, KE#3
                 val floraSlotMap = mutableMapOf<CreatureSpecies, List<Int>>()
                 run {
                     var slotIdx = 0
@@ -709,8 +907,6 @@ fun AquariumCreatures(
                     val phase = phaseOffset(index)
                     val zoneCenter = h * spec.swimZone.centerFraction
                     val zoneBand  = h * spec.swimZone.bandFraction
-
-                    // Cota personal dentro de la banda. Determinista, no aleatoria.
                     val personalY = zoneCenter + (spec.personalYFraction - 0.5f) * zoneBand
 
                     var x: Float = 0f
@@ -722,7 +918,6 @@ fun AquariumCreatures(
                         val renderer = rendererFor(spec.species)
 
                         if (renderer != null) {
-                            // ── FLORA CANVAS — múltiples instancias interleaved ──
                             val slots = floraSlotMap[spec.species] ?: emptyList()
                             val renderSize = iconSize * 3.2f
 
@@ -731,13 +926,11 @@ fun AquariumCreatures(
                                 val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
                                 val instanceAnim = tRaw + i * 5000L
                                 with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
-                                // Hitbox en todas las instancias
                                 positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
                             }
                             hitboxAdded = true
 
                         } else {
-                            // ── CRIATURA FIJA EMOJI — posición en eje X distribuido ──
                             val emojiIdx = fixedEmojiCreatures.indexOf(spec)
                             x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
                             val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
@@ -746,33 +939,20 @@ fun AquariumCreatures(
                         }
 
                     } else {
-                        // ── CRIATURA NADADORA ─────────────────────────────────────
-
-                        // Variación por instancia: ±12% sobre parámetros clave.
-                        // Cada criatura del mismo tipo tiene ritmo y amplitud ligeramente distintos.
                         val variedDuration = vary(spec.swimDuration.toFloat(), index, 1).toLong()
                         val variedWobble = vary(spec.wobbleAmplitude, index, 2)
                         val variedDriftSpeed = vary(spec.driftSpeed, index, 3)
                         val variedTempoVar = vary(spec.tempoVariation, index, 4, pct = 0.15f)
 
                         val speedMult = max(0.3f, 1f + (creatureLevel - 1) * spec.speedScalePerLevel)
-                        val cycleDuration = (variedDuration / speedMult).toLong().coerceAtLeast(2000L)
+                        val cycleDuration = (variedDuration * GLOBAL_SPEED_MULTIPLIER / speedMult).toLong().coerceAtLeast(2000L)
 
-                        // ── Tempo warping ─────────────────────────────────────────
-                        // Período del modulador: ~37s base, variado por phase para
-                        // que cada criatura tenga su propio ciclo de aceleración.
-                        // Largo → el cambio de ritmo es gradual, nunca se percibe como repetición.
                         val pacePeriodMs = (37000f * (1f + phase * 0.4f)).toLong()
                         val tSwim = warpTime(tRaw, variedTempoVar, pacePeriodMs, phase)
 
-                        // Phase offset en tiempo: desplaza el inicio del ciclo.
                         val phaseMs = (phase * cycleDuration).toLong()
-
-                        // rawProgress: [0, 1) dentro del ciclo propio.
-                        // Modulo Long → sin pérdida de precisión. Continuo en wrap. ✓
                         val rawProgress = ((tSwim + phaseMs) % cycleDuration).toFloat() / cycleDuration.toFloat()
 
-                        // ── Posición X ────────────────────────────────────────────
                         val pf = spec.pauseFraction
                         val swimFraction = (0.5f - pf).coerceAtLeast(0.01f)
                         val goingRight: Boolean
@@ -799,34 +979,21 @@ fun AquariumCreatures(
                             }
                         }
 
-                        // Microaceleración horizontal aperiódica.
-                        // Usa tSwim → las perturbaciones también se modulan con el tempo.
                         val xPert = if (spec.xErraticness > 0f) {
                             val xPertPeriod = (cycleDuration.toFloat() / (5f * PHI)).toLong().coerceAtLeast(200L)
                             osc(tSwim + phaseMs, xPertPeriod, phase * PHI) * spec.xErraticness * 0.05f
                         } else 0f
 
-                        // ── Márgenes simétricos basados en tamaño del emoji ──────
-                        // El centro del emoji nunca se acerca a menos de halfIcon del borde.
-                        // Resultado: el emoji siempre está completamente visible en ambos extremos.
                         val halfIcon = iconSize / 2f
                         val xMin = halfIcon + w * 0.01f
                         val xMax = w - halfIcon - w * 0.01f
                         x = (xMin + (xMax - xMin) * swimProgress + w * xPert)
                             .coerceIn(xMin, xMax)
 
-                        // ── Posición Y: cinco capas continuas ─────────────────────
-                        //
-                        // Capas 1-2 (ondas de nado) y 4 (coupling) usan tSwim → se modulan
-                        // con el tempo. Capas 3 (drift) y 5 (microwobble) usan tRaw →
-                        // son independientes del ritmo de nado (corriente ambiental y biología).
-                        //
-                        // 1. ONDA PRIMARIA
                         val primaryPeriod = (cycleDuration / spec.waveCount.toLong().coerceAtLeast(1L))
                             .coerceAtLeast(200L)
                         val primaryWave = osc(tSwim + phaseMs, primaryPeriod, phase)
 
-                        // 2. ONDA SECUNDARIA (irracional respecto a la primaria)
                         val secPeriod = (cycleDuration.toFloat() / (spec.waveCount.toFloat() * PHI))
                             .toLong().coerceAtLeast(200L)
                         val secondaryWave = osc(tSwim + phaseMs, secPeriod, phase * PHI)
@@ -835,23 +1002,16 @@ fun AquariumCreatures(
                                 secondaryWave * spec.erraticness) *
                                 zoneBand * variedWobble
 
-                        // 3. DERIVA LENTA DEL EJE Y (corriente ambiental — usa tRaw)
                         val driftPeriod = (12000f / variedDriftSpeed.coerceAtLeast(0.01f))
                             .toLong().coerceAtLeast(1000L)
                         val drift = osc(tRaw, driftPeriod, phase) * zoneBand * spec.driftAmplitude
 
-                        // 4. ACOPLAMIENTO VERTICAL (usa swimProgress de tSwim)
                         val coupledArc = -sin(swimProgress * PI) * zoneBand * spec.verticalCoupling
-
-                        // 5. MICROWOBBLE (biológico — usa tRaw)
                         val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
 
-                        // Y base según zona
                         val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
-                            // Crustáceos en el suelo: anclar a floorY con offset vertical por especie.
-                            // personalYFraction 0.95=pegado al suelo, 0.30=algo más arriba (cangrejo).
                             val floorY = AquariumBounds.floorY(h)
-                            val bottomCoupling = h * 0.10f  // banda efectiva más grande para coupling
+                            val bottomCoupling = h * 0.10f
                             val heightOffset = (1f - spec.personalYFraction) * h * 0.06f
                             val coupledArcBottom = -sin(swimProgress * PI) * bottomCoupling * spec.verticalCoupling
                             floorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
@@ -862,9 +1022,8 @@ fun AquariumCreatures(
                             )
                         }
 
-                        // Y clamping global: no atravesar superficie ni suelo
                         val surfaceLimit = if (spec.swimZone == SwimZone.SURFACE) {
-                            halfIcon  // delfín/ballena pueden saltar fuera del agua
+                            halfIcon
                         } else {
                             AquariumBounds.surfaceY(h) + halfIcon
                         }
@@ -873,9 +1032,6 @@ fun AquariumCreatures(
 
                         val renderer = rendererFor(spec.species)
                         if (renderer != null) {
-                            // iconSize está en unidades sp-like; drawEmoji convierte
-                            // internamente con .sp.toPx(), así que hacemos lo equivalente
-                            // para que el Canvas renderer tenga el mismo tamaño visual.
                             val renderSize = iconSize * density
                             with(renderer) { render(x, y, renderSize, creatureLevel, tRaw, goingRight) }
                         } else {
@@ -883,7 +1039,6 @@ fun AquariumCreatures(
                         }
                     }
 
-                    // Hitbox (solo si no se añadió ya en el bloque de flora Canvas)
                     if (!hitboxAdded) {
                         positions.add(CreaturePosition(spec.species, x, y, maxOf(iconSize * 2.5f, 75f)))
                     }

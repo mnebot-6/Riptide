@@ -99,6 +99,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **Iconografía Lucide**: 18 vector drawables stroke-based (`ic_*.xml`). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
 - **Logo & Branding "Rising Currents"**: 3 olas ascendentes con ondulación, adaptive icon (foreground + background azul océano), logo in-app 24dp, icono notificación, splash screen (`core-splashscreen` 1.0.1, tema `Theme.Riptide.Splash`)
 - **Widget Android**: Glance widget con tareas del día, barra de progreso, paleta marina. `WidgetUpdater.refreshAll()` en `onResume`. Metadata 3×3 celdas, redimensionable, auto-update 30min.
+- **Live Wallpaper**: `RiptideWallpaperService` (WallpaperService + Choreographer 30fps vsync-aligned). Bridge `CanvasDrawScope` reutiliza todo el renderizado Compose sin portar código. `WallpaperDataProvider` lee criaturas de Room con refresco cada 5min. Botón en drawer → `ACTION_CHANGE_LIVE_WALLPAPER` (bypass del picker OEM). `GLOBAL_SPEED_MULTIPLIER = 2.0f` para velocidad más natural.
 
 **Próximo (→ Play Store):**
 - Sprint Backend (Ktor + PostgreSQL + API REST + auth)
@@ -127,9 +128,9 @@ composeApp/src/
 │       ├── stats/StatsViewModel.kt         # Carga DaySummary + BlockStreak por rango
 │       ├── history/HistoryScreen.kt        # LazyColumn días agrupados + selector 30/60/90d
 │       ├── history/HistoryViewModel.kt     # Carga tareas completadas + summaries por rango
-│       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino
+│       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino; drawAquariumBackground() extraída
 │       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
-│       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación 60fps, hit-testing
+│       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación, hit-testing; GLOBAL_SPEED_MULTIPLIER; drawAquariumCreatures() extraída
 │       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (40 renderers, cobertura total) + CreatureIcon composable
 │       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
 │       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer, PosidoniaRenderer, FanCoralRenderer
@@ -142,9 +143,11 @@ composeApp/src/
     ├── MorningReminderWorker.kt        # Aviso matutino + auto-reprogramación diaria
     ├── TaskReminderWorker.kt           # One-shot a la hora de la tarea
     ├── TaskReminderSchedulerImpl.kt    # WorkManager REPLACE + rescheduleAll()
-    ├── widget/RiptideWidget.kt        # GlanceAppWidget — tareas del día + progreso
+    ├── widget/RiptideWidget.kt         # GlanceAppWidget — tareas del día + progreso
     ├── widget/RiptideWidgetReceiver.kt # GlanceAppWidgetReceiver
-    ├── widget/WidgetUpdater.kt        # refreshAll() — refresca widgets desde la app
+    ├── widget/WidgetUpdater.kt         # refreshAll() — refresca widgets desde la app
+    ├── wallpaper/RiptideWallpaperService.kt  # WallpaperService + Engine, 30fps vsync-aligned
+    ├── wallpaper/WallpaperDataProvider.kt    # Carga criaturas de Room, refresco cada 5min
     ├── presentation/stats/StatsViewModelFactory.kt
     ├── presentation/history/HistoryViewModelFactory.kt
     └── data/local/

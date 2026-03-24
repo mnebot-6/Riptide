@@ -299,6 +299,16 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ---
 
+## 🔨 Sprint Live Wallpaper — Acuario como fondo de pantalla
+
+- **`CanvasDrawScope` bridge**: reutiliza todo el renderizado Compose (`drawAquariumBackground`, `drawAquariumCreatures`) desde un `WallpaperService` Android, sin portar código.
+- **Refactor puro de extracción**: funciones `DrawScope.drawAquariumBackground()` y `DrawScope.drawAquariumCreatures()` extraídas de los composables para uso compartido app↔wallpaper.
+- **`RiptideWallpaperService`**: `WallpaperService` + `Engine` con `Choreographer` a 60fps. Cielo dinámico por hora, gradiente oceánico, fondo marino, burbujas, criaturas desbloqueadas nadando.
+- **`WallpaperDataProvider`**: lee criaturas desbloqueadas de Room DB. Refresco periódico cada 5 min.
+- **Registro en AndroidManifest**: servicio con `BIND_WALLPAPER`, metadata XML, strings EN/ES.
+
+---
+
 ## Fase 1 — Producto completo
 
 ### Sprint Backend
@@ -367,7 +377,6 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ## Fase 5 — Post-launch
 
-- Live wallpaper del acuario (`WallpaperService` Android)
 - Social: visitar el estanque de un amigo (solo ver, nunca competir)
 - Iteraciones según feedback real de usuarios
 

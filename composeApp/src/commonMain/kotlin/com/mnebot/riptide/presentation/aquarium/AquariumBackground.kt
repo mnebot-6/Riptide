@@ -25,7 +25,7 @@ private val OceanMid = Color(0xFF1B3A6B)
 private val OceanDeep = Color(0xFF0A1628)
 
 // ── Cielo con interpolación continua ─────────────────────────────────────────
-private data class SkyColors(val top: Color, val mid: Color, val horizon: Color)
+internal data class SkyColors(val top: Color, val mid: Color, val horizon: Color)
 
 private data class SkyKeyframe(val hour: Float, val top: Color, val mid: Color, val horizon: Color)
 
@@ -53,7 +53,7 @@ private fun lerpColor(a: Color, b: Color, t: Float): Color {
     )
 }
 
-private fun interpolateSky(hourFraction: Float): SkyColors {
+internal fun interpolateSky(hourFraction: Float): SkyColors {
     val h = hourFraction.coerceIn(0f, 24f)
     // Encontrar los dos keyframes adyacentes
     var lo = skyKeyframes.last { it.hour <= h }
@@ -68,7 +68,7 @@ private fun interpolateSky(hourFraction: Float): SkyColors {
     )
 }
 
-private fun getCurrentHourFraction(): Float {
+internal fun getCurrentHourFraction(): Float {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     return now.hour + now.minute / 60f
 }
@@ -151,45 +151,53 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
     )
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val surfaceY = AquariumBounds.surfaceY(size.height)
-        val floorY = AquariumBounds.floorY(size.height)
-
-        // 1. Gradiente de agua (del cielo hacia la profundidad)
-        drawRect(
-            brush = Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.00f to sky.horizon,
-                    AquariumBounds.SURFACE_FRACTION to OceanShallow,
-                    0.45f to OceanMid,
-                    AquariumBounds.FLOOR_FRACTION to OceanDeep,
-                ),
-                startY = 0f,
-                endY = floorY
-            )
-        )
-
-        // 2. Cielo sobre la superficie (gradiente dinámico de 3 colores)
-        drawRect(
-            brush = Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.00f to sky.top,
-                    0.45f to sky.mid,
-                    1.00f to sky.horizon
-                ),
-                startY = 0f,
-                endY = surfaceY
-            )
-        )
-
-        // 3. Fondo marino elaborado
-        drawSeaFloor(floorY)
-
-        // 4. Superficie del agua (ola sutil)
-        drawWaterSurface(surfaceY, swayAngle, sky.horizon)
-
-        // 5. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
-        drawBubbles(bubbleProgress, surfaceY, floorY)
+        drawAquariumBackground(swayAngle, bubbleProgress, sky)
     }
+}
+
+/**
+ * Draws the full aquarium background: sky, ocean gradient, sea floor, water surface, and bubbles.
+ * Extracted as a standalone DrawScope function so it can be reused from WallpaperService via CanvasDrawScope.
+ */
+internal fun DrawScope.drawAquariumBackground(swayAngle: Float, bubbleProgress: Float, sky: SkyColors) {
+    val surfaceY = AquariumBounds.surfaceY(size.height)
+    val floorY = AquariumBounds.floorY(size.height)
+
+    // 1. Gradiente de agua (del cielo hacia la profundidad)
+    drawRect(
+        brush = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0.00f to sky.horizon,
+                AquariumBounds.SURFACE_FRACTION to OceanShallow,
+                0.45f to OceanMid,
+                AquariumBounds.FLOOR_FRACTION to OceanDeep,
+            ),
+            startY = 0f,
+            endY = floorY
+        )
+    )
+
+    // 2. Cielo sobre la superficie (gradiente dinámico de 3 colores)
+    drawRect(
+        brush = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0.00f to sky.top,
+                0.45f to sky.mid,
+                1.00f to sky.horizon
+            ),
+            startY = 0f,
+            endY = surfaceY
+        )
+    )
+
+    // 3. Fondo marino elaborado
+    drawSeaFloor(floorY)
+
+    // 4. Superficie del agua (ola sutil)
+    drawWaterSurface(surfaceY, swayAngle, sky.horizon)
+
+    // 5. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
+    drawBubbles(bubbleProgress, surfaceY, floorY)
 }
 
 private fun DrawScope.drawSeaFloor(floorY: Float) {

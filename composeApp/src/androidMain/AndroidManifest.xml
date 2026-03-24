@@ -23,6 +23,20 @@
             </intent-filter>
         </activity>
 
+        <!-- Riptide live wallpaper -->
+        <service
+            android:name=".wallpaper.RiptideWallpaperService"
+            android:label="@string/wallpaper_name"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/wallpaper" />
+        </service>
+
         <!-- Riptide home screen widget -->
         <receiver
             android:name=".widget.RiptideWidgetReceiver"

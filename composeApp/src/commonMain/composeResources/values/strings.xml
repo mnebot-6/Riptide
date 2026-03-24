@@ -43,6 +43,7 @@
     <string name="btn_add_block">Add block</string>
     <string name="section_ecosystem">ECOSYSTEM</string>
     <string name="btn_my_ecosystem">My ecosystem</string>
+    <string name="btn_live_wallpaper">Live wallpaper</string>
     <string name="section_settings">SETTINGS</string>
     <string name="label_night_summary">Night summary</string>
 
