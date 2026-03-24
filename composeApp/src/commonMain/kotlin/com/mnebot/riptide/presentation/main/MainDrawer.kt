@@ -66,10 +66,10 @@ fun MainDrawer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(Res.drawable.ic_waves),
+                painter = painterResource(Res.drawable.ic_riptide_logo),
                 contentDescription = null,
                 tint = TextPrimary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(30.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(stringResource(Res.string.app_name), color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)

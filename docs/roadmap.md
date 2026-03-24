@@ -274,18 +274,21 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ---
 
+## ✅ Sprint Logo & Branding
+
+- **Concepto "Rising Currents"**: tres corrientes ascendentes con ondulación de ola — simbolizan impulso constante, no empujón aislado. Todas fluyen en la misma dirección (arriba-derecha) con cresta y valle visible.
+- **Adaptive Icon Android**: foreground vector (3 olas blancas stroke-based, 108dp viewport) + background (azul océano #1565C0 con zona superior #1E88E5)
+- **Logo in-app** (`ic_riptide_logo.xml`): versión 24dp del brand mark para headers
+- **Icono de notificación** (`ic_notification.xml`): versión monocroma para la barra de estado
+- **Splash screen**: `core-splashscreen` 1.0.1, tema `Theme.Riptide.Splash` con fondo #1565C0 y adaptive icon, `installSplashScreen()` en `MainActivity`
+- **Header con logo real**: `MainScreen` + `MainDrawer` usan `ic_riptide_logo` en header; `ic_waves` queda solo para el botón del drawer
+- Feature graphic 1024×500 → diferido a Fase 3 (Store Prep)
+
+---
+
 ## Fase 1 — Producto completo
 
-### Sprint Logo & Branding ← SIGUIENTE
-
-- **Concepto**: ola/corriente marina dinámica — simboliza impulso constante, no empujón aislado. No es un momento, es una tendencia.
-- Logo Riptide (vector SVG → Android Vector Drawable)
-- Adaptive Icon Android (foreground vector + background color/gradient)
-- Splash screen
-- Header (`MainScreen` + `MainDrawer`) con logo real (`ic_waves` queda solo para el botón del drawer)
-- Feature graphic 1024×500 para Play Store
-
-### Sprint Widget Android
+### Sprint Widget Android ← SIGUIENTE
 
 - Widget Glance: tareas del día + barra de progreso
 - Actualización vía WorkManager

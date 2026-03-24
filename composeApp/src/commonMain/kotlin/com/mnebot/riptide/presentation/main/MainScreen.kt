@@ -767,10 +767,10 @@ private fun MainHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(Res.drawable.ic_waves),
+                painter = painterResource(Res.drawable.ic_riptide_logo),
                 contentDescription = null,
                 tint = TextPrimary,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
