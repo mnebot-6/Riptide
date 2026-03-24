@@ -5,6 +5,9 @@ import com.mnebot.riptide.data.local.entity.DayTaskEntity
 
 @Dao
 interface DayTaskDao {
+    @Query("SELECT * FROM day_tasks WHERE id = :id")
+    suspend fun getById(id: String): DayTaskEntity?
+
     @Query("SELECT * FROM day_tasks WHERE date = :date ORDER BY time ASC, title ASC")
     suspend fun getByDate(date: String): List<DayTaskEntity>
 
