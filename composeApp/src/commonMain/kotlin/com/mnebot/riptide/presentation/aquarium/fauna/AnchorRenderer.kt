@@ -40,10 +40,6 @@ object AnchorRenderer : CreatureRenderer {
         val ringR = (3.5f + level * 0.18f) * s
         drawCircle(
             AnchorIron, ringR,
-            style = Stroke(width = (shaftW * 0.9f).coerceAtLeast(0.8f))
-        )
-        drawCircle(
-            AnchorIron, ringR,
             center = Offset(x, topY + ringR),
             style = Stroke(width = (shaftW * 0.9f).coerceAtLeast(0.8f))
         )

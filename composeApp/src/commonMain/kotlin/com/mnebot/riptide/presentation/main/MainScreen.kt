@@ -463,9 +463,15 @@ fun MainScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("🎁", fontSize = 56.sp)
                             Text(
-                                stringResource(Res.string.msg_lootbox_level, currentLootbox.categoryLevel),
+                                if (currentLootbox.directSpecies != null) "✨" else "🎁",
+                                fontSize = 56.sp
+                            )
+                            Text(
+                                if (currentLootbox.directSpecies != null)
+                                    stringResource(Res.string.msg_decoration_unlock)
+                                else
+                                    stringResource(Res.string.msg_lootbox_level, currentLootbox.categoryLevel),
                                 color = TextSecondary,
                                 fontSize = 14.sp,
                                 textAlign = TextAlign.Center
@@ -479,8 +485,9 @@ fun MainScreen(
                     }
                 )
             } else {
-                // Estado 2: Especie revelada → pedir nombre
+                // Estado 2: Especie revelada → pedir nombre (sólo fauna/flora, no decoración)
                 var nickname by remember(revealedSpecies) { mutableStateOf("") }
+                val isDecoration = revealedSpecies.category == MarineCategory.DECORATION
                 val rarityColor = when (revealedSpecies.rarity) {
                     com.mnebot.riptide.domain.model.CreatureRarity.COMMON -> Color(0xFF9E9E9E)
                     com.mnebot.riptide.domain.model.CreatureRarity.UNCOMMON -> Color(0xFF4CAF50)
@@ -509,30 +516,32 @@ fun MainScreen(
                                 stringResource(revealedSpecies.rarity.displayNameRes()),
                                 color = rarityColor, fontSize = 12.sp, fontWeight = FontWeight.Bold
                             )
-                            Text(
-                                stringResource(Res.string.msg_creature_name_prompt),
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center
-                            )
-                            OutlinedTextField(
-                                value = nickname,
-                                onValueChange = { nickname = it },
-                                placeholder = { Text(stringResource(Res.string.placeholder_nickname), color = TextSecondary) },
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
-                                    focusedBorderColor = Color(0xFF7EC8E3),
-                                    unfocusedBorderColor = TextSecondary
+                            if (!isDecoration) {
+                                Text(
+                                    stringResource(Res.string.msg_creature_name_prompt),
+                                    color = TextSecondary,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center
                                 )
-                            )
+                                OutlinedTextField(
+                                    value = nickname,
+                                    onValueChange = { nickname = it },
+                                    placeholder = { Text(stringResource(Res.string.placeholder_nickname), color = TextSecondary) },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = TextPrimary,
+                                        unfocusedTextColor = TextPrimary,
+                                        focusedBorderColor = Color(0xFF7EC8E3),
+                                        unfocusedBorderColor = TextSecondary
+                                    )
+                                )
+                            }
                         }
                     },
                     confirmButton = {
                         TextButton(
                             onClick = { viewModel.confirmUnlock(revealedSpecies, nickname) },
-                            enabled = nickname.isNotBlank()
+                            enabled = isDecoration || nickname.isNotBlank()
                         ) {
                             Text(stringResource(Res.string.btn_welcome_creature), color = Color(0xFF7EC8E3))
                         }

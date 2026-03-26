@@ -46,4 +46,7 @@ interface DayTaskDao {
 
     @Query("SELECT * FROM day_tasks WHERE date >= :from AND date <= :to AND status IN ('COMPLETED','EXPIRED') ORDER BY date DESC, time ASC")
     suspend fun getCompletedRange(from: String, to: String): List<DayTaskEntity>
+
+    @Query("SELECT COUNT(*) FROM day_tasks WHERE status = 'COMPLETED'")
+    suspend fun countCompleted(): Int
 }

@@ -44,4 +44,7 @@ class FakeDayTaskRepository : DayTaskRepository {
     override suspend fun deleteBySourceId(sourceTaskId: String) {}
     override suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate) {}
     override suspend fun getCompletedRange(from: LocalDate, to: LocalDate): List<DayTask> = emptyList()
+
+    override suspend fun countCompletedAllTime(): Int =
+        tasks.count { it.status == TaskStatus.COMPLETED }
 }

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mnebot.riptide.TaskReminderScheduler
+import com.mnebot.riptide.domain.DecorationUnlockChecker
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.LootboxResolver
 import com.mnebot.riptide.domain.MarineCategoryAssigner
@@ -49,6 +50,7 @@ class MainViewModel(
     private val ecosystemStateRepository: EcosystemStateRepository,
     private val marineCreatureRepository: MarineCreatureRepository,
     private val taskReminderScheduler: TaskReminderScheduler? = null,
+    private val decorationUnlockChecker: DecorationUnlockChecker? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -58,6 +60,9 @@ class MainViewModel(
         viewModelScope.launch {
             recurringTaskGenerator.generateUpTo(currentDate(), daysAhead = 7)
             loadDay(_uiState.value.selectedDate)
+            decorationUnlockChecker?.checkAll()
+            // Pick up any lootboxes queued by checkAll (e.g. decoration unlocks)
+            checkPendingLootboxes()
         }
     }
 
@@ -459,21 +464,25 @@ class MainViewModel(
     fun confirmUnlock(spec: CreatureSpec, nickname: String) {
         viewModelScope.launch {
             val lootbox = _uiState.value.pendingLootboxes.firstOrNull()
-            val ecosystemState = _uiState.value.ecosystemByCategory[spec.category]
-            if (ecosystemState != null) {
-                marineCreatureRepository.insert(
-                    MarineCreature(
-                        id = generateUUID(),
-                        ecosystemId = ecosystemState.id,
-                        species = spec.species,
-                        nickname = nickname.trim(),
-                        unlockedAtLevel = lootbox?.categoryLevel ?: ecosystemState.currentLevel,
-                        experience = 0,
-                        creatureLevel = 1,
-                        unlockedAt = Clock.System.now()
-                            .toLocalDateTime(TimeZone.currentSystemDefault())
+            // Decoration lootboxes (directSpecies != null) already have their creature inserted
+            // by DecorationUnlockChecker.doUnlock() — skip re-insertion to avoid duplicates.
+            if (lootbox?.directSpecies == null) {
+                val ecosystemState = _uiState.value.ecosystemByCategory[spec.category]
+                if (ecosystemState != null) {
+                    marineCreatureRepository.insert(
+                        MarineCreature(
+                            id = generateUUID(),
+                            ecosystemId = ecosystemState.id,
+                            species = spec.species,
+                            nickname = nickname.trim().takeIf { it.isNotBlank() },
+                            unlockedAtLevel = lootbox?.categoryLevel ?: ecosystemState.currentLevel,
+                            experience = 0,
+                            creatureLevel = 1,
+                            unlockedAt = Clock.System.now()
+                                .toLocalDateTime(TimeZone.currentSystemDefault())
+                        )
                     )
-                )
+                }
             }
             _uiState.update {
                 it.copy(

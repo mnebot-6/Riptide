@@ -26,8 +26,21 @@ class EcosystemProcessor(
             categories
         }
         if (targets.isEmpty()) return emptyList()
+
         val xpEach = EcosystemLevelCalculator.XP_PER_TASK / targets.size
-        return targets.flatMap { addXp(it, xpEach) }
+        val spilloverTarget = findSpilloverTarget(excludes = targets)
+
+        return targets.flatMap { target ->
+            if (spilloverTarget != null) {
+                val actualXp    = (xpEach * 0.80).toInt()
+                val spilloverXp = xpEach - actualXp
+                val main  = addXp(target, actualXp)
+                val spill = addXp(spilloverTarget, spilloverXp, fromSpillover = true)
+                main + spill
+            } else {
+                addXp(target, xpEach)
+            }
+        }.distinctBy { it.category to it.categoryLevel }
     }
 
     suspend fun addNightBonus(
@@ -43,29 +56,62 @@ class EcosystemProcessor(
             categories
         }
         if (targets.isEmpty()) return emptyList()
+
         val bonus = EcosystemLevelCalculator.nightBonus(score, bestStreak)
         if (bonus == 0) return emptyList()
+
         val xpEach = bonus / targets.size
-        return targets.flatMap { addXp(it, xpEach) }
+        val spilloverTarget = findSpilloverTarget(excludes = targets)
+
+        return targets.flatMap { target ->
+            if (spilloverTarget != null) {
+                val actualXp    = (xpEach * 0.80).toInt()
+                val spilloverXp = xpEach - actualXp
+                val main  = addXp(target, actualXp)
+                val spill = addXp(spilloverTarget, spilloverXp, fromSpillover = true)
+                main + spill
+            } else {
+                addXp(target, xpEach)
+            }
+        }.distinctBy { it.category to it.categoryLevel }
+    }
+
+    /**
+     * Returns the unlocked non-DECORATION category with least [EcosystemState.totalExperience],
+     * excluding any category already in [excludes].
+     * Returns null when no valid candidate exists.
+     * On tie, picks randomly among tied candidates.
+     */
+    private suspend fun findSpilloverTarget(excludes: List<MarineCategory>): MarineCategory? {
+        val candidates = ecosystemStateRepository.getUnlocked()
+            .filter { it.category != MarineCategory.DECORATION }
+            .filter { it.category !in excludes }
+        if (candidates.isEmpty()) return null
+        val minXp = candidates.minOf { it.totalExperience }
+        val tied  = candidates.filter { it.totalExperience == minXp }
+        return tied[Random.nextInt(tied.size)].category
     }
 
     private suspend fun addXp(
         category: MarineCategory,
         xp: Int,
-        fromOverflow: Boolean = false
+        fromOverflow: Boolean = false,
+        fromSpillover: Boolean = false
     ): List<PendingLootbox> {
         if (xp <= 0) return emptyList()
 
         // ── XP overflow: si todas las especies de la categoría están desbloqueadas,
         //    50% del XP va a la categoría con menor nivel (catch-up) ──
+        // Neither overflow nor spillover propagate further when already redistributed
         val allSpecsInCategory = allCreatures.filter { it.category == category }
-        val unlockedCreatures = marineCreatureRepository.getByCategory(category)
-        val allUnlocked = unlockedCreatures.size >= allSpecsInCategory.size
+        val unlockedCreatures  = marineCreatureRepository.getByCategory(category)
+        val allUnlocked        = unlockedCreatures.size >= allSpecsInCategory.size
+        val isRedistributed    = fromOverflow || fromSpillover
 
         val actualXp: Int
         var overflowLootboxes: List<PendingLootbox> = emptyList()
 
-        if (allUnlocked && !fromOverflow) {
+        if (allUnlocked && !isRedistributed) {
             actualXp = xp / 2
             val overflow = xp - actualXp
             if (overflow > 0) {
@@ -75,11 +121,11 @@ class EcosystemProcessor(
             actualXp = xp
         }
 
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val now      = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val existing = ecosystemStateRepository.getByCategory(category)
 
         val oldLevel = if (existing == null) 1 else existing.currentLevel
-        val newXp = (existing?.totalExperience ?: 0) + actualXp
+        val newXp    = (existing?.totalExperience ?: 0) + actualXp
         val newLevel = EcosystemLevelCalculator.levelForXp(newXp)
 
         if (existing == null) {
@@ -109,7 +155,7 @@ class EcosystemProcessor(
             val xpPerCreature = actualXp / creatures.size
             if (xpPerCreature > 0) {
                 creatures.forEach { creature ->
-                    val newCreatureXp = creature.experience + xpPerCreature
+                    val newCreatureXp    = creature.experience + xpPerCreature
                     val newCreatureLevel = EcosystemLevelCalculator.levelForXp(newCreatureXp)
                     marineCreatureRepository.update(
                         creature.copy(
@@ -121,13 +167,12 @@ class EcosystemProcessor(
             }
         }
 
-        // ── Detección de lootbox (reemplaza unlock detection fija) ──
-        val unlockLevels = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
+        // ── Detección de lootbox ──
+        val unlockLevels    = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
         val triggeredLevels = unlockLevels.filter { it in (oldLevel + 1)..newLevel }
 
-        // Solo generar lootboxes si hay especies por desbloquear
-        val unlockedCount = marineCreatureRepository.getByCategory(category).size
-        val totalSpecies = allSpecsInCategory.size
+        val unlockedCount  = marineCreatureRepository.getByCategory(category).size
+        val totalSpecies   = allSpecsInCategory.size
         val availableSlots = (totalSpecies - unlockedCount).coerceAtLeast(0)
         val lootboxes = triggeredLevels.take(availableSlots).map { level ->
             PendingLootbox(category = category, categoryLevel = level)
@@ -150,22 +195,19 @@ class EcosystemProcessor(
             .filter { it.category != MarineCategory.DECORATION }
             .filter { it.category != sourceCategory }
             .filter { state ->
-                val specsInCat = allCreatures.count { it.category == state.category }
+                val specsInCat    = allCreatures.count { it.category == state.category }
                 val unlockedInCat = marineCreatureRepository.getByCategory(state.category).size
-                unlockedInCat < specsInCat // aún tiene especies por desbloquear
+                unlockedInCat < specsInCat
             }
-
         if (candidates.isEmpty()) return emptyList()
-
         val minLevel = candidates.minOf { it.currentLevel }
-        val tied = candidates.filter { it.currentLevel == minLevel }
-        val target = tied[Random.nextInt(tied.size)]
-
+        val tied     = candidates.filter { it.currentLevel == minLevel }
+        val target   = tied[Random.nextInt(tied.size)]
         return addXp(target.category, overflowXp, fromOverflow = true)
     }
 
     suspend fun unlockCategory(category: MarineCategory) {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val now      = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val existing = ecosystemStateRepository.getByCategory(category)
         if (existing == null) {
             ecosystemStateRepository.insert(

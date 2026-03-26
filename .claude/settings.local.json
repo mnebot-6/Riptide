@@ -16,7 +16,13 @@
       "Bash(ruflo memory:*)",
       "Bash(ruflo status:*)",
       "WebFetch(domain:api.github.com)",
-      "Bash(ruflo daemon:*)"
+      "Bash(ruflo daemon:*)",
+      "Bash(git -C \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\" add docs/superpowers/plans/2026-03-26-ecosystem-spillover-decorations.md)",
+      "Bash(git -C \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\" commit -m \"docs: add implementation plan for ecosystem spillover and decoration unlocks\")",
+      "Bash(./gradlew testDebugUnitTest --tests \"com.mnebot.riptide.domain.EcosystemProcessorSpilloverTest\" --tests \"com.mnebot.riptide.domain.DecorationUnlockCheckerTest\")",
+      "Bash(./gradlew testDebugUnitTest)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(./gradlew compileDebugKotlin)"
     ]
   }
 }

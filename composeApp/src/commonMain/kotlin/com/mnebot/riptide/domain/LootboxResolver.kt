@@ -1,6 +1,5 @@
 package com.mnebot.riptide.domain
 
-import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.PendingLootbox
 import com.mnebot.riptide.domain.repository.MarineCreatureRepository
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
@@ -11,11 +10,16 @@ class LootboxResolver(
     private val marineCreatureRepository: MarineCreatureRepository
 ) {
     /**
-     * Resuelve una lootbox: elige una especie aleatoria (ponderada por rareza)
-     * entre las aún no desbloqueadas de la categoría.
-     * Se llama cuando el usuario ABRE la lootbox, no cuando se gana.
+     * Resuelve una lootbox:
+     * - Si [PendingLootbox.directSpecies] != null → devuelve esa especie directamente
+     *   (usado para desbloqueos de decoración por condición específica).
+     * - Si null → elige aleatoriamente (ponderado por rareza) entre las aún no desbloqueadas.
      */
     suspend fun resolve(lootbox: PendingLootbox): CreatureSpec {
+        if (lootbox.directSpecies != null) {
+            return allCreatures.first { it.species == lootbox.directSpecies }
+        }
+
         val allSpecs = allCreatures.filter { it.category == lootbox.category }
         val unlockedSpecies = marineCreatureRepository.getByCategory(lootbox.category)
             .map { it.species }

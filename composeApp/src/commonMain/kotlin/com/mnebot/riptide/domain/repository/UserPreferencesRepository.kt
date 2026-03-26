@@ -27,4 +27,8 @@ interface UserPreferencesRepository {
     // Onboarding
     fun hasCompletedOnboarding(): Flow<Boolean>
     suspend fun setOnboardingCompleted()
+
+    // Live wallpaper
+    suspend fun isWallpaperActivated(): Boolean
+    suspend fun setWallpaperActivated()
 }

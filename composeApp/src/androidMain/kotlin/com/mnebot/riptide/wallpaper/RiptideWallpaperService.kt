@@ -9,6 +9,14 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.repository.DaySummaryRepositoryImpl
+import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
+import com.mnebot.riptide.domain.DecorationUnlockChecker
+import com.mnebot.riptide.domain.EcosystemProcessor
+import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
+import com.mnebot.riptide.data.repository.MarineCreatureRepositoryImpl
 import com.mnebot.riptide.presentation.aquarium.drawAquariumBackground
 import com.mnebot.riptide.presentation.aquarium.drawAquariumCreatures
 import com.mnebot.riptide.presentation.aquarium.getCurrentHourFraction
@@ -31,6 +39,18 @@ class RiptideWallpaperService : WallpaperService() {
     inner class RiptideEngine : Engine() {
         private val dataProvider by lazy { WallpaperDataProvider(applicationContext) }
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+        // Repos + checker created lazily on first use (avoids DB open at service start)
+        private val wallpaperPrefs by lazy { UserPreferencesRepositoryImpl(applicationContext) }
+        private val decorationChecker by lazy {
+            val db             = DatabaseProvider.getDatabase(applicationContext)
+            val ecoStateRepo   = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+            val creatureRepo   = MarineCreatureRepositoryImpl(db.marineCreatureDao())
+            val daySummaryRepo = DaySummaryRepositoryImpl(db.daySummaryDao())
+            val dayTaskRepo    = DayTaskRepositoryImpl(db.dayTaskDao())
+            val ecoProcessor   = EcosystemProcessor(ecoStateRepo, creatureRepo)
+            DecorationUnlockChecker(daySummaryRepo, dayTaskRepo, creatureRepo, ecoProcessor, wallpaperPrefs)
+        }
         private val canvasDrawScope = CanvasDrawScope()
         private lateinit var density: Density
 
@@ -90,6 +110,15 @@ class RiptideWallpaperService : WallpaperService() {
             if (visible) {
                 startNs = System.nanoTime()
                 Choreographer.getInstance().postFrameCallback(frameCallback)
+                // Marcar wallpaper como activado y comprobar desbloqueo de SUNKEN_SHIP
+                scope.launch {
+                    try {
+                        wallpaperPrefs.setWallpaperActivated()   // persiste el flag
+                        decorationChecker.checkSunkenShip()      // lee el flag y desbloquea si aplica
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error checking decoration unlock", e)
+                    }
+                }
             } else {
                 Choreographer.getInstance().removeFrameCallback(frameCallback)
             }

@@ -219,8 +219,12 @@
     <string name="stats_legend_high">80–99%%</string>
     <string name="stats_legend_perfect">100%%</string>
 
-    <!-- EcosystemScreen — locked hint -->
+    <!-- EcosystemScreen — locked hint (generic + decoration-specific) -->
     <string name="msg_unlock_hint">Complete tasks to unlock</string>
+    <string name="decoration_hint_treasure_chest">7 perfect days in a row (%1$d/7)</string>
+    <string name="decoration_hint_anchor">Complete 100 tasks (%1$d/100)</string>
+    <string name="decoration_hint_sunken_ship">Activate the Riptide wallpaper</string>
+    <string name="msg_decoration_unlock">A special decoration has been added to your aquarium!</string>
 
     <!-- Onboarding — skip -->
     <string name="onboarding_btn_skip">Skip</string>

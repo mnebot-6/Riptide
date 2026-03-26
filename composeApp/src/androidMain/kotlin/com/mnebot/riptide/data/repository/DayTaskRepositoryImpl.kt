@@ -47,4 +47,6 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
 
     override suspend fun getCompletedRange(from: LocalDate, to: LocalDate): List<DayTask> =
         dao.getCompletedRange(from.toString(), to.toString()).map { it.toDomain() }
+
+    override suspend fun countCompletedAllTime(): Int = dao.countCompleted()
 }

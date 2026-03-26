@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.mnebot.riptide.domain.model.CreatureRarity
+import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.displayNameRes
 import org.jetbrains.compose.resources.stringResource
@@ -38,6 +39,7 @@ fun CreatureDetailDialog(
     onNicknameChanged: (String) -> Unit
 ) {
     var nickname by remember(creature.id) { mutableStateOf(creature.nickname ?: "") }
+    val isDecoration = spec.category == MarineCategory.DECORATION
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -51,7 +53,7 @@ fun CreatureDetailDialog(
 
             Spacer(Modifier.height(8.dp))
 
-            // displayName via localized string resource
+            // Species name (always shown)
             Text(
                 text = stringResource(spec.species.displayNameRes()),
                 color = TextPrimary,
@@ -77,50 +79,53 @@ fun CreatureDetailDialog(
 
             Spacer(Modifier.height(12.dp))
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                BasicTextField(
-                    value = nickname,
-                    onValueChange = { nickname = it },
-                    singleLine = true,
-                    cursorBrush = SolidColor(Accent),
-                    textStyle = LocalTextStyle.current.copy(
-                        color = Accent,
-                        fontSize = 15.sp,
-                        textAlign = TextAlign.Center
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) { innerField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (nickname.isEmpty()) {
-                            Text(
-                                text = stringResource(Res.string.placeholder_nickname),
-                                color = TextSecondary,
-                                fontSize = 15.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+            // Nickname field — only for non-decoration creatures
+            if (!isDecoration) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    BasicTextField(
+                        value = nickname,
+                        onValueChange = { nickname = it },
+                        singleLine = true,
+                        cursorBrush = SolidColor(Accent),
+                        textStyle = LocalTextStyle.current.copy(
+                            color = Accent,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { innerField ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (nickname.isEmpty()) {
+                                Text(
+                                    text = stringResource(Res.string.placeholder_nickname),
+                                    color = TextSecondary,
+                                    fontSize = 15.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            innerField()
                         }
-                        innerField()
                     }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(1.dp)
+                            .background(Accent.copy(alpha = 0.4f))
+                    )
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .height(1.dp)
-                        .background(Accent.copy(alpha = 0.4f))
-                )
+                Spacer(Modifier.height(20.dp))
             }
-
-            Spacer(Modifier.height(20.dp))
 
             // xpRequiredForLevel viene de CreatureExtensions.kt
             XpBar(creature = creature)
@@ -142,12 +147,12 @@ fun CreatureDetailDialog(
 
             TextButton(
                 onClick = {
-                    onNicknameChanged(nickname)
+                    if (!isDecoration) onNicknameChanged(nickname)
                     onDismiss()
                 }
             ) {
                 Text(
-                    text = stringResource(Res.string.btn_save),
+                    text = stringResource(if (isDecoration) Res.string.btn_close else Res.string.btn_save),
                     color = Accent,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium

@@ -18,6 +18,7 @@ class NightSummaryProcessor(
     private val blockStreakProcessor: BlockStreakProcessor? = null,
     private val ecosystemProcessor: EcosystemProcessor? = null,
     private val userPreferencesRepository: UserPreferencesRepository? = null,
+    private val decorationUnlockChecker: DecorationUnlockChecker? = null,
 ) {
     // En la firma de processDay, añadir summaryTime:
     suspend fun processDay(
@@ -105,6 +106,9 @@ class NightSummaryProcessor(
             val existing = userPreferencesRepository.getPendingLootboxes()
             userPreferencesRepository.setPendingLootboxes(existing + newLootboxes)
         }
+
+        // Comprobar condiciones de desbloqueo de DECORATION al finalizar el día
+        decorationUnlockChecker?.checkAll()
     }
 
     private fun buildMessage(

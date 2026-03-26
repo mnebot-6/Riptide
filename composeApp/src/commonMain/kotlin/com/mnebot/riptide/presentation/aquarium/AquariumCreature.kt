@@ -173,7 +173,8 @@ val CATEGORY_UNLOCK_LEVELS: Map<MarineCategory, List<Int>> = mapOf(
     MarineCategory.CEPHALOPOD to listOf(2, 4, 6, 8),
     MarineCategory.REPTILE    to listOf(2, 5),
     MarineCategory.MAMMAL     to listOf(2, 5, 8, 11, 14),
-    // DECORATION: sin lootbox, se desbloquean automáticamente
+    // DECORATION: sin niveles de lootbox — se desbloquean por condiciones específicas
+    // (DecorationUnlockChecker): TREASURE_CHEST=7 días perfectos, ANCHOR=100 tareas, SUNKEN_SHIP=wallpaper
 )
 
 val allCreatures = listOf(
@@ -483,7 +484,7 @@ val allCreatures = listOf(
         microWobble = 0.005f, xErraticness = 0.00f,
         tempoVariation = 0.08f, sizeMultiplier = 1.00f),
 
-    // ── DECORATION (fijos, sin lootbox) ──────────────────────────────────────
+    // ── DECORATION (condiciones específicas — ver DecorationUnlockChecker) ───
     CreatureSpec("🪙", CreatureSpecies.TREASURE_CHEST,
         MarineCategory.DECORATION, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f, sizeMultiplier = 0.85f),

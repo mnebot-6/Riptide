@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.CreatureRarity
+import com.mnebot.riptide.domain.model.CreatureSpecies
+import com.mnebot.riptide.domain.model.DecorationProgress
 import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
@@ -46,6 +49,7 @@ private fun rarityColor(rarity: CreatureRarity): Color = when (rarity) {
 fun EcosystemScreen(
     ecosystemByCategory: Map<MarineCategory, EcosystemState>,
     creaturesData: List<MarineCreature>,
+    decorationProgress: DecorationProgress = DecorationProgress(0, 0, false),
     onCreatureNicknameChanged: (String, String) -> Unit,
     onNavigateBack: () -> Unit = {}
 ) {
@@ -126,6 +130,7 @@ fun EcosystemScreen(
                         specs = orderedSpecs,
                         creaturesData = creaturesData,
                         unlockedSpeciesSet = unlockedSpeciesSet,
+                        decorationProgress = decorationProgress,
                         onCreatureTap = { creature, spec ->
                             selectedCreature = creature to spec
                         }
@@ -155,6 +160,7 @@ private fun EcosystemCategorySection(
     specs: List<CreatureSpec>,
     creaturesData: List<MarineCreature>,
     unlockedSpeciesSet: Set<com.mnebot.riptide.domain.model.CreatureSpecies>,
+    decorationProgress: DecorationProgress,
     onCreatureTap: (MarineCreature, CreatureSpec) -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
@@ -227,7 +233,7 @@ private fun EcosystemCategorySection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(IntrinsicSize.Max),
+                    .height(120.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 rowSpecs.forEach { spec ->
@@ -244,7 +250,8 @@ private fun EcosystemCategorySection(
                         } else {
                             LockedCreatureCard(
                                 spec = spec,
-                                unlockedCategory = isUnlocked
+                                unlockedCategory = isUnlocked,
+                                decorationProgress = decorationProgress
                             )
                         }
                     }
@@ -305,8 +312,20 @@ private fun UnlockedCreatureCard(
 @Composable
 private fun LockedCreatureCard(
     spec: CreatureSpec,
-    unlockedCategory: Boolean
+    unlockedCategory: Boolean,
+    decorationProgress: DecorationProgress = DecorationProgress(0, 0, false)
 ) {
+    // Hint text: specific for each decoration species, generic otherwise
+    val hintText: String? = when (spec.species) {
+        CreatureSpecies.TREASURE_CHEST ->
+            stringResource(Res.string.decoration_hint_treasure_chest, decorationProgress.perfectDaysStreak)
+        CreatureSpecies.ANCHOR ->
+            stringResource(Res.string.decoration_hint_anchor, decorationProgress.completedTasksTotal)
+        CreatureSpecies.SUNKEN_SHIP ->
+            stringResource(Res.string.decoration_hint_sunken_ship)
+        else -> if (unlockedCategory) stringResource(Res.string.msg_unlock_hint) else null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -338,13 +357,15 @@ private fun LockedCreatureCard(
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
-        if (unlockedCategory) {
+        if (hintText != null) {
             Text(
-                text = stringResource(Res.string.msg_unlock_hint),
+                text = hintText,
                 color = SectionLabel,
                 fontSize = 9.sp,
                 textAlign = TextAlign.Center,
-                lineHeight = 12.sp
+                lineHeight = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         } else {
             Icon(
