@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,6 +131,19 @@ fun StatsScreen(
                     range = uiState.range,
                     modifier = Modifier.fillMaxWidth().height(160.dp)
                 )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Leyenda de colores (S2)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ChartLegendChip(color = Color(0xFFE57373), label = stringResource(Res.string.stats_legend_low))
+                    ChartLegendChip(color = Color(0xFFFFB74D), label = stringResource(Res.string.stats_legend_medium))
+                    ChartLegendChip(color = Color(0xFF4DD0E1), label = stringResource(Res.string.stats_legend_high))
+                    ChartLegendChip(color = Color(0xFF1A73E8), label = stringResource(Res.string.stats_legend_perfect))
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -220,32 +234,61 @@ private fun CompletionBarChart(
     )
 
     Column(modifier = modifier) {
-        Canvas(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            val barCount = dates.size
-            val totalWidth = size.width
-            val chartHeight = size.height
-            val barWidth = (totalWidth / barCount) * 0.55f
-            val barSpacing = totalWidth / barCount
+        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            // Eje Y (S1): etiquetas 100% / 50% / 0%
+            Column(
+                modifier = Modifier.width(30.dp).fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
+                Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+            }
 
-            dates.forEachIndexed { i, date ->
-                val summary = summaryByDate[date]
-                val pct = if (summary != null && summary.tasksTotal > 0)
-                    summary.tasksCompleted.toFloat() / summary.tasksTotal
-                else 0f
+            Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                val barCount = dates.size
+                val totalWidth = size.width
+                val chartHeight = size.height
+                val barWidth = (totalWidth / barCount) * 0.55f
+                val barSpacing = totalWidth / barCount
 
-                val barColor = completionColor(pct)
-                val barHeight = if (pct > 0f) (chartHeight * pct).coerceAtLeast(6.dp.toPx())
-                               else 4.dp.toPx()
-
-                val left = i * barSpacing + (barSpacing - barWidth) / 2f
-                val top = chartHeight - barHeight
-
-                drawRoundRect(
-                    color = barColor,
-                    topLeft = Offset(left, top),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = CornerRadius(4.dp.toPx())
+                // Líneas de referencia horizontales (S1)
+                val dashEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                drawLine(
+                    color = Color(0x33FFFFFF),
+                    start = Offset(0f, 0f),
+                    end = Offset(totalWidth, 0f),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = dashEffect
                 )
+                drawLine(
+                    color = Color(0x22FFFFFF),
+                    start = Offset(0f, chartHeight * 0.5f),
+                    end = Offset(totalWidth, chartHeight * 0.5f),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = dashEffect
+                )
+
+                dates.forEachIndexed { i, date ->
+                    val summary = summaryByDate[date]
+                    val pct = if (summary != null && summary.tasksTotal > 0)
+                        summary.tasksCompleted.toFloat() / summary.tasksTotal
+                    else 0f
+
+                    val barColor = completionColor(pct)
+                    val barHeight = if (pct > 0f) (chartHeight * pct).coerceAtLeast(6.dp.toPx())
+                                   else 4.dp.toPx()
+
+                    val left = i * barSpacing + (barSpacing - barWidth) / 2f
+                    val top = chartHeight - barHeight
+
+                    drawRoundRect(
+                        color = barColor,
+                        topLeft = Offset(left, top),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = CornerRadius(4.dp.toPx())
+                    )
+                }
             }
         }
 
@@ -254,7 +297,7 @@ private fun CompletionBarChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(24.dp)
-                .padding(top = 4.dp)
+                .padding(top = 4.dp, start = 30.dp)
         ) {
             dates.forEach { date ->
                 val label = when (range) {
@@ -276,6 +319,26 @@ private fun CompletionBarChart(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ChartLegendChip(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.Medium)
     }
 }
 

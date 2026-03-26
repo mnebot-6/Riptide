@@ -203,6 +203,28 @@
     <string name="title_history">Historial</string>
     <string name="history_no_data">Sin tareas completadas en los últimos 90 días</string>
 
+    <!-- TaskFormSheet — validación -->
+    <string name="error_field_required">Este campo es obligatorio</string>
+    <string name="error_block_required">Selecciona un bloque para continuar</string>
+    <string name="dialog_confirm_delete_title">¿Eliminar tarea?</string>
+    <string name="dialog_confirm_delete_body">Esta acción no se puede deshacer.</string>
+
+    <!-- MainScreen — progreso + hint -->
+    <string name="msg_day_progress">%1$d/%2$d hechas</string>
+    <string name="hint_long_press">Mantén una tarea para editarla o eliminarla</string>
+
+    <!-- StatsScreen — leyenda del gráfico -->
+    <string name="stats_legend_low">Menos del 50%%</string>
+    <string name="stats_legend_medium">50–79%%</string>
+    <string name="stats_legend_high">80–99%%</string>
+    <string name="stats_legend_perfect">100%%</string>
+
+    <!-- EcosystemScreen — hint bloqueada -->
+    <string name="msg_unlock_hint">Completa tareas para desbloquear</string>
+
+    <!-- Onboarding — saltar -->
+    <string name="onboarding_btn_skip">Saltar</string>
+
     <!-- Nombres cortos de meses (gráficos y fechas del historial) -->
     <string name="month_jan">Ene</string>
     <string name="month_feb">Feb</string>

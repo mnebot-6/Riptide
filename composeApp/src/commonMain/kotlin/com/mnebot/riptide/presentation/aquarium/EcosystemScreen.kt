@@ -242,7 +242,10 @@ private fun EcosystemCategorySection(
                                 onClick = { onCreatureTap(creature, spec) }
                             )
                         } else {
-                            LockedCreatureCard(spec = spec)
+                            LockedCreatureCard(
+                                spec = spec,
+                                unlockedCategory = isUnlocked
+                            )
                         }
                     }
                 }
@@ -271,14 +274,6 @@ private fun UnlockedCreatureCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Badge de rareza (punto de color)
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(rarityColor(spec.rarity))
-                .align(Alignment.End)
-        )
         CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(52.dp))
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -288,17 +283,30 @@ private fun UnlockedCreatureCard(
             textAlign = TextAlign.Center,
             maxLines = 1
         )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = stringResource(Res.string.label_creature_level, creature.creatureLevel),
-            color = Accent,
-            fontSize = 10.sp
-        )
+        Spacer(modifier = Modifier.height(4.dp))
+        // Rarity chip con texto
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(rarityColor(spec.rarity).copy(alpha = 0.2f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = stringResource(spec.rarity.displayNameRes()).uppercase(),
+                color = rarityColor(spec.rarity),
+                fontSize = 8.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
     }
 }
 
 @Composable
-private fun LockedCreatureCard(spec: CreatureSpec) {
+private fun LockedCreatureCard(
+    spec: CreatureSpec,
+    unlockedCategory: Boolean
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -311,22 +319,40 @@ private fun LockedCreatureCard(spec: CreatureSpec) {
         Text(
             text = spec.emoji,
             fontSize = 32.sp,
-            color = Color.White.copy(alpha = 0.10f)
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        // Badge de rareza (punto de color pero tenue)
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(rarityColor(spec.rarity).copy(alpha = 0.35f))
+            color = Color.White.copy(alpha = 0.25f)
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = stringResource(Res.string.label_locked_creature),
-            color = SectionLabel,
-            fontSize = 10.sp,
-            textAlign = TextAlign.Center
-        )
+        // Rarity chip tenue
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(rarityColor(spec.rarity).copy(alpha = 0.12f))
+                .padding(horizontal = 5.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = stringResource(spec.rarity.displayNameRes()).uppercase(),
+                color = rarityColor(spec.rarity).copy(alpha = 0.5f),
+                fontSize = 8.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        if (unlockedCategory) {
+            Text(
+                text = stringResource(Res.string.msg_unlock_hint),
+                color = SectionLabel,
+                fontSize = 9.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 12.sp
+            )
+        } else {
+            Icon(
+                painter = painterResource(Res.drawable.ic_lock),
+                contentDescription = null,
+                tint = SectionLabel,
+                modifier = Modifier.size(11.dp)
+            )
+        }
     }
 }

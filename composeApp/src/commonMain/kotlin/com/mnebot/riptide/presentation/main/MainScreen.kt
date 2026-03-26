@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -270,52 +271,77 @@ fun MainScreen(
             }
         }
 
-        // Menú contextual
+        // Menú contextual — BottomSheet
         contextMenuTask?.let { task ->
-            AlertDialog(
+            Dialog(
                 onDismissRequest = { contextMenuTask = null },
-                containerColor = OceanMid,
-                title = {
-                    Text(task.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ContextMenuItem(
-                            label = stringResource(Res.string.menu_edit),
-                            painter = painterResource(Res.drawable.ic_pencil)
-                        ) {
-                            if (task.sourceTaskId != null) {
-                                editingScopeTask = task
-                            } else {
-                                editingTask = task
-                            }
-                            contextMenuTask = null
-                        }
-                        if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(listOf(OceanDeep, OceanMid)),
+                                RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                            )
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 12.dp, bottom = 32.dp)
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .width(36.dp)
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x55FFFFFF))
+                                    .align(Alignment.CenterHorizontally)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = task.title,
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.height(16.dp))
                             ContextMenuItem(
-                                label = stringResource(Res.string.menu_postpone),
-                                painter = painterResource(Res.drawable.ic_clock)
+                                label = stringResource(Res.string.menu_edit),
+                                painter = painterResource(Res.drawable.ic_pencil)
                             ) {
-                                postponingTask = task
+                                if (task.sourceTaskId != null) {
+                                    editingScopeTask = task
+                                } else {
+                                    editingTask = task
+                                }
+                                contextMenuTask = null
+                            }
+                            if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.EXPIRED) {
+                                ContextMenuItem(
+                                    label = stringResource(Res.string.menu_postpone),
+                                    painter = painterResource(Res.drawable.ic_clock)
+                                ) {
+                                    postponingTask = task
+                                    contextMenuTask = null
+                                }
+                            }
+                            ContextMenuItem(
+                                label = stringResource(Res.string.menu_delete),
+                                painter = painterResource(Res.drawable.ic_trash),
+                                tint = Color(0xFFEA4335)
+                            ) {
+                                if (task.sourceTaskId != null) {
+                                    deletingRecurringTask = task
+                                } else {
+                                    viewModel.deleteTask(task)
+                                }
                                 contextMenuTask = null
                             }
                         }
-                        ContextMenuItem(
-                            label = stringResource(Res.string.menu_delete),
-                            painter = painterResource(Res.drawable.ic_trash),
-                            tint = Color(0xFFEA4335)
-                        ) {
-                            if (task.sourceTaskId != null) {
-                                deletingRecurringTask = task
-                            } else {
-                                viewModel.deleteTask(task)
-                            }
-                            contextMenuTask = null
-                        }
                     }
-                },
-                confirmButton = {}
-            )
+                }
+            }
         }
 
         selectedCreature?.let { (creature, spec) ->
@@ -442,7 +468,7 @@ fun MainScreen(
                                 stringResource(Res.string.msg_lootbox_level, currentLootbox.categoryLevel),
                                 color = TextSecondary,
                                 fontSize = 14.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = TextAlign.Center
                             )
                         }
                     },
@@ -487,7 +513,7 @@ fun MainScreen(
                                 stringResource(Res.string.msg_creature_name_prompt),
                                 color = TextSecondary,
                                 fontSize = 14.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = TextAlign.Center
                             )
                             OutlinedTextField(
                                 value = nickname,
@@ -762,17 +788,21 @@ private fun MainHeader(
             .mapKeys { it.key!! }
     }
 
+    val allTasksToday = remember(tasksByBlock) { tasksByBlock.values.flatten() }
+    val totalTasks = allTasksToday.size
+    val completedTasks = allTasksToday.count { it.status == TaskStatus.COMPLETED }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         // Fila superior: nombre + acciones
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_riptide_logo),
@@ -781,15 +811,44 @@ private fun MainHeader(
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                stringResource(Res.string.app_name),
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+            Column(
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                Text(
+                    stringResource(Res.string.app_name),
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
 
-            // Racha global (solo visible si >= 2 días consecutivos)
+                // Progreso del día (X/Y hechas)
+                /* if (totalTasks > 0) {
+                    val allDone = completedTasks == totalTasks
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (allDone) Color(0x331A73E8) else CardBackground)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.msg_day_progress, completedTasks, totalTasks),
+                            color = if (allDone) Color(0xFF7EC8E3) else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                } */
+            }
+
+            // Volver a hoy (solo visible si no estamos en hoy)
+            if (selectedDate != today) {
+                HeaderIconButton(painter = painterResource(Res.drawable.ic_history), onClick = onTodayClick)
+                Spacer(modifier = Modifier.width(4.dp))
+            } else // Racha global (solo visible si >= 2 días consecutivos)
             if (globalStreak >= 2) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -813,12 +872,6 @@ private fun MainHeader(
                     )
                 }
                 Spacer(modifier = Modifier.width(6.dp))
-            }
-
-            // Volver a hoy (solo visible si no estamos en hoy)
-            if (selectedDate != today) {
-                HeaderIconButton(painter = painterResource(Res.drawable.ic_history), onClick = onTodayClick)
-                Spacer(modifier = Modifier.width(4.dp))
             }
 
             HeaderIconButton(painter = painterResource(Res.drawable.ic_calendar), onClick = onCalendarClick)
@@ -845,7 +898,7 @@ private fun MainHeader(
 private fun HeaderIconButton(painter: Painter, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(CardBackground)
             .clickable { onClick() },
@@ -855,7 +908,7 @@ private fun HeaderIconButton(painter: Painter, onClick: () -> Unit) {
             painter = painter,
             contentDescription = null,
             tint = TextPrimary,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -918,6 +971,17 @@ private fun MainContent(
                         onTaskToggle = onTaskToggle,
                         onTaskLongPress = onTaskLongPress,
                         onHeaderLongPress = onBlockHeaderLongPress
+                    )
+                }
+                item {
+                    Text(
+                        text = stringResource(Res.string.hint_long_press),
+                        color = Color(0x44FFFFFF),
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
             }

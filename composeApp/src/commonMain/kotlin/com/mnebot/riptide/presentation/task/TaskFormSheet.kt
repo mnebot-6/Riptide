@@ -10,10 +10,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +44,7 @@ private val CardBackground = Color(0x33FFFFFF)
 private val CardBorder = Color(0x55FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
-private val SectionLabel = Color(0x80FFFFFF)
+private val SectionLabel = Color(0xB3FFFFFF)
 
 @Composable
 fun TaskFormSheet(
@@ -60,6 +62,9 @@ fun TaskFormSheet(
     var title by remember { mutableStateOf(existingTask?.title ?: "") }
     var selectedBlockId by remember { mutableStateOf<String?>(initialBlockId ?: existingTask?.blockId) }
     var isRecurring by remember { mutableStateOf(forceRecurring) }
+    var titleError by remember { mutableStateOf(false) }
+    var blockError by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val initialSchedule = existingTask?.schedule as? TaskSchedule.OneTime
     var selectedDate by remember { mutableStateOf<LocalDate?>(initialSchedule?.date ?: initialDate) }
@@ -292,6 +297,24 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Validation error messages
+            if (titleError) {
+                Text(
+                    text = stringResource(Res.string.error_field_required),
+                    color = Color(0xFFEA4335),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            if (blockError) {
+                Text(
+                    text = stringResource(Res.string.error_block_required),
+                    color = Color(0xFFEA4335),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -315,15 +338,18 @@ fun TaskFormSheet(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF1A73E8))
                         .clickable {
-                            if (title.isBlank()) return@clickable
+                            titleError = title.isBlank()
                             if (!isRecurring) {
+                                blockError = false
+                                if (title.isBlank()) return@clickable
                                 val date = selectedDate ?: currentDate()
                                 onSaveOneTime(title, selectedBlockId, date, selectedTime, notificationsEnabled)
                             } else {
-                                val blockId = selectedBlockId ?: return@clickable
+                                blockError = selectedBlockId == null
+                                if (title.isBlank() || selectedBlockId == null) return@clickable
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
-                                onSaveRecurring(title, blockId, recurringTime, Recurrence.Weekly(slots), notificationsEnabled)
+                                onSaveRecurring(title, selectedBlockId!!, recurringTime, Recurrence.Weekly(slots), notificationsEnabled)
                             }
                         }
                         .padding(vertical = 14.dp),
@@ -340,12 +366,38 @@ fun TaskFormSheet(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0x33EA4335))
-                        .clickable { onDelete() }
+                        .clickable { showDeleteConfirm = true }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(stringResource(Res.string.btn_delete_task), color = Color(0xFFEA4335), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
+            }
+
+            if (showDeleteConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    containerColor = Color(0xFF1B3A6B),
+                    title = {
+                        Text(stringResource(Res.string.dialog_confirm_delete_title), color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    },
+                    text = {
+                        Text(stringResource(Res.string.dialog_confirm_delete_body), color = TextSecondary, fontSize = 14.sp)
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDeleteConfirm = false
+                            onDelete?.invoke()
+                        }) {
+                            Text(stringResource(Res.string.menu_delete), color = Color(0xFFEA4335), fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false }) {
+                            Text(stringResource(Res.string.btn_cancel), color = TextSecondary)
+                        }
+                    }
+                )
             }
         }
     }

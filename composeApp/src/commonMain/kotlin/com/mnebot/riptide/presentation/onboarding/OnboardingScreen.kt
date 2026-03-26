@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.Res
 import riptide.composeapp.generated.resources.onboarding_btn_next
+import riptide.composeapp.generated.resources.onboarding_btn_skip
 import riptide.composeapp.generated.resources.onboarding_btn_start
 import riptide.composeapp.generated.resources.onboarding_ecosystem_body
 import riptide.composeapp.generated.resources.onboarding_ecosystem_lootbox
@@ -130,6 +132,23 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 )
             )
     ) {
+
+        // ── Botón Saltar (esquina superior derecha, pasos 0–2) ────────────────
+        if (currentStep < pages.size - 1) {
+            TextButton(
+                onClick = { onComplete() },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(end = 8.dp, top = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.onboarding_btn_skip),
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            }
+        }
 
         // ── Page content ──────────────────────────────────────────────────────
         AnimatedContent(
