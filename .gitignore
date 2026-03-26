@@ -17,3 +17,14 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Ruflo runtime data
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.swarm/
+.claude/memory.db
+
+# Ruflo boilerplate (regenerable con `ruflo init`)
+.claude/agents/
+.claude/skills/

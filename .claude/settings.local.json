@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm --version)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install:*)",
+      "Bash(ruflo --version)",
+      "Bash(claude mcp:*)",
+      "Bash(claude.cmd mcp:*)",
+      "Bash(claude.exe mcp:*)",
+      "Bash(ruflo mcp:*)",
+      "Bash(ruflo init:*)",
+      "Bash(ruflo doctor:*)",
+      "Bash(ruflo memory:*)",
+      "Bash(ruflo status:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(ruflo daemon:*)"
     ]
   }
 }
