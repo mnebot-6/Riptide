@@ -22,7 +22,9 @@
       "Bash(./gradlew testDebugUnitTest --tests \"com.mnebot.riptide.domain.EcosystemProcessorSpilloverTest\" --tests \"com.mnebot.riptide.domain.DecorationUnlockCheckerTest\")",
       "Bash(./gradlew testDebugUnitTest)",
       "Bash(./gradlew assembleDebug)",
-      "Bash(./gradlew compileDebugKotlin)"
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(gh pr:*)",
+      "Bash(where gh:*)"
     ]
   }
 }
