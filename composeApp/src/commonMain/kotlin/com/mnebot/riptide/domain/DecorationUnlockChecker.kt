@@ -60,6 +60,18 @@ class DecorationUnlockChecker(
         return doUnlock(CreatureSpecies.SUNKEN_SHIP)
     }
 
+    /**
+     * BIMBA 🐾: easter egg — se desbloquea al completar cualquier tarea cuyo título
+     * contenga "premio" o "treat" (sin distinguir mayúsculas/minúsculas).
+     * Solo puede desbloquearse una vez; después de eso la llamada es no-op.
+     */
+    suspend fun checkBimba(taskTitle: String): CreatureSpecies? {
+        if (isCompanionAlreadyUnlocked(CreatureSpecies.BIMBA)) return null
+        val lower = taskTitle.lowercase()
+        if ("premio" !in lower && "treat" !in lower) return null
+        return doUnlockCompanion(CreatureSpecies.BIMBA)
+    }
+
     /** Returns decoration unlock progress for UI display. */
     suspend fun getProgress(): DecorationProgress {
         val latest = daySummaryRepository.getLatestN(7)
@@ -74,6 +86,36 @@ class DecorationUnlockChecker(
     private suspend fun isAlreadyUnlocked(species: CreatureSpecies): Boolean =
         marineCreatureRepository.getByCategory(MarineCategory.DECORATION)
             .any { it.species == species }
+
+    private suspend fun isCompanionAlreadyUnlocked(species: CreatureSpecies): Boolean =
+        marineCreatureRepository.getByCategory(MarineCategory.COMPANION)
+            .any { it.species == species }
+
+    private suspend fun doUnlockCompanion(species: CreatureSpecies): CreatureSpecies {
+        ecosystemProcessor.unlockCategory(MarineCategory.COMPANION)
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        marineCreatureRepository.insert(
+            MarineCreature(
+                id = generateUUID(),
+                ecosystemId = MarineCategory.COMPANION.name,
+                species = species,
+                nickname = null,
+                unlockedAtLevel = 1,
+                experience = 0,
+                creatureLevel = 1,
+                unlockedAt = now
+            )
+        )
+        val existing = userPreferencesRepository.getPendingLootboxes()
+        userPreferencesRepository.setPendingLootboxes(
+            existing + PendingLootbox(
+                category = MarineCategory.COMPANION,
+                categoryLevel = 0,
+                directSpecies = species
+            )
+        )
+        return species
+    }
 
     private suspend fun doUnlock(species: CreatureSpecies): CreatureSpecies {
         // 1. Unlock DECORATION category (idempotent)

@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.CreatureSpecies
 import com.mnebot.riptide.presentation.aquarium.fauna.AnchorRenderer
+import com.mnebot.riptide.presentation.aquarium.fauna.BimbaRenderer
 import com.mnebot.riptide.presentation.aquarium.fauna.AngelfishRenderer
 import com.mnebot.riptide.presentation.aquarium.fauna.BarracudaRenderer
 import com.mnebot.riptide.presentation.aquarium.fauna.BarnacleRenderer
@@ -114,6 +115,8 @@ private val renderers = mapOf<CreatureSpecies, CreatureRenderer>(
     CreatureSpecies.TREASURE_CHEST      to TreasureChestRenderer,
     CreatureSpecies.ANCHOR              to AnchorRenderer,
     CreatureSpecies.SUNKEN_SHIP         to SunkenShipRenderer,
+    // ── COMPANION (easter egg) ────────────────────────────────────────────────
+    CreatureSpecies.BIMBA               to BimbaRenderer,
 )
 
 fun rendererFor(species: CreatureSpecies): CreatureRenderer? = renderers[species]

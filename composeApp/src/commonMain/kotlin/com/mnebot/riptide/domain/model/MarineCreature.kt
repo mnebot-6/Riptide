@@ -59,7 +59,10 @@ enum class CreatureSpecies(val category: MarineCategory, val displayName: String
     // DECORATION
     TREASURE_CHEST(MarineCategory.DECORATION, "Cofre del tesoro"),
     ANCHOR(MarineCategory.DECORATION, "Ancla"),
-    SUNKEN_SHIP(MarineCategory.DECORATION, "Barco hundido")
+    SUNKEN_SHIP(MarineCategory.DECORATION, "Barco hundido"),
+
+    // COMPANION — easter egg oculto
+    BIMBA(MarineCategory.COMPANION, "Bimba")
 }
 
 data class MarineCreature(

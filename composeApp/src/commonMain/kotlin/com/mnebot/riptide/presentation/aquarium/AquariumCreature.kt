@@ -496,6 +496,16 @@ val allCreatures = listOf(
     CreatureSpec("🚢", CreatureSpecies.SUNKEN_SHIP,
         MarineCategory.DECORATION, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f, sizeMultiplier = 1.25f),
+
+    // ── COMPANION (easter egg — nada en la superficie) ────────────────────────
+    // Bimba: labrador amarilla de 12 años, 3 patas, ama el agua 🐾
+    CreatureSpec("🐾", CreatureSpecies.BIMBA,
+        MarineCategory.COMPANION, CreatureRarity.LEGENDARY, 0, 0.08f, -0.005f, SwimZone.SURFACE,
+        personalYFraction = 0.14f, waveCount = 3, erraticness = 0.25f,
+        driftSpeed = 0.38f, driftAmplitude = 0.30f, pauseFraction = 0.08f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.85f,
+        microWobble = 0.018f, xErraticness = 0.08f,
+        tempoVariation = 0.20f, sizeMultiplier = 1.10f),
 )
 
 // ── Posición X de criaturas fijas ─────────────────────────────────────────────

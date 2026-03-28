@@ -60,6 +60,7 @@ fun CreatureSpecies.displayNameRes(): StringResource = when (this) {
     CreatureSpecies.TREASURE_CHEST -> Res.string.species_treasure_chest
     CreatureSpecies.ANCHOR -> Res.string.species_anchor
     CreatureSpecies.SUNKEN_SHIP -> Res.string.species_sunken_ship
+    CreatureSpecies.BIMBA -> Res.string.species_bimba
 }
 
 fun MarineCategory.displayNameRes(): StringResource = when (this) {
@@ -72,6 +73,7 @@ fun MarineCategory.displayNameRes(): StringResource = when (this) {
     MarineCategory.REPTILE -> Res.string.category_reptile
     MarineCategory.MAMMAL -> Res.string.category_mammal
     MarineCategory.DECORATION -> Res.string.category_decoration
+    MarineCategory.COMPANION -> Res.string.category_companion
 }
 
 fun CreatureRarity.displayNameRes(): StringResource = when (this) {

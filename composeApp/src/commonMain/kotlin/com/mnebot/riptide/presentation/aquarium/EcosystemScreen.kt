@@ -100,6 +100,10 @@ fun EcosystemScreen(
                 }
 
                 MarineCategory.entries.forEachIndexed { index, category ->
+                    // COMPANION es invisible hasta que Bimba está desbloqueada
+                    if (category == MarineCategory.COMPANION &&
+                        creaturesData.none { it.species == CreatureSpecies.BIMBA }) return@forEachIndexed
+
                     val state = ecosystemByCategory[category]
                     val isUnlocked = state?.isUnlocked == true
                     val categoryLevel = state?.currentLevel ?: 0

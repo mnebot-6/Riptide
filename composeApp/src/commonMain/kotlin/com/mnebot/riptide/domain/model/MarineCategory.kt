@@ -9,5 +9,8 @@ enum class MarineCategory(val isUnlockedByDefault: Boolean) {
     CEPHALOPOD(false),
     REPTILE(false),
     MAMMAL(false),
-    DECORATION(false)
+    DECORATION(false),
+
+    // Easter egg — no se muestra hasta desbloquear; no sale por lootbox
+    COMPANION(false)
 }

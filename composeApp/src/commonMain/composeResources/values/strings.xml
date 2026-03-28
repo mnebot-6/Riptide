@@ -158,6 +158,9 @@
     <string name="species_treasure_chest">Treasure Chest</string>
     <string name="species_anchor">Anchor</string>
     <string name="species_sunken_ship">Sunken Ship</string>
+    <!-- Companion easter egg -->
+    <string name="species_bimba">Bimba</string>
+    <string name="category_companion">Companions</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to Riptide</string>

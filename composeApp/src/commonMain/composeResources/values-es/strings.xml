@@ -158,6 +158,9 @@
     <string name="species_treasure_chest">Cofre del tesoro</string>
     <string name="species_anchor">Ancla</string>
     <string name="species_sunken_ship">Barco hundido</string>
+    <!-- Companion easter egg -->
+    <string name="species_bimba">Bimba</string>
+    <string name="category_companion">Compañeros</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Bienvenido a Riptide</string>
