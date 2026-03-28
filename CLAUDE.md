@@ -1,5 +1,10 @@
 # Riptide — Claude Code Reference
 
+## Reglas de trabajo (OBLIGATORIO)
+
+- **NUNCA uses `isolation: "worktree"` al lanzar sub-agentes (Agent tool).** Todos los cambios deben hacerse directamente sobre la rama `master` del repositorio principal. Los worktrees causan confusión y complican el flujo de trabajo.
+- **NUNCA hagas commits en ramas auxiliares.** Siempre trabaja y commitea en `master`.
+
 ## Proyecto
 
 App de productividad personal con sistema de recompensa emocional basado en un ecosistema marino que crece con la consistencia del usuario.
