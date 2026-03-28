@@ -17,8 +17,6 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
-private const val HISTORY_DAYS = 89 // 90 días inclusive
-
 class HistoryViewModel(
     private val dayTaskRepository: DayTaskRepository,
     private val daySummaryRepository: DaySummaryRepository,
@@ -32,12 +30,27 @@ class HistoryViewModel(
         load()
     }
 
+    fun selectRange(range: HistoryRange) {
+        _uiState.update { it.copy(selectedRange = range) }
+        load()
+    }
+
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        applyFilters()
+    }
+
+    fun setBlockFilter(blockId: String?) {
+        _uiState.update { it.copy(selectedBlockId = blockId) }
+        applyFilters()
+    }
+
     private fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val today = currentDate()
-            val from = today.minus(HISTORY_DAYS, DateTimeUnit.DAY)
+            val from = fromDateForRange(_uiState.value.selectedRange, today)
 
             val tasks = dayTaskRepository.getCompletedRange(from, today)
             val summaries = daySummaryRepository.getRange(from, today)
@@ -53,11 +66,39 @@ class HistoryViewModel(
             _uiState.update {
                 it.copy(
                     tasksByDate = tasksByDate,
-                    summaryByDate = summaries.associateBy { it.date },
+                    summaryByDate = summaries.associateBy { s -> s.date },
                     blocks = blocks,
                     isLoading = false
                 )
             }
+            applyFilters()
         }
     }
+
+    private fun applyFilters() {
+        _uiState.update { state ->
+            val query = state.searchQuery.trim().lowercase()
+            val blockId = state.selectedBlockId
+
+            val filtered = state.tasksByDate.mapValues { (_, tasks) ->
+                tasks.filter { task ->
+                    val matchesSearch = query.isEmpty() ||
+                            task.title.lowercase().contains(query)
+                    val matchesBlock = blockId == null ||
+                            task.blockId == blockId
+                    matchesSearch && matchesBlock
+                }
+            }.filterValues { it.isNotEmpty() }
+
+            state.copy(filteredTasksByDate = filtered)
+        }
+    }
+
+    private fun fromDateForRange(range: HistoryRange, today: LocalDate): LocalDate =
+        when (range) {
+            HistoryRange.DAYS_30 -> today.minus(29, DateTimeUnit.DAY)
+            HistoryRange.DAYS_60 -> today.minus(59, DateTimeUnit.DAY)
+            HistoryRange.DAYS_90 -> today.minus(89, DateTimeUnit.DAY)
+            HistoryRange.ALL_TIME -> today.minus(3650, DateTimeUnit.DAY)
+        }
 }

@@ -15,6 +15,9 @@ class FakeDaySummaryRepository : DaySummaryRepository {
     override suspend fun getRange(from: LocalDate, to: LocalDate): List<DaySummary> =
         summaries.values.filter { it.date in from..to }
 
+    override suspend fun getAll(): List<DaySummary> =
+        summaries.values.sortedByDescending { it.date }.toList()
+
     override suspend fun getLatestN(n: Int): List<DaySummary> =
         summaries.values.sortedByDescending { it.date }.take(n)
 }

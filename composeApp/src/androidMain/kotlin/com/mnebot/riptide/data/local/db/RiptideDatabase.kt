@@ -7,6 +7,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mnebot.riptide.data.local.dao.*
 import com.mnebot.riptide.data.local.entity.*
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "ALTER TABLE block_streaks ADD COLUMN longestStreak INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 val MIGRATION_9_10 = object : Migration(9, 10) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL(
@@ -29,7 +37,7 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         EcosystemStateEntity::class,
         MarineCreatureEntity::class
     ],
-    version = 10
+    version = 11
 )
 
 abstract class RiptideDatabase : RoomDatabase() {

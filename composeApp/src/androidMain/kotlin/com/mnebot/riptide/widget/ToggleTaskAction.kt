@@ -7,6 +7,8 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.updateAll
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -16,6 +18,7 @@ class ToggleTaskAction : ActionCallback {
     companion object {
         val TaskIdKey = ActionParameters.Key<String>("task_id")
         private const val TAG = "ToggleTaskAction"
+        private val mutex = Mutex()
     }
 
     override suspend fun onAction(
@@ -25,35 +28,38 @@ class ToggleTaskAction : ActionCallback {
     ) {
         val taskId = parameters[TaskIdKey] ?: return
 
-        try {
-            val db = DatabaseProvider.getDatabase(context)
-            val dao = db.dayTaskDao()
-            val task = dao.getById(taskId) ?: return
+        mutex.withLock {
+            try {
+                val db = DatabaseProvider.getDatabase(context)
+                val dao = db.dayTaskDao()
+                val task = dao.getById(taskId) ?: return
 
-            if (task.status == "COMPLETED") {
-                // Uncomplete: check if night summary exists for this date
-                val summaryExists = task.date?.let {
-                    db.daySummaryDao().getByDate(it) != null
-                } ?: false
-                val newStatus = if (summaryExists) "EXPIRED" else "PENDING"
-                dao.update(task.copy(status = newStatus, completedAt = null))
-            } else {
-                // Complete: set status, timestamp, and reward flag
-                val now = Clock.System.now()
-                    .toLocalDateTime(TimeZone.currentSystemDefault())
-                dao.update(
-                    task.copy(
-                        status = "COMPLETED",
-                        completedAt = now.toString(),
-                        hasBeenRewarded = true
+                if (task.status == "COMPLETED") {
+                    // Uncomplete: check if night summary exists for this date
+                    val summaryExists = task.date?.let {
+                        db.daySummaryDao().getByDate(it) != null
+                    } ?: false
+                    val newStatus = if (summaryExists) "EXPIRED" else "PENDING"
+                    dao.update(task.copy(status = newStatus, completedAt = null))
+                } else {
+                    // Complete: set status and timestamp.
+                    // hasBeenRewarded stays false — the app will award XP when it opens next.
+                    val now = Clock.System.now()
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                    dao.update(
+                        task.copy(
+                            status = "COMPLETED",
+                            completedAt = now.toString(),
+                            hasBeenRewarded = false
+                        )
                     )
-                )
-            }
+                }
 
-            // Refresh all Riptide widgets
-            RiptideWidget().updateAll(context)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error toggling task $taskId", e)
+                // Refresh all Riptide widgets
+                RiptideWidget().updateAll(context)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error toggling task $taskId", e)
+            }
         }
     }
 }

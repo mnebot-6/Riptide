@@ -192,9 +192,15 @@
     <string name="title_stats">Statistics</string>
     <string name="stats_range_week">Week</string>
     <string name="stats_range_month">Month</string>
+    <string name="stats_range_all_time">All Time</string>
     <string name="stats_active_days">Active days</string>
     <string name="stats_total_completed">Completed</string>
     <string name="stats_best_day">Best day</string>
+    <string name="stats_longest_streak">Longest streak</string>
+    <string name="stats_avg_daily">Daily avg</string>
+    <string name="stats_best_week">BEST WEEK</string>
+    <string name="stats_this_month">This month</string>
+    <string name="stats_vs_last_month">vs last month</string>
     <string name="stats_streaks_title">STREAKS BY BLOCK</string>
     <string name="stats_no_streaks">No active streaks yet</string>
     <string name="msg_loading">Loading…</string>
@@ -202,6 +208,13 @@
     <!-- HistoryScreen -->
     <string name="title_history">History</string>
     <string name="history_no_data">No completed tasks in the last 90 days</string>
+    <string name="history_range_30d">30d</string>
+    <string name="history_range_60d">60d</string>
+    <string name="history_range_90d">90d</string>
+    <string name="history_range_all">All</string>
+    <string name="history_search_placeholder">Search tasks…</string>
+    <string name="history_filter_all_blocks">All</string>
+    <string name="history_no_data_filtered">No tasks match your filters</string>
 
     <!-- TaskFormSheet — validation -->
     <string name="error_field_required">This field is required</string>

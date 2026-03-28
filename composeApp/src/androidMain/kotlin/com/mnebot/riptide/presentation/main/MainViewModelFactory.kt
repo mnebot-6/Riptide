@@ -11,6 +11,7 @@ import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.LootboxResolver
 import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
+import com.mnebot.riptide.widget.WidgetUpdater
 
 class MainViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -51,6 +52,7 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
                 ecosystemProcessor        = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo),
                 userPreferencesRepository = userPreferencesRepo
             ),
+            onTaskMutated = { WidgetUpdater.refreshAll(context.applicationContext) },
         ) as T
     }
 }

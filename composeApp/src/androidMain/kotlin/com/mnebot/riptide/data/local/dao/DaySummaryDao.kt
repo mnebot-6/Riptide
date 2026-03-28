@@ -17,6 +17,9 @@ interface DaySummaryDao {
     @Query("SELECT * FROM day_summaries ORDER BY date DESC LIMIT :n")
     suspend fun getLatestN(n: Int): List<DaySummaryEntity>
 
+    @Query("SELECT * FROM day_summaries ORDER BY date DESC")
+    suspend fun getAll(): List<DaySummaryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(summary: DaySummaryEntity)
 }

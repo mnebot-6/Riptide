@@ -21,6 +21,7 @@ import com.mnebot.riptide.presentation.aquarium.drawAquariumBackground
 import com.mnebot.riptide.presentation.aquarium.drawAquariumCreatures
 import com.mnebot.riptide.presentation.aquarium.getCurrentHourFraction
 import com.mnebot.riptide.presentation.aquarium.interpolateSky
+import com.mnebot.riptide.presentation.aquarium.weather.RandomWeatherProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,6 +39,7 @@ class RiptideWallpaperService : WallpaperService() {
 
     inner class RiptideEngine : Engine() {
         private val dataProvider by lazy { WallpaperDataProvider(applicationContext) }
+        private val weatherProvider = RandomWeatherProvider()
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
         // Repos + checker created lazily on first use (avoids DB open at service start)
@@ -139,12 +141,13 @@ class RiptideWallpaperService : WallpaperService() {
                 val size = Size(canvas.width.toFloat(), canvas.height.toFloat())
 
                 canvasDrawScope.draw(density, LayoutDirection.Ltr, composeCanvas, size) {
-                    // Background: sky, ocean, seabed, waves, bubbles
+                    // Background: sky, ocean, seabed, waves, bubbles, weather, lighting, particles
                     val hourFraction = getCurrentHourFraction()
                     val sky = interpolateSky(hourFraction)
                     val swayAngle = cos(elapsedMs * PI / 3000.0).toFloat()
                     val bubbleProgress = (elapsedMs % 8000L) / 8000f
-                    drawAquariumBackground(swayAngle, bubbleProgress, sky)
+                    val weather = weatherProvider.currentWeather(elapsedMs)
+                    drawAquariumBackground(swayAngle, bubbleProgress, sky, weather, elapsedMs, hourFraction)
 
                     // Creatures
                     val data = creatureData ?: return@draw

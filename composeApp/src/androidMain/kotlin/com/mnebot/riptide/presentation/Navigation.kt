@@ -162,7 +162,10 @@ fun NavGraphBuilder.mainGraph(
         val uiState by historyViewModel.uiState.collectAsState()
         HistoryScreen(
             uiState = uiState,
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            onRangeSelected = historyViewModel::selectRange,
+            onSearchQueryChanged = historyViewModel::setSearchQuery,
+            onBlockFilterChanged = historyViewModel::setBlockFilter
         )
     }
 }

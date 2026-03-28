@@ -38,11 +38,12 @@ class BlockStreakProcessor(
                 val oldStreak = existing?.currentStreak ?: 0
                 val isConsecutive = existing?.lastActiveDate == yesterday
                 val newStreak = if (isConsecutive) oldStreak + 1 else 1
+                val newLongest = maxOf(existing?.longestStreak ?: 0, newStreak)
 
                 if (existing == null) {
-                    blockStreakRepository.insert(BlockStreak(blockId, newStreak, date))
+                    blockStreakRepository.insert(BlockStreak(blockId, newStreak, date, longestStreak = newLongest))
                 } else {
-                    blockStreakRepository.update(existing.copy(currentStreak = newStreak, lastActiveDate = date))
+                    blockStreakRepository.update(existing.copy(currentStreak = newStreak, lastActiveDate = date, longestStreak = newLongest))
                 }
 
                 // Detectar hitos cruzados: oldStreak < hito <= newStreak

@@ -7,11 +7,13 @@ import kotlinx.datetime.LocalDate
 fun BlockStreakEntity.toDomain(): BlockStreak = BlockStreak(
     blockId = blockId,
     currentStreak = currentStreak,
-    lastActiveDate = LocalDate.parse(lastActiveDate)
+    lastActiveDate = LocalDate.parse(lastActiveDate),
+    longestStreak = longestStreak
 )
 
 fun BlockStreak.toEntity(): BlockStreakEntity = BlockStreakEntity(
     blockId = blockId,
     currentStreak = currentStreak,
-    lastActiveDate = lastActiveDate.toString()
+    lastActiveDate = lastActiveDate.toString(),
+    longestStreak = longestStreak
 )

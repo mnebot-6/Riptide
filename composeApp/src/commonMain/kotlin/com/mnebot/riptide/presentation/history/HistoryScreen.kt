@@ -1,11 +1,16 @@
 package com.mnebot.riptide.presentation.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -13,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,25 +30,32 @@ import com.mnebot.riptide.domain.model.TaskStatus
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
 private val OceanDeep      = Color(0xFF0A1628)
 private val OceanMid       = Color(0xFF1B3A6B)
+private val Accent         = Color(0xFF1A73E8)
 private val TextPrimary    = Color(0xFFFFFFFF)
 private val TextSecondary  = Color(0xB3FFFFFF)
 private val CardBackground = Color(0x22FFFFFF)
+private val ChipBorder     = Color(0x44FFFFFF)
 
 @Composable
 fun HistoryScreen(
     uiState: HistoryUiState,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onRangeSelected: (HistoryRange) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onBlockFilterChanged: (String?) -> Unit
 ) {
     val blocksById = uiState.blocks.associateBy { it.id }
+    val hasActiveFilters = uiState.searchQuery.isNotEmpty() || uiState.selectedBlockId != null
 
-    val allDates = (uiState.tasksByDate.keys + uiState.summaryByDate.keys)
-        .distinct()
-        .sortedDescending()
+    val allDates = (uiState.filteredTasksByDate.keys + uiState.summaryByDate.keys.filter { date ->
+        !hasActiveFilters || uiState.filteredTasksByDate.containsKey(date)
+    }).distinct().sortedDescending()
 
     Box(
         modifier = Modifier
@@ -74,6 +88,29 @@ fun HistoryScreen(
                 )
             }
 
+            // Range chips
+            RangeChipsRow(
+                selectedRange = uiState.selectedRange,
+                onRangeSelected = onRangeSelected
+            )
+
+            // Search field
+            SearchField(
+                query = uiState.searchQuery,
+                onQueryChanged = onSearchQueryChanged
+            )
+
+            // Block filter chips (only if blocks exist)
+            if (uiState.blocks.isNotEmpty()) {
+                BlockFilterChips(
+                    blocks = uiState.blocks,
+                    selectedBlockId = uiState.selectedBlockId,
+                    onBlockFilterChanged = onBlockFilterChanged
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
             when {
                 uiState.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -95,7 +132,10 @@ fun HistoryScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(Res.string.history_no_data),
+                            text = if (hasActiveFilters)
+                                stringResource(Res.string.history_no_data_filtered)
+                            else
+                                stringResource(Res.string.history_no_data),
                             color = TextSecondary,
                             fontSize = 14.sp
                         )
@@ -111,12 +151,182 @@ fun HistoryScreen(
                             DayHistoryCard(
                                 date = date,
                                 summary = uiState.summaryByDate[date],
-                                tasks = uiState.tasksByDate[date] ?: emptyList(),
+                                tasks = uiState.filteredTasksByDate[date] ?: emptyList(),
                                 blocksById = blocksById
                             )
                         }
                         item { Spacer(Modifier.height(24.dp)) }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RangeChipsRow(
+    selectedRange: HistoryRange,
+    onRangeSelected: (HistoryRange) -> Unit
+) {
+    val labels = mapOf(
+        HistoryRange.DAYS_30 to stringResource(Res.string.history_range_30d),
+        HistoryRange.DAYS_60 to stringResource(Res.string.history_range_60d),
+        HistoryRange.DAYS_90 to stringResource(Res.string.history_range_90d),
+        HistoryRange.ALL_TIME to stringResource(Res.string.history_range_all)
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        HistoryRange.entries.forEach { range ->
+            val selected = range == selectedRange
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .then(
+                        if (selected) Modifier.background(OceanMid)
+                        else Modifier.border(1.dp, ChipBorder, RoundedCornerShape(20.dp))
+                    )
+                    .clickable { onRangeSelected(range) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = labels[range] ?: "",
+                    color = if (selected) TextPrimary else TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChanged: (String) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(CardBackground)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_search),
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                if (query.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.history_search_placeholder),
+                        color = TextSecondary.copy(alpha = 0.5f),
+                        fontSize = 14.sp
+                    )
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChanged,
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = TextPrimary,
+                        fontSize = 14.sp
+                    ),
+                    cursorBrush = SolidColor(Accent),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(Res.drawable.ic_x),
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable { onQueryChanged("") }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlockFilterChips(
+    blocks: List<WorkBlock>,
+    selectedBlockId: String?,
+    onBlockFilterChanged: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // "All" chip
+        val allSelected = selectedBlockId == null
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .then(
+                    if (allSelected) Modifier.background(OceanMid)
+                    else Modifier.border(1.dp, ChipBorder, RoundedCornerShape(20.dp))
+                )
+                .clickable { onBlockFilterChanged(null) }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(Res.string.history_filter_all_blocks),
+                color = if (allSelected) TextPrimary else TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = if (allSelected) FontWeight.Bold else FontWeight.Normal
+            )
+        }
+
+        // Per-block chips
+        blocks.forEach { block ->
+            val selected = selectedBlockId == block.id
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .then(
+                        if (selected) Modifier.background(OceanMid)
+                        else Modifier.border(1.dp, ChipBorder, RoundedCornerShape(20.dp))
+                    )
+                    .clickable { onBlockFilterChanged(block.id) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(parseColor(block.color))
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = block.name,
+                        color = if (selected) TextPrimary else TextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
             }
         }
@@ -212,7 +422,7 @@ private fun HistoryTaskRow(task: DayTask, block: WorkBlock?) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = if (isCompleted) "✓" else "✗",
+            text = if (isCompleted) "\u2713" else "\u2717",
             color = if (isCompleted) Color(0xFF4DD0E1) else Color(0x55FFFFFF),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,

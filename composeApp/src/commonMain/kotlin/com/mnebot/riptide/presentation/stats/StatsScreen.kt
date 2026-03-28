@@ -54,8 +54,14 @@ fun StatsScreen(
     onNavigateBack: () -> Unit
 ) {
     val today = currentDate()
-    val days = if (uiState.range == StatsRange.WEEK) 7 else 30
-    val dates = (0 until days).map { today.minus(days - 1 - it, DateTimeUnit.DAY) }
+    val days = when (uiState.range) {
+        StatsRange.WEEK -> 7
+        StatsRange.MONTH -> 30
+        StatsRange.ALL_TIME -> 0 // not used for ALL_TIME
+    }
+    val dates = if (uiState.range != StatsRange.ALL_TIME) {
+        (0 until days).map { today.minus(days - 1 - it, DateTimeUnit.DAY) }
+    } else emptyList()
     val summaryByDate = uiState.summaries.associateBy { it.date }
 
     Box(
@@ -100,10 +106,11 @@ fun StatsScreen(
             ) {
                 StatsRange.entries.forEach { range ->
                     val selected = uiState.range == range
-                    val label = if (range == StatsRange.WEEK)
-                        stringResource(Res.string.stats_range_week)
-                    else
-                        stringResource(Res.string.stats_range_month)
+                    val label = when (range) {
+                        StatsRange.WEEK -> stringResource(Res.string.stats_range_week)
+                        StatsRange.MONTH -> stringResource(Res.string.stats_range_month)
+                        StatsRange.ALL_TIME -> stringResource(Res.string.stats_range_all_time)
+                    }
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
@@ -119,12 +126,93 @@ fun StatsScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Bar chart
+            // Chart + Summary section
             if (uiState.isLoading) {
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                     Text(stringResource(Res.string.msg_loading), color = TextSecondary, fontSize = 14.sp)
                 }
+            } else if (uiState.range == StatsRange.ALL_TIME) {
+                // ── ALL TIME: Monthly trend chart ──
+                if (uiState.monthlyTrend.isNotEmpty()) {
+                    MonthlyTrendChart(
+                        trend = uiState.monthlyTrend,
+                        modifier = Modifier.fillMaxWidth().height(160.dp)
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+
+                // KPI Grid 2x2
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stats_longest_streak),
+                        value = "${uiState.longestStreakEver}d",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stats_avg_daily),
+                        value = "${(uiState.avgDailyCompletion * 100).toInt()}%",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stats_active_days),
+                        value = uiState.totalDaysActive.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stats_total_completed),
+                        value = uiState.totalCompleted.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Month-over-month comparison
+                Spacer(Modifier.height(16.dp))
+                MonthComparisonRow(
+                    currentRate = uiState.currentMonthRate,
+                    previousRate = uiState.previousMonthRate
+                )
+
+                // Best week
+                if (uiState.bestWeekLabel.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardBackground)
+                            .padding(16.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(Res.string.stats_best_week),
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "${uiState.bestWeekLabel}  •  ${(uiState.bestWeekAvg * 100).toInt()}%",
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
             } else {
+                // ── WEEK / MONTH: Daily bar chart ──
                 CompletionBarChart(
                     dates = dates,
                     summaryByDate = summaryByDate,
@@ -134,7 +222,7 @@ fun StatsScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                // Leyenda de colores (S2)
+                // Leyenda de colores
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -144,12 +232,10 @@ fun StatsScreen(
                     ChartLegendChip(color = Color(0xFF4DD0E1), label = stringResource(Res.string.stats_legend_high))
                     ChartLegendChip(color = Color(0xFF1A73E8), label = stringResource(Res.string.stats_legend_perfect))
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
 
-            // Summary numbers
-            if (!uiState.isLoading) {
+                // Summary numbers
                 val activeDays = uiState.summaries.count { it.tasksCompleted > 0 }
                 val totalCompleted = uiState.summaries.sumOf { it.tasksCompleted }
                 val bestDay = uiState.summaries.maxByOrNull { it.tasksCompleted }
@@ -303,6 +389,7 @@ private fun CompletionBarChart(
                 val label = when (range) {
                     StatsRange.WEEK  -> dowLabels[date.dayOfWeek.ordinal]
                     StatsRange.MONTH -> if (date.dayOfMonth % 5 == 0) date.dayOfMonth.toString() else ""
+                    StatsRange.ALL_TIME -> ""
                 }
                 Box(
                     modifier = Modifier.weight(1f),
@@ -392,6 +479,124 @@ private fun StreakRow(block: WorkBlock, streak: Int) {
                 text = "$streak",
                 color = TextPrimary,
                 fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun MonthlyTrendChart(
+    trend: List<MonthStat>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // Y-axis labels
+            Column(
+                modifier = Modifier.fillMaxHeight().width(28.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
+                Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+            }
+
+            Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                val barCount = trend.size
+                if (barCount == 0) return@Canvas
+                val totalWidth = size.width
+                val chartHeight = size.height
+                val barWidth = (totalWidth / barCount) * 0.6f
+                val barSpacing = totalWidth / barCount
+
+                // Reference lines
+                val dashEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                drawLine(Color(0x33FFFFFF), Offset(0f, 0f), Offset(totalWidth, 0f), 1.dp.toPx(), pathEffect = dashEffect)
+                drawLine(Color(0x22FFFFFF), Offset(0f, chartHeight * 0.5f), Offset(totalWidth, chartHeight * 0.5f), 1.dp.toPx(), pathEffect = dashEffect)
+
+                trend.forEachIndexed { i, stat ->
+                    val barColor = completionColor(stat.completionRate)
+                    val barHeight = if (stat.completionRate > 0f) (chartHeight * stat.completionRate).coerceAtLeast(6.dp.toPx())
+                                    else 4.dp.toPx()
+                    val left = i * barSpacing + (barSpacing - barWidth) / 2f
+                    val top = chartHeight - barHeight
+
+                    drawRoundRect(
+                        color = barColor,
+                        topLeft = Offset(left, top),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = CornerRadius(4.dp.toPx())
+                    )
+                }
+            }
+        }
+
+        // Month labels
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp)
+                .padding(start = 28.dp)
+        ) {
+            trend.forEach { stat ->
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = stat.label,
+                        color = TextSecondary,
+                        fontSize = 8.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthComparisonRow(
+    currentRate: Float,
+    previousRate: Float
+) {
+    val diff = currentRate - previousRate
+    val arrow = if (diff >= 0) "\u2191" else "\u2193"   // ↑ or ↓
+    val arrowColor = if (diff >= 0) Color(0xFF4DD0E1) else Color(0xFFE57373)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CardBackground)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.stats_this_month),
+                color = TextSecondary,
+                fontSize = 11.sp
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "${(currentRate * 100).toInt()}%",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = stringResource(Res.string.stats_vs_last_month),
+                color = TextSecondary,
+                fontSize = 11.sp
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "$arrow ${kotlin.math.abs((diff * 100).toInt())}%",
+                color = arrowColor,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
         }

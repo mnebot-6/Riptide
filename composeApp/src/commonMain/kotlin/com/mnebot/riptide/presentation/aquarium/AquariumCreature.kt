@@ -666,7 +666,6 @@ fun DrawScope.drawAquariumCreatures(
         var hitboxAdded = false
 
         if (spec.swimDuration == 0) {
-            val floorY = AquariumBounds.floorY(h)
             val renderer = rendererFor(spec.species)
 
             if (renderer != null) {
@@ -676,16 +675,18 @@ fun DrawScope.drawAquariumCreatures(
                 for (i in 0 until spec.instanceCount) {
                     val slotIndex = slots.getOrElse(i) { i }
                     val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
+                    val terrainFloorY = AquariumTerrain.terrainY(instanceX / w, h)
                     val instanceAnim = tRaw + i * 5000L
-                    with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
-                    positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
+                    with(renderer) { render(instanceX, terrainFloorY, renderSize, creatureLevel, instanceAnim, false) }
+                    positions.add(CreaturePosition(spec.species, instanceX, terrainFloorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
                 }
                 hitboxAdded = true
             } else {
                 val emojiIdx = fixedEmojiCreatures.indexOf(spec)
                 x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
+                val emojiFloorY = AquariumTerrain.terrainY(x / w, h)
                 val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
-                y = floorY - iconSize * 0.3f + wobble
+                y = emojiFloorY - iconSize * 0.3f + wobble
                 drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
             }
         } else {
@@ -760,11 +761,12 @@ fun DrawScope.drawAquariumCreatures(
             val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
 
             val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
-                val floorY = AquariumBounds.floorY(h)
+                val xFrac = (x / w).coerceIn(0f, 1f)
+                val terrainFloorY = AquariumTerrain.terrainY(xFrac, h)
                 val bottomCoupling = h * 0.10f
                 val heightOffset = (1f - spec.personalYFraction) * h * 0.06f
                 val coupledArcBottom = -sin(swimProgress * PI) * bottomCoupling * spec.verticalCoupling
-                floorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
+                terrainFloorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
             } else {
                 (personalY + waveY + drift + coupledArc + micro).coerceIn(
                     personalY - zoneBand * 1.15f,
@@ -915,7 +917,6 @@ fun AquariumCreatures(
                     var hitboxAdded = false
 
                     if (spec.swimDuration == 0) {
-                        val floorY = AquariumBounds.floorY(h)
                         val renderer = rendererFor(spec.species)
 
                         if (renderer != null) {
@@ -925,17 +926,19 @@ fun AquariumCreatures(
                             for (i in 0 until spec.instanceCount) {
                                 val slotIndex = slots.getOrElse(i) { i }
                                 val instanceX = w * (0.05f + 0.90f * (slotIndex + 0.5f) / totalFloraSlots)
+                                val terrainFloorY = AquariumTerrain.terrainY(instanceX / w, h)
                                 val instanceAnim = tRaw + i * 5000L
-                                with(renderer) { render(instanceX, floorY, renderSize, creatureLevel, instanceAnim, false) }
-                                positions.add(CreaturePosition(spec.species, instanceX, floorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
+                                with(renderer) { render(instanceX, terrainFloorY, renderSize, creatureLevel, instanceAnim, false) }
+                                positions.add(CreaturePosition(spec.species, instanceX, terrainFloorY - renderSize * 0.4f, maxOf(renderSize, 75f)))
                             }
                             hitboxAdded = true
 
                         } else {
                             val emojiIdx = fixedEmojiCreatures.indexOf(spec)
                             x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
+                            val emojiFloorY = AquariumTerrain.terrainY(x / w, h)
                             val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
-                            y = floorY - iconSize * 0.3f + wobble
+                            y = emojiFloorY - iconSize * 0.3f + wobble
                             drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
                         }
 
@@ -1011,11 +1014,12 @@ fun AquariumCreatures(
                         val micro = osc(tRaw, 667L, phase) * zoneBand * spec.microWobble
 
                         val rawY = if (spec.swimZone == SwimZone.BOTTOM) {
-                            val floorY = AquariumBounds.floorY(h)
+                            val xFrac = (x / w).coerceIn(0f, 1f)
+                            val terrainFloorY = AquariumTerrain.terrainY(xFrac, h)
                             val bottomCoupling = h * 0.10f
                             val heightOffset = (1f - spec.personalYFraction) * h * 0.06f
                             val coupledArcBottom = -sin(swimProgress * PI) * bottomCoupling * spec.verticalCoupling
-                            floorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
+                            terrainFloorY - iconSize * 0.3f - heightOffset + coupledArcBottom + micro
                         } else {
                             (personalY + waveY + drift + coupledArc + micro).coerceIn(
                                 personalY - zoneBand * 1.15f,

@@ -16,6 +16,9 @@ class DaySummaryRepositoryImpl(
     override suspend fun getRange(from: LocalDate, to: LocalDate): List<DaySummary> =
         dao.getRange(from.toString(), to.toString()).map { it.toDomain() }
 
+    override suspend fun getAll(): List<DaySummary> =
+        dao.getAll().map { it.toDomain() }
+
     override suspend fun insert(summary: DaySummary) = dao.insert(summary.toEntity())
 
     override suspend fun getLatestN(n: Int): List<DaySummary> =

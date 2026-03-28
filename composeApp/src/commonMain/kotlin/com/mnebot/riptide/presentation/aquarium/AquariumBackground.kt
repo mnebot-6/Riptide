@@ -13,11 +13,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.mnebot.riptide.presentation.aquarium.weather.RandomWeatherProvider
+import com.mnebot.riptide.presentation.aquarium.weather.WeatherState
 import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.sin
+import androidx.compose.runtime.withFrameMillis
 
 // ── Paleta del agua ────────────────────────────────────────────────────────────
 private val OceanShallow = Color(0xFF2E5F9E)
@@ -73,34 +76,49 @@ internal fun getCurrentHourFraction(): Float {
     return now.hour + now.minute / 60f
 }
 
-// ── Fondo marino ───────────────────────────────────────────────────────────────
-private val SandLight = Color(0xFFD4BC8C)
-private val SandMid = Color(0xFFB89C70)
-private val SandDark = Color(0xFF8C7858)
+// ── Fondo marino (paleta desaturada) ──────────────────────────────────────────
+private val SandLight = Color(0xFFCBB99A)
+private val SandMid = Color(0xFFA89070)
+private val SandDark = Color(0xFF7A6A50)
 private val RockLight = Color(0xFF6A5E48)
 private val RockMid = Color(0xFF504434)
 private val RockDark = Color(0xFF352E22)
 private val WaveCrest = Color(0x40FFFFFF)
 private val BubbleColor = Color(0x337EC8E3)
 
-// ── Rocas del fondo (variadas en tamaño y forma) ───────────────────────────────
-private data class RockData(val cx: Float, val wFrac: Float, val hFrac: Float, val style: Int = 0)
+// ── Rocas del fondo con capas de profundidad ─────────────────────────────────
+private data class RockData(
+    val cx: Float,         // x fraction [0..1]
+    val wFrac: Float,      // width as fraction of screen width
+    val hFrac: Float,      // height as fraction of screen height
+    val style: Int = 0,    // 0=smooth, 1=angular, 2=irregular
+    val layer: Int = 1     // 0=background, 1=mid, 2=foreground
+)
 
-private val rocks = listOf(
-    // Rocas grandes
-    RockData(0.08f, 0.11f, 0.042f, 1),
-    RockData(0.52f, 0.14f, 0.050f, 2),
-    RockData(0.88f, 0.12f, 0.044f, 1),
-    // Rocas medianas
-    RockData(0.22f, 0.07f, 0.028f, 0),
-    RockData(0.38f, 0.06f, 0.022f, 2),
-    RockData(0.68f, 0.08f, 0.032f, 0),
-    RockData(0.79f, 0.05f, 0.018f, 1),
-    // Rocas pequeñas
-    RockData(0.14f, 0.035f, 0.012f, 0),
-    RockData(0.45f, 0.030f, 0.010f, 2),
-    RockData(0.61f, 0.040f, 0.014f, 1),
-    RockData(0.93f, 0.032f, 0.011f, 0),
+// Background layer: small, muted, higher Y (further from viewer)
+private val bgRocks = listOf(
+    RockData(0.06f, 0.055f, 0.016f, 0, 0),
+    RockData(0.30f, 0.050f, 0.014f, 2, 0),
+    RockData(0.55f, 0.060f, 0.018f, 1, 0),
+    RockData(0.78f, 0.048f, 0.015f, 0, 0),
+    RockData(0.95f, 0.052f, 0.013f, 2, 0),
+)
+
+// Mid layer: medium rocks at terrain level
+private val midRocks = listOf(
+    RockData(0.12f, 0.07f, 0.028f, 0, 1),
+    RockData(0.38f, 0.06f, 0.022f, 2, 1),
+    RockData(0.60f, 0.08f, 0.032f, 0, 1),
+    RockData(0.82f, 0.07f, 0.026f, 1, 1),
+    RockData(0.48f, 0.05f, 0.018f, 1, 1),
+)
+
+// Foreground layer: large, slightly darker, drawn last
+private val fgRocks = listOf(
+    RockData(0.08f, 0.11f, 0.042f, 1, 2),
+    RockData(0.52f, 0.14f, 0.050f, 2, 2),
+    RockData(0.72f, 0.10f, 0.038f, 0, 2),
+    RockData(0.90f, 0.12f, 0.044f, 1, 2),
 )
 
 // ── Burbujas ───────────────────────────────────────────────────────────────────
@@ -128,6 +146,20 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
     }
     val sky = remember(hourFraction) { interpolateSky(hourFraction) }
 
+    // Weather provider (session-unique random weather)
+    val weatherProvider = remember { RandomWeatherProvider() }
+
+    // Elapsed time tracking via frame clock
+    var elapsedMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        val startTime = withFrameMillis { it }
+        while (true) {
+            withFrameMillis { frameTime ->
+                elapsedMs = frameTime - startTime
+            }
+        }
+    }
+
     val swayAnim = rememberInfiniteTransition(label = "sway")
     val swayAngle by swayAnim.animateFloat(
         initialValue = -1f,
@@ -150,16 +182,32 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
         label = "bubbleProgress"
     )
 
+    val weather = remember(elapsedMs / 1000) { weatherProvider.currentWeather(elapsedMs) }
+
     Canvas(modifier = modifier.fillMaxSize()) {
-        drawAquariumBackground(swayAngle, bubbleProgress, sky)
+        drawAquariumBackground(swayAngle, bubbleProgress, sky, weather, elapsedMs, hourFraction)
     }
 }
 
 /**
  * Draws the full aquarium background: sky, ocean gradient, sea floor, water surface, and bubbles.
  * Extracted as a standalone DrawScope function so it can be reused from WallpaperService via CanvasDrawScope.
+ *
+ * @param swayAngle oscillating value for wave animation
+ * @param bubbleProgress 0..1 progress for bubble cycle
+ * @param sky interpolated sky colors for current time
+ * @param weather current weather state (clouds, rain, wind, wave amplitude)
+ * @param elapsedMs elapsed time in milliseconds for particle/lighting animation
+ * @param hourFraction current hour as float (0-24) for sun ray/caustic visibility
  */
-internal fun DrawScope.drawAquariumBackground(swayAngle: Float, bubbleProgress: Float, sky: SkyColors) {
+internal fun DrawScope.drawAquariumBackground(
+    swayAngle: Float,
+    bubbleProgress: Float,
+    sky: SkyColors,
+    weather: WeatherState = WeatherState.Clear,
+    elapsedMs: Long = 0L,
+    hourFraction: Float = 12f
+) {
     val surfaceY = AquariumBounds.surfaceY(size.height)
     val floorY = AquariumBounds.floorY(size.height)
 
@@ -190,13 +238,28 @@ internal fun DrawScope.drawAquariumBackground(swayAngle: Float, bubbleProgress: 
         )
     )
 
-    // 3. Fondo marino elaborado
+    // 3. Clouds above the water surface
+    drawClouds(elapsedMs, surfaceY, weather)
+
+    // 4. Rain from clouds to surface
+    drawRain(elapsedMs, surfaceY, weather)
+
+    // 5. Fondo marino elaborado
     drawSeaFloor(floorY)
 
-    // 4. Superficie del agua (ola sutil)
-    drawWaterSurface(surfaceY, swayAngle, sky.horizon)
+    // 6. Sun rays (after floor, before creatures)
+    drawSunRays(elapsedMs, surfaceY, floorY, hourFraction, weather)
 
-    // 5. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
+    // 7. Caustic light patterns on sea floor
+    drawCaustics(elapsedMs, surfaceY, floorY, hourFraction, weather)
+
+    // 8. Ambient particles (plankton, sediment, current streaks)
+    drawAmbientParticles(elapsedMs, surfaceY, floorY, weather)
+
+    // 9. Superficie del agua (ola con amplitud modulada por clima)
+    drawWaterSurface(surfaceY, swayAngle, sky.horizon, weather)
+
+    // 10. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
     drawBubbles(bubbleProgress, surfaceY, floorY)
 }
 
@@ -204,55 +267,109 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
     val w = size.width
     val h = size.height
 
-    // Banda de arena principal con gradiente más pronunciado
-    drawRect(
+    // 1. Sand fill following the terrain curve
+    val sandPath = AquariumTerrain.terrainPath(w, h)
+    drawPath(
+        sandPath,
         brush = Brush.verticalGradient(
             listOf(SandLight, SandMid, SandDark),
-            startY = floorY,
+            startY = AquariumTerrain.terrainY(0.35f, h) - h * 0.02f, // start near highest hill
             endY = h
-        ),
-        topLeft = Offset(0f, floorY),
-        size = androidx.compose.ui.geometry.Size(w, h - floorY)
+        )
     )
 
-    // Líneas de textura de arena (olas de arena suave)
-    val sandLineColor = SandMid.copy(alpha = 0.35f)
-    val lineStroke = 1.dp.toPx()
-    for (i in 1..4) {
-        val lineY = floorY + (h - floorY) * i / 5f
-        val path = Path().apply {
-            moveTo(0f, lineY)
-            for (seg in 0 until 8) {
-                val x1 = w * (seg + 0.5f) / 8f
-                val x2 = w * (seg + 1f) / 8f
-                val offset = if (seg % 2 == 0) 2.dp.toPx() else -2.dp.toPx()
-                quadraticTo(x1, lineY + offset, x2, lineY)
-            }
+    // 2. Shadow transition zone along the terrain contour
+    val shadowSteps = 60
+    val shadowPath = Path().apply {
+        val startY = AquariumTerrain.terrainY(0f, h)
+        moveTo(0f, startY - h * 0.025f)
+        for (i in 1..shadowSteps) {
+            val xFrac = i.toFloat() / shadowSteps
+            val ty = AquariumTerrain.terrainY(xFrac, h)
+            lineTo(xFrac * w, ty - h * 0.025f)
         }
-        drawPath(path, sandLineColor, style = Stroke(width = lineStroke, cap = StrokeCap.Round))
+        // Bottom part: terrain + offset downward
+        for (i in shadowSteps downTo 0) {
+            val xFrac = i.toFloat() / shadowSteps
+            val ty = AquariumTerrain.terrainY(xFrac, h)
+            lineTo(xFrac * w, ty + h * 0.015f)
+        }
+        close()
     }
+    drawPath(shadowPath, OceanDeep.copy(alpha = 0.45f))
 
-    // Sombra de transición agua→arena
-    drawRect(
-        brush = Brush.verticalGradient(
-            listOf(OceanDeep.copy(alpha = 0.45f), Color.Transparent),
-            startY = floorY - h * 0.025f,
-            endY = floorY + h * 0.015f
-        ),
-        topLeft = Offset(0f, floorY - h * 0.025f),
-        size = androidx.compose.ui.geometry.Size(w, h * 0.04f)
-    )
-
-    // Rocas del fondo con variedad de formas
-    rocks.sortedBy { it.cx }.forEach { rock ->
+    // 3. Background rocks (small, muted, behind everything)
+    bgRocks.sortedBy { it.cx }.forEach { rock ->
         val cx = w * rock.cx
         val rw = w * rock.wFrac
         val rh = h * rock.hFrac
-        drawRock(cx, floorY, rw, rh, rock.style)
+        val baseY = AquariumTerrain.terrainY(rock.cx, h) + h * 0.008f
+        drawRock(cx, baseY, rw, rh, rock.style, alpha = 0.40f, tint = -1)
+    }
+
+    // 4. Texture lines that follow the terrain contour (offset downward)
+    val sandLineColor = SandMid.copy(alpha = 0.35f)
+    val lineStroke = 1.dp.toPx()
+    for (i in 1..3) {
+        val yOffset = (h - floorY) * i / 4f
+        val linePath = Path().apply {
+            val startY = AquariumTerrain.terrainY(0f, h) + yOffset
+            moveTo(0f, startY)
+            for (seg in 0 until 8) {
+                val xMid = (seg + 0.5f) / 8f
+                val xEnd = (seg + 1f) / 8f
+                val terrainMid = AquariumTerrain.terrainY(xMid, h) + yOffset
+                val terrainEnd = AquariumTerrain.terrainY(xEnd, h) + yOffset
+                val wobble = if (seg % 2 == 0) 2.dp.toPx() else -2.dp.toPx()
+                quadraticTo(xMid * w, terrainMid + wobble, xEnd * w, terrainEnd)
+            }
+        }
+        drawPath(linePath, sandLineColor, style = Stroke(width = lineStroke, cap = StrokeCap.Round))
+    }
+
+    // 5. Pebbles scattered along the terrain surface (deterministic)
+    val pebbleCount = 25
+    for (i in 0 until pebbleCount) {
+        // Deterministic pseudo-random based on index
+        val seed = (i * 7 + 13)
+        val xFrac = (seed * 0.0397f) % 1f
+        val px = xFrac * w
+        val py = AquariumTerrain.terrainY(xFrac, h) + ((seed * 3) % 5) * 0.5f.dp.toPx()
+        val radius = (1f + (seed % 3)).dp.toPx()
+        val pebbleAlpha = 0.25f + (seed % 4) * 0.05f
+        val pebbleColor = when (seed % 3) {
+            0 -> SandDark.copy(alpha = pebbleAlpha)
+            1 -> RockLight.copy(alpha = pebbleAlpha)
+            else -> SandMid.copy(alpha = pebbleAlpha + 0.1f)
+        }
+        drawCircle(color = pebbleColor, radius = radius, center = Offset(px, py))
+    }
+
+    // 6. Mid-layer rocks at terrain level
+    midRocks.sortedBy { it.cx }.forEach { rock ->
+        val cx = w * rock.cx
+        val rw = w * rock.wFrac
+        val rh = h * rock.hFrac
+        val baseY = AquariumTerrain.terrainY(rock.cx, h)
+        drawRock(cx, baseY, rw, rh, rock.style)
+    }
+
+    // 7. Foreground rocks (large, slightly darker, drawn last)
+    fgRocks.sortedBy { it.cx }.forEach { rock ->
+        val cx = w * rock.cx
+        val rw = w * rock.wFrac
+        val rh = h * rock.hFrac
+        val baseY = AquariumTerrain.terrainY(rock.cx, h) - h * 0.005f
+        drawRock(cx, baseY, rw, rh, rock.style, tint = 1)
     }
 }
 
-private fun DrawScope.drawRock(cx: Float, floorY: Float, rw: Float, rh: Float, style: Int) {
+/**
+ * Draws a single rock at the given position.
+ * @param alpha overall opacity (0.4 for background layer, 1.0 for mid/foreground)
+ * @param tint -1 = lighter/muted (background), 0 = normal (mid), 1 = darker (foreground)
+ */
+private fun DrawScope.drawRock(cx: Float, floorY: Float, rw: Float, rh: Float, style: Int, alpha: Float = 1f, tint: Int = 0) {
     val path = when (style) {
         0 -> Path().apply {  // forma suave redondeada
             moveTo(cx - rw / 2f, floorY)
@@ -277,26 +394,36 @@ private fun DrawScope.drawRock(cx: Float, floorY: Float, rw: Float, rh: Float, s
             close()
         }
     }
-    drawPath(path, RockMid)
+    val rockColor = when (tint) {
+        -1 -> RockLight.copy(alpha = alpha)   // background: lighter, muted
+         1 -> RockDark.copy(alpha = alpha)     // foreground: darker
+        else -> RockMid.copy(alpha = alpha)    // mid: normal
+    }
+    drawPath(path, rockColor)
 
     // Highlight en la parte superior izquierda (luz)
     val hlPath = Path().apply {
         moveTo(cx - rw * 0.15f, floorY - rh * 0.85f)
         quadraticTo(cx - rw * 0.3f, floorY - rh * 0.6f, cx - rw * 0.25f, floorY - rh * 0.4f)
     }
-    drawPath(hlPath, RockLight.copy(alpha = 0.5f), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(hlPath, RockLight.copy(alpha = 0.5f * alpha), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
 
     // Sombra en la base
     val shadowPath = Path().apply {
         moveTo(cx - rw * 0.4f, floorY)
         quadraticTo(cx, floorY + 3.dp.toPx(), cx + rw * 0.4f, floorY)
     }
-    drawPath(shadowPath, RockDark.copy(alpha = 0.5f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(shadowPath, RockDark.copy(alpha = 0.5f * alpha), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
 }
 
-private fun DrawScope.drawWaterSurface(surfaceY: Float, swayAngle: Float, skyHorizon: Color) {
+private fun DrawScope.drawWaterSurface(
+    surfaceY: Float,
+    swayAngle: Float,
+    skyHorizon: Color,
+    weather: WeatherState = WeatherState.Clear
+) {
     val w = size.width
-    val waveAmplitude = 4.dp.toPx()
+    val waveAmplitude = 4.dp.toPx() * weather.waveAmplitudeMultiplier
     val segments = 6
 
     // Área sobre la ola (cielo reflejado)

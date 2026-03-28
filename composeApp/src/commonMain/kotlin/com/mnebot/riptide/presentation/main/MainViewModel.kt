@@ -51,6 +51,7 @@ class MainViewModel(
     private val marineCreatureRepository: MarineCreatureRepository,
     private val taskReminderScheduler: TaskReminderScheduler? = null,
     private val decorationUnlockChecker: DecorationUnlockChecker? = null,
+    private val onTaskMutated: (suspend () -> Unit)? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -106,6 +107,7 @@ class MainViewModel(
             }
 
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -139,6 +141,7 @@ class MainViewModel(
                 }
             }
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -178,6 +181,7 @@ class MainViewModel(
                     }
             }
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -224,6 +228,7 @@ class MainViewModel(
                     }
             }
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -250,8 +255,30 @@ class MainViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val blocks = loadBlocksWithCategories()
-                val tasks = dayTaskRepository.getByDate(date)
+
+                // XP sweep: award XP for tasks completed via widget (hasBeenRewarded=false)
+                val rawTasks = dayTaskRepository.getByDate(date)
+                val unrewarded = rawTasks.filter {
+                    it.status == TaskStatus.COMPLETED && !it.hasBeenRewarded
+                }
+                val allNewLootboxes = mutableListOf<PendingLootbox>()
+                for (task in unrewarded) {
+                    val block = blocks.find { it.id == task.blockId }
+                    val categories = block?.marineCategories ?: emptyList()
+                    val lootboxes = ecosystemProcessor.addXpForTask(categories)
+                    allNewLootboxes.addAll(lootboxes)
+                    dayTaskRepository.update(task.copy(hasBeenRewarded = true))
+                }
+                if (allNewLootboxes.isNotEmpty()) {
+                    _uiState.update { it.copy(pendingLootboxes = it.pendingLootboxes + allNewLootboxes) }
+                }
+
+                val tasks = rawTasks
                     .filter { it.status != TaskStatus.CANCELLED }
+                    .map { task ->
+                        // Reflect the reward flag we just set
+                        if (unrewarded.any { it.id == task.id }) task.copy(hasBeenRewarded = true) else task
+                    }
                 val tasksByBlock: Map<String?, List<DayTask>> = tasks.groupBy { it.blockId }
 
                 val streaksByBlock = blocks.associate { block ->
@@ -342,6 +369,7 @@ class MainViewModel(
             taskReminderScheduler?.cancelReminder(task.id)
             dayTaskRepository.delete(task.id)
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -371,6 +399,7 @@ class MainViewModel(
                 }
             }
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -396,6 +425,7 @@ class MainViewModel(
                 }
             }
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -404,6 +434,7 @@ class MainViewModel(
             taskReminderScheduler?.cancelReminder(task.id)
             dayTaskRepository.update(task.copy(status = TaskStatus.CANCELLED))
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -420,6 +451,7 @@ class MainViewModel(
             recurringTaskDefRepository.update(def.copy(isActive = false))
             dayTaskRepository.deleteBySourceIdFromDate(sourceId, date)
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
@@ -434,6 +466,7 @@ class MainViewModel(
             recurringTaskDefRepository.update(def.copy(isActive = false))
             dayTaskRepository.deleteBySourceId(sourceId)
             loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
         }
     }
 
