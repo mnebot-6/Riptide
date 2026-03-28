@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Riptide</string>
+
+    <!-- Notification channel names and descriptions (used by NotificationHelper) -->
+    <string name="channel_night_summary">Night summary</string>
+    <string name="channel_night_summary_desc">Daily summary of completed tasks</string>
+    <string name="channel_morning_reminder">Morning reminder</string>
+    <string name="channel_morning_reminder_desc">Reminder to plan your day</string>
+    <string name="channel_task_reminder">Task reminder</string>
+    <string name="channel_task_reminder_desc">Notification at the scheduled time of a task</string>
+
+    <!-- Notification content strings -->
+    <string name="notif_night_summary_title">Yesterday\'s summary</string>
+    <string name="notif_night_summary_body">%1$d of %2$d tasks completed</string>
+    <string name="notif_morning_reminder_title">Good morning! 🌊</string>
+    <string name="notif_morning_reminder_body">Plan your day and start building your ecosystem</string>
+    <string name="notif_task_reminder_body">Pending task</string>
+
+    <!-- Wallpaper -->
+    <string name="wallpaper_name">Riptide Aquarium</string>
+    <string name="wallpaper_description">Your aquarium ecosystem as a live wallpaper</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Today\'s tasks and progress at a glance</string>
+    <string name="widget_no_tasks">No tasks for today</string>
+    <string name="widget_all_done">All done! 🌊</string>
+</resources>

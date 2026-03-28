@@ -1,0 +1,58 @@
+package com.mnebot.riptide.presentation.main
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.mnebot.riptide.TaskReminderSchedulerImpl
+import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.repository.*
+import com.mnebot.riptide.domain.DecorationUnlockChecker
+import com.mnebot.riptide.domain.EcosystemProcessor
+import com.mnebot.riptide.domain.LootboxResolver
+import com.mnebot.riptide.domain.MarineCategoryAssigner
+import com.mnebot.riptide.domain.RecurringTaskGenerator
+import com.mnebot.riptide.widget.WidgetUpdater
+
+class MainViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val db = DatabaseProvider.getDatabase(context)
+        val workBlockRepo = WorkBlockRepositoryImpl(db.workBlockDao())
+        val blockCategoryRepo = BlockCategoryRepositoryImpl(db.blockCategoryDao())
+        val dayTaskRepo    = DayTaskRepositoryImpl(db.dayTaskDao())
+        val daySummaryRepo = DaySummaryRepositoryImpl(db.daySummaryDao())
+        val recurringTaskDefRepo = RecurringTaskDefRepositoryImpl(db.recurringTaskDefDao())
+        val ecosystemStateRepo = EcosystemStateRepositoryImpl(db.ecosystemStateDao())
+        val marineCreatureRepo = MarineCreatureRepositoryImpl(db.marineCreatureDao())
+        val userPreferencesRepo = UserPreferencesRepositoryImpl(context)
+
+        @Suppress("UNCHECKED_CAST")
+        return MainViewModel(
+            workBlockRepository = workBlockRepo,
+            blockCategoryRepository = blockCategoryRepo,
+            dayTaskRepository = dayTaskRepo,
+            recurringTaskDefRepository = recurringTaskDefRepo,
+            recurringTaskGenerator = RecurringTaskGenerator(recurringTaskDefRepo, dayTaskRepo),
+            marineCategoryAssigner = MarineCategoryAssigner(
+                workBlockRepo,
+                blockCategoryRepo,
+                ecosystemStateRepo
+            ),
+            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
+            daySummaryRepository = daySummaryRepo,
+            ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo),
+            lootboxResolver = LootboxResolver(marineCreatureRepo),
+            ecosystemStateRepository = ecosystemStateRepo,
+            userPreferencesRepository = userPreferencesRepo,
+            marineCreatureRepository = marineCreatureRepo,
+            taskReminderScheduler = TaskReminderSchedulerImpl(context.applicationContext),
+            decorationUnlockChecker = DecorationUnlockChecker(
+                daySummaryRepository      = daySummaryRepo,
+                dayTaskRepository         = dayTaskRepo,
+                marineCreatureRepository  = marineCreatureRepo,
+                ecosystemProcessor        = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo),
+                userPreferencesRepository = userPreferencesRepo
+            ),
+            onTaskMutated = { WidgetUpdater.refreshAll(context.applicationContext) },
+        ) as T
+    }
+}

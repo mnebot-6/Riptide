@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Riptide — Adaptive icon foreground: "Rising Currents"
+     Three wave lines flowing from left to upper-right.
+     Each line has one visible wave crest + trough, then rises higher.
+     Wave character is clear; net direction = upward-right = momentum.
+     Safe zone: inner ~66dp centered at (54,54). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Top current — crest then rise -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M26,52 C34,44 42,44 50,50 C58,56 62,38 70,34 C78,30 82,32 86,36" />
+
+    <!-- Middle current — same wave, centered between top and bottom -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M26,60 C34,52 42,52 50,58 C58,64 62,46 70,41 C78,37 82,39 86,43" />
+
+    <!-- Bottom current — crest then rise -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M26,68 C34,60 42,60 50,66 C58,72 62,54 70,48 C78,44 82,46 86,50" />
+</vector>
