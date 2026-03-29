@@ -105,6 +105,9 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **Logo & Branding "Rising Currents"**: 3 olas ascendentes con ondulación, adaptive icon (foreground + background azul océano), logo in-app 24dp, icono notificación, splash screen (`core-splashscreen` 1.0.1, tema `Theme.Riptide.Splash`)
 - **Widget Android**: Glance widget con tareas del día, barra de progreso, paleta marina. `WidgetUpdater.refreshAll()` en `onResume`. Metadata 3×3 celdas, redimensionable, auto-update 30min.
 - **Live Wallpaper**: `RiptideWallpaperService` (WallpaperService + Choreographer 30fps vsync-aligned). Bridge `CanvasDrawScope` reutiliza todo el renderizado Compose sin portar código. `WallpaperDataProvider` lee criaturas de Room con refresco cada 5min. Botón en drawer → `ACTION_CHANGE_LIVE_WALLPAPER` (bypass del picker OEM). `GLOBAL_SPEED_MULTIPLIER = 2.0f` para velocidad más natural.
+- **Terreno suavizado**: amplitud de ondulaciones reducida 72% (`0.08f → 0.022f`), Y-range `[0.73-0.93] → [0.80-0.90]` — superficie de arena con cambios casi imperceptibles
+- **Flora del fondo escalada**: Kelp (1.0→0.50), Anemone (0.65→0.42), BrainCoral (1.0→0.50), FanCoral (1.0→0.48), Posidonia (1.0→0.52), SeaUrchin (1.0→0.55)
+- **Rediseño BrainCoral**: reemplaza líneas rectas por cúpula hemisférica con gradiente + grooves laberínticos sinusoidales + highlight especular + glow secundario (nivel 3+)
 
 **Próximo (→ Play Store):**
 - Sprint Backend (Ktor + PostgreSQL + API REST + auth)

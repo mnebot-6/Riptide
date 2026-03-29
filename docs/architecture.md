@@ -213,8 +213,9 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 
 - **Cielo dinámico**: `skyForHour(hour)` → 7 periodos (noche, amanecer, mañana dorada, día, atardecer, crepúsculo, noche tardía). Usa `kotlin.time.Clock.System.now()`.
 - **Superficie del agua**: ola animada con `Path` + `quadraticTo` (8 segmentos, 9.dp amplitud). Cresta principal + cresta secundaria (60% amplitud) para efecto de profundidad.
-- **Fondo marino**: banda de arena con gradiente + 4 líneas de textura ondulada. 11 rocas (3 grandes, 4 medianas, 4 pequeñas) en 3 estilos: suave, anguloso, irregular. Sombra de transición agua→arena.
-- **AquariumBounds**: `SURFACE_FRACTION = 0.08f`, `FLOOR_FRACTION = 0.88f`, compartidas entre background y criaturas.
+- **Terreno** (`AquariumTerrain`): curva suave procedural con Catmull-Rom. Amplitud reducida a `0.022f` (≈72% menos variación) para ondulaciones apenas perceptibles. Y-range: `[0.80, 0.90]`.
+- **Fondo marino**: banda de arena con gradiente + 3 líneas de textura ondulada. Guijarros sutiles dispersos. Sin rocas ni corales decorativos.
+- **AquariumBounds**: `SURFACE_FRACTION = 0.08f`, `FLOOR_FRACTION = 0.85f`, compartidas entre background y criaturas.
 
 ---
 
@@ -222,10 +223,13 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 
 - `CreatureRenderer`: interfaz con `fun DrawScope.render(x, y, size, level, animTimeMs, mirrored)`.
 - `rendererFor(species)`: despacha entre Canvas renderers y `null` (emoji fallback).
-- **17 renderers** registrados en el mapa de `CreatureRenderer.kt`:
-  - **`flora/`** (fijos, sin mirror): `BrainCoralRenderer`, `AnemoneRenderer`, `KelpRenderer`, `PosidoniaRenderer`, `FanCoralRenderer`
-  - **`fauna/`** (nadadores, con mirror): `MantaRayRenderer`, `SurgeonfishRenderer`, `LionfishRenderer`, `SunfishRenderer`, `HammerheadRenderer`, `BarracudaRenderer`, `ManateeRenderer`, `SpiderCrabRenderer`, `CuttlefishRenderer`, `BlueRingedOctopusRenderer`
-  - **`fauna/`** (fijos, sin mirror): `SeaUrchinRenderer`, `BarnacleRenderer`
+- **40 renderers** registrados en el mapa de `CreatureRenderer.kt` — cobertura total de todas las especies:
+  - **`flora/`** (fijos, sin mirror, escala reducida): `BrainCoralRenderer` (rediseño: cúpula hemisférica + grooves laberínticos sinusoidales + highlight especular), `AnemoneRenderer`, `KelpRenderer`, `PosidoniaRenderer`, `FanCoralRenderer`
+  - **`fauna/`** (nadadores, con mirror): peces, cefalópodos, mamíferos (18 especies)
+  - **`fauna/`** (fijos, sin mirror, escala reducida): `SeaUrchinRenderer`, `BarnacleRenderer`, `StarfishRenderer`, `OysterRenderer`, `NautilusRenderer`, `GiantClamRenderer` (6 moluscos)
+- **Ajustes de escala** (`sizeMultiplier` en CreatureSpec):
+  - Flora: BrainCoral (1.0→0.50), Anemone (0.65→0.42), Kelp (1.0→0.50), Posidonia (1.0→0.52), FanCoral (1.0→0.48)
+  - Moluscos: SeaUrchin (1.0→0.55)
 - Las criaturas con renderer nunca muestran emoji en el acuario ni en dialogs — solo en EcosystemScreen (locked cards al 10% opacity).
 - `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para cualquier especie con renderer, emoji escalado a la caja para el resto.
 - Usado en `EcosystemScreen` (52.dp) y `CreatureDetailDialog` (80.dp).

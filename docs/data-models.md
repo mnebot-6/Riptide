@@ -314,9 +314,18 @@ data class CreatureSpec(
     val microWobble: Float,         // amplitud oscilación alta frecuencia (aleta/cola)
     val xErraticness: Float,        // perturbación aperiódica de X
     val fixedWobbleScale: Float,    // para criaturas fijas: escala de ondeo de corriente
-    val tempoVariation: Float       // [0..1) modulación de velocidad continua
+    val tempoVariation: Float,      // [0..1) modulación de velocidad continua
+    val sizeMultiplier: Float,      // escala relativa del tamaño base (0.4–1.05)
+    val instanceCount: Int,         // número de instancias Canvas (flora fija)
+    val emojiRotation: Float        // rotación en grados para emojis orientados
 )
 ```
+
+`sizeMultiplier`: multiplicador de tamaño relativo. El tamaño final renderizado es `baseSize * sizeScale * sizeMultiplier`. Flora grande (Kelp, BrainCoral, FanCoral, Posidonia) está escalada a ~0.50 para verse proporcionada en el nuevo terreno suavizado. SeaUrchin: 0.55.
+
+`instanceCount`: solo para criaturas fijas (flora, decoración). El Canvas renderer se dibuja este número de veces con posiciones pseudoaleatorias (round-robin).
+
+`emojiRotation`: rotación en grados. Langosta (-90°) apunta arriba; peces y otros depredadores (0°) apuntan a la derecha naturalmente.
 
 ### SwimZone
 
@@ -326,7 +335,7 @@ data class CreatureSpec(
 | UPPER | 0.30 | 0.10 | Clownfish, Medusa luna, Foca |
 | MID | 0.47 | 0.13 | Angelfish, Pufferfish, Manta ray, Calamar, Tortuga, Tiburón ballena |
 | LOWER | 0.64 | 0.09 | Langosta, Cangrejo, Gamba, Pulpo |
-| BOTTOM | 0.82 | 0.05 | Flora, Moluscos, Decoración |
+| BOTTOM | 0.82 | 0.05 | Flora (BrainCoral 0.50, Anemone 0.42, Kelp 0.50, Posidonia 0.52, FanCoral 0.48), Moluscos (SeaUrchin 0.55, Starfish 0.90, Oyster 0.85, etc.), Decoración |
 
 ### EasingType
 

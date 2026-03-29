@@ -239,7 +239,7 @@ internal fun DrawScope.drawAquariumBackground(
     drawRain(elapsedMs, surfaceY, weather)
 
     // 5. Fondo marino elaborado
-    drawSeaFloor(floorY)
+    drawSeaFloor(floorY, swayAngle, elapsedMs)
 
     // 6. Sun rays (after floor, before creatures)
     drawSunRays(elapsedMs, surfaceY, floorY, hourFraction, weather)
@@ -257,12 +257,15 @@ internal fun DrawScope.drawAquariumBackground(
     drawBubbles(bubbleProgress, surfaceY, floorY)
 }
 
-private fun DrawScope.drawSeaFloor(floorY: Float) {
+private fun DrawScope.drawSeaFloor(floorY: Float, swayAngle: Float, elapsedMs: Long) {
     val w = size.width
     val h = size.height
     val decs = cachedDecorations
 
-    // ── LAYER 1: Sand fill following the terrain curve ────────────────────────
+    // ── LAYER 1: Distant silhouettes (far background) ──────────────────────────
+    drawDistantSilhouettes(decs)
+
+    // ── LAYER 2: Sand fill following the terrain curve ────────────────────────
     val sandPath = AquariumTerrain.terrainPath(w, h)
     drawPath(
         sandPath,
@@ -273,7 +276,31 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
         )
     )
 
-    // ── LAYER 2: Sand ripple texture lines ────────────────────────────────────
+    // ── LAYER 3: Shadow band ──────────────────────────────────────────────────
+    val shadowColor = Color.Black.copy(alpha = 0.12f)
+    drawRect(
+        color = shadowColor,
+        topLeft = Offset(0f, AquariumTerrain.terrainY(0f, h) - 3f.dp.toPx()),
+        size = androidx.compose.ui.geometry.Size(w, 6f.dp.toPx())
+    )
+
+    // ── LAYER 4: Background rocks (farthest depth) ───────────────────────────
+    decs.bgRocks.forEach { rock ->
+        drawRock(
+            cx = rock.cx * w,
+            floorY = AquariumTerrain.terrainY(rock.cx, h),
+            rw = rock.wFrac * w,
+            rh = rock.hFrac * h,
+            style = rock.style,
+            alpha = 0.4f,
+            tint = -1
+        )
+    }
+
+    // ── LAYER 5: Seaweed clusters with sway animation ───────────────────────
+    drawSeaweedLayer(decs, swayAngle, elapsedMs)
+
+    // ── LAYER 6: Sand ripple texture lines ─────────────────────────────────────
     val sandLineColor = SandMid.copy(alpha = 0.35f)
     val lineStroke = 1.dp.toPx()
     for (i in 1..3) {
@@ -293,8 +320,34 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
         drawPath(linePath, sandLineColor, style = Stroke(width = lineStroke, cap = StrokeCap.Round))
     }
 
-    // ── LAYER 3: Floor pebbles ────────────────────────────────────────────────
+    // ── LAYER 7: Floor decorations (pebbles, shells, starfish, small corals) ──
     drawFloorDecorations(decs)
+
+    // ── LAYER 8: Mid-depth rocks ──────────────────────────────────────────────
+    decs.midRocks.forEach { rock ->
+        drawRock(
+            cx = rock.cx * w,
+            floorY = AquariumTerrain.terrainY(rock.cx, h),
+            rw = rock.wFrac * w,
+            rh = rock.hFrac * h,
+            style = rock.style,
+            alpha = 1f,
+            tint = 0
+        )
+    }
+
+    // ── LAYER 9: Foreground rocks (closest depth) ──────────────────────────────
+    decs.fgRocks.forEach { rock ->
+        drawRock(
+            cx = rock.cx * w,
+            floorY = AquariumTerrain.terrainY(rock.cx, h),
+            rw = rock.wFrac * w,
+            rh = rock.hFrac * h,
+            style = rock.style,
+            alpha = 1f,
+            tint = 1
+        )
+    }
 }
 
 // ── Rock drawing (kept for potential future use) ──────────────────────────────

@@ -98,8 +98,10 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
     aquarium/
       AquariumBackground.kt    (Canvas: cielo dinámico 7 periodos via kotlin.time.Clock.System,
                                  superficie con olas animadas cresta doble 9dp,
-                                 fondo marino arena+textura 11 rocas 3 estilos, burbujas)
-      AquariumBounds.kt        (SURFACE_FRACTION=0.08, FLOOR_FRACTION=0.88, surfaceY/floorY)
+                                 terreno suavizado (amplitud 0.022f, Y∈[0.80–0.90]) + arena+textura + pebbles)
+      AquariumBounds.kt        (SURFACE_FRACTION=0.08, FLOOR_FRACTION=0.85, surfaceY/floorY)
+      AquariumTerrain.kt       (procedural Catmull-Rom terrain con seed, configuración per-session,
+                                 amplitud muy suave para ondulaciones casi imperceptibles)
       AquariumCreature.kt       (CreatureSpec +rarity +sizeMultiplier +instanceCount; SwimZone, EasingType,
                                  personalYFraction, verticalCoupling, microWobble, xErraticness,
                                  fixedWobbleScale, tempoVariation; 40 especies en allCreatures;
@@ -121,11 +123,12 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
                                  IntrinsicSize.Max para altura uniforme;
                                  abre CreatureDetailDialog al pulsar)
       flora/
-        BrainCoralRenderer.kt  (Canvas: domos con crestas, cluster multi-domo nivel 6+)
-        AnemoneRenderer.kt     (Canvas: tentáculos animados, 5→14 según nivel)
-        KelpRenderer.kt        (Canvas: tallos con hojas alternas, bosque multi-tallo nivel 6+)
-        PosidoniaRenderer.kt   (Canvas: cintas de hierba marina ancladas, oscilación por fase, matte nivel 5+)
-        FanCoralRenderer.kt    (Canvas: árbol bifurcado recursivo, balanceo suave, malla nivel 3+, pólipos nivel 5+)
+        BrainCoralRenderer.kt  (Canvas: REDISEÑO — cúpula hemisférica gradiente + grooves laberínticos sinusoidales
+                                 + highlight especular + glow nivel 3+; sizeMultiplier 0.50)
+        AnemoneRenderer.kt     (Canvas: tentáculos animados, 5→14 según nivel; sizeMultiplier 0.42)
+        KelpRenderer.kt        (Canvas: tallos con hojas alternas, bosque multi-tallo nivel 6+; sizeMultiplier 0.50)
+        PosidoniaRenderer.kt   (Canvas: cintas de hierba marina ancladas, oscilación por fase, matte nivel 5+; sizeMultiplier 0.52)
+        FanCoralRenderer.kt    (Canvas: árbol bifurcado recursivo, balanceo suave, malla nivel 3+, pólipos nivel 5+; sizeMultiplier 0.48)
       fauna/
         MantaRayRenderer.kt    (Canvas: aleteo con onda progresiva, aletas cefálicas, cola ondulante)
         SurgeonfishRenderer.kt (Canvas: azul cobalto, cola amarilla, máscara negra, escalpelo)
@@ -137,8 +140,12 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
         SpiderCrabRenderer.kt  (Canvas: 10 patas larguísimas articuladas con animación por fase)
         CuttlefishRenderer.kt  (Canvas: falda de aletas ondulantes, pupila en W, brazos + tentáculos)
         BlueRingedOctopusRenderer.kt (Canvas: 16 anillos azules pulsantes con sin(t))
-        SeaUrchinRenderer.kt   (Canvas: semiesfera con 30 espinas radiales, 5 bandas simetría)
+        SeaUrchinRenderer.kt   (Canvas: semiesfera con 30 espinas radiales, 5 bandas simetría; sizeMultiplier 0.55)
         BarnacleRenderer.kt    (Canvas: cluster volcanes/conos, placas, cirros nivel 3+)
+        StarfishRenderer.kt    (Canvas: 5-puntas estrella; sizeMultiplier 0.90)
+        OysterRenderer.kt      (Canvas: concha bivalva; sizeMultiplier 0.85)
+        NautilusRenderer.kt    (Canvas: espiral logarítmica con cámaras)
+        GiantClamRenderer.kt   (Canvas: concha ondulante, zooxantelas nivel 5+)
     LocalizationExtensions.kt  (localizedDays() @Composable; displayNameRes() para CreatureSpecies/MarineCategory/CreatureRarity)
     block/
       BlockFormScreen.kt
