@@ -237,30 +237,30 @@ val allCreatures = listOf(
 
     // ── FLORA ─────────────────────────────────────────────────────────────────
     //
-    // Brain Coral — absolutamente rígido. 4 instancias en el suelo.
+    // Brain Coral — absolutamente rígido. 2 instancias en el suelo.
     CreatureSpec("🪸", CreatureSpecies.BRAIN_CORAL,
         MarineCategory.FLORA, CreatureRarity.COMMON,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f, instanceCount = 4),
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.50f),
 
     // Anemone — se mece con la corriente internamente.
     CreatureSpec("🌿", CreatureSpecies.ANEMONE,
         MarineCategory.FLORA, CreatureRarity.UNCOMMON,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f, instanceCount = 3),
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.42f),
 
-    // Kelp — meceo largo y suave. Bosque de tallos.
+    // Kelp — meceo largo y suave.
     CreatureSpec("🎋", CreatureSpecies.KELP,
         MarineCategory.FLORA, CreatureRarity.RARE,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f, instanceCount = 4),
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.50f),
 
     // Posidonia — ondulante y delicada.
     CreatureSpec("🌾", CreatureSpecies.POSIDONIA,
         MarineCategory.FLORA, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f, instanceCount = 3),
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.52f),
 
     // Fan Coral — ramificado y colorido.
     CreatureSpec("🪭", CreatureSpecies.FAN_CORAL,
         MarineCategory.FLORA, CreatureRarity.EPIC, 0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f, instanceCount = 2),
+        fixedWobbleScale = 0.00f, instanceCount = 1, sizeMultiplier = 0.48f),
 
     // ── CRUSTACEAN ────────────────────────────────────────────────────────────
     //
@@ -271,7 +271,7 @@ val allCreatures = listOf(
         driftSpeed = 0.13f, driftAmplitude = 0.14f, pauseFraction = 0.28f,
         easingType = EasingType.CRAWL, verticalCoupling = 0.25f,
         microWobble = 0.012f, xErraticness = 0.00f,
-        tempoVariation = 0.55f, sizeMultiplier = 0.82f),
+        tempoVariation = 0.55f, sizeMultiplier = 0.62f),
 
     // Hermit Crab — explorador errático.
     CreatureSpec("🦀", CreatureSpecies.HERMIT_CRAB,
@@ -308,7 +308,7 @@ val allCreatures = listOf(
     // ── MOLLUSK (fijos) ───────────────────────────────────────────────────────
     CreatureSpec("🌑", CreatureSpecies.SEA_URCHIN,
         MarineCategory.MOLLUSK, CreatureRarity.COMMON,  0, 0f, 0f, SwimZone.BOTTOM,
-        fixedWobbleScale = 0.00f),
+        fixedWobbleScale = 0.00f, sizeMultiplier = 0.55f),
 
     CreatureSpec("⭐", CreatureSpecies.STARFISH,
         MarineCategory.MOLLUSK, CreatureRarity.UNCOMMON,  0, 0f, 0f, SwimZone.BOTTOM,
@@ -500,12 +500,12 @@ val allCreatures = listOf(
     // ── COMPANION (easter egg — nada en la superficie) ────────────────────────
     // Bimba: labrador amarilla de 12 años, 3 patas, ama el agua 🐾
     CreatureSpec("🐾", CreatureSpecies.BIMBA,
-        MarineCategory.COMPANION, CreatureRarity.LEGENDARY, 0, 0.08f, -0.005f, SwimZone.SURFACE,
-        personalYFraction = 0.14f, waveCount = 3, erraticness = 0.25f,
-        driftSpeed = 0.38f, driftAmplitude = 0.30f, pauseFraction = 0.08f,
-        easingType = EasingType.SMOOTH, verticalCoupling = 0.85f,
-        microWobble = 0.018f, xErraticness = 0.08f,
-        tempoVariation = 0.20f, sizeMultiplier = 1.10f),
+        MarineCategory.COMPANION, CreatureRarity.LEGENDARY, 8000, 0.02f, 0.0f, SwimZone.SURFACE,
+        personalYFraction = 0.50f, waveCount = 1, erraticness = 0.05f,
+        driftSpeed = 0.15f, driftAmplitude = 0.04f, pauseFraction = 0.15f,
+        easingType = EasingType.SMOOTH, verticalCoupling = -1.1f,
+        microWobble = 0.004f, xErraticness = 0.04f,
+        tempoVariation = 0.15f, sizeMultiplier = 1.10f),
 )
 
 // ── Posición X de criaturas fijas ─────────────────────────────────────────────
@@ -696,7 +696,8 @@ fun DrawScope.drawAquariumCreatures(
                 x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
                 val emojiFloorY = AquariumTerrain.terrainY(x / w, h)
                 val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
-                y = emojiFloorY - iconSize * 0.3f + wobble
+                // 0.5f → el borde inferior del emoji queda a ras del terreno (se posa encima)
+                y = emojiFloorY - iconSize * 0.5f + wobble
                 drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
             }
         } else {
@@ -948,7 +949,8 @@ fun AquariumCreatures(
                             x = w * fixedX(emojiIdx, fixedEmojiCreatures.size)
                             val emojiFloorY = AquariumTerrain.terrainY(x / w, h)
                             val wobble = osc(tRaw, 12000L, phase) * zoneBand * 0.20f * spec.fixedWobbleScale
-                            y = emojiFloorY - iconSize * 0.3f + wobble
+                            // 0.5f → el borde inferior del emoji queda a ras del terreno (se posa encima)
+                y = emojiFloorY - iconSize * 0.5f + wobble
                             drawEmoji(spec.emoji, x, y, iconSize, mirrored = false, rotation = spec.emojiRotation)
                         }
 
@@ -1042,7 +1044,10 @@ fun AquariumCreatures(
                         } else {
                             AquariumBounds.surfaceY(h) + halfIcon
                         }
-                        val floorLimit = AquariumBounds.floorY(h) - halfIcon
+                        // Para BOTTOM: el terreno ya calcula rawY correctamente; usar un
+                        // límite generoso para que los valles (hasta Y~0.93) no queden recortados.
+                        val floorLimit = if (spec.swimZone == SwimZone.BOTTOM) h * 0.97f
+                                         else AquariumBounds.floorY(h) - halfIcon
                         y = rawY.coerceIn(surfaceLimit, floorLimit)
 
                         val renderer = rendererFor(spec.species)

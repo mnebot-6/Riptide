@@ -24,7 +24,8 @@
       "Bash(./gradlew assembleDebug)",
       "Bash(./gradlew compileDebugKotlin)",
       "Bash(gh pr:*)",
-      "Bash(where gh:*)"
+      "Bash(where gh:*)",
+      "Bash(find /c/MyPrograms/AndroidStudioProjects/Riptide -name MarineCategory* -o -name *Category*.kt)"
     ]
   }
 }

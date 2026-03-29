@@ -105,7 +105,8 @@ class MainViewModel(
                     _uiState.update { it.copy(pendingLootboxes = it.pendingLootboxes + newLootboxes) }
                 }
                 // Easter egg: Bimba se desbloquea al completar una tarea con "premio" o "treat"
-                decorationUnlockChecker?.checkBimba(task.title)
+                val bimbaUnlocked = decorationUnlockChecker?.checkBimba(task.title)
+                if (bimbaUnlocked != null) checkPendingLootboxes()
             }
 
             loadDay(_uiState.value.selectedDate)

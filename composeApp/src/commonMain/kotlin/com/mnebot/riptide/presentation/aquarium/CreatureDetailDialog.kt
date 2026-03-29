@@ -39,7 +39,7 @@ fun CreatureDetailDialog(
     onNicknameChanged: (String) -> Unit
 ) {
     var nickname by remember(creature.id) { mutableStateOf(creature.nickname ?: "") }
-    val isDecoration = spec.category == MarineCategory.DECORATION
+    val isDecoration = spec.category == MarineCategory.DECORATION || spec.category == MarineCategory.COMPANION
 
     Dialog(onDismissRequest = onDismiss) {
         Column(

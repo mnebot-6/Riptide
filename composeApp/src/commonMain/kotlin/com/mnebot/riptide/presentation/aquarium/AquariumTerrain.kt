@@ -3,28 +3,52 @@ package com.mnebot.riptide.presentation.aquarium
 import androidx.compose.ui.graphics.Path
 
 /**
- * Provides an undulating terrain curve for the sea floor, replacing the flat baseline.
+ * Provides an undulating terrain curve for the sea floor.
  *
- * Uses Catmull-Rom spline interpolation between control points for smooth, natural hills
- * and valleys reminiscent of cartoon coral reef art.
+ * Control points are generated procedurally from a seed in [AquariumTerrainConfig],
+ * producing alternating hills (odd indices) and valleys (even interior indices).
+ * Y-fraction range: ~0.73 (hill peaks) to ~0.93 (valley floors) at heightVariation=1.0.
  *
- * yFraction range: ~0.82 (hill peaks) to ~0.93 (valley floors).
+ * Uses Catmull-Rom spline interpolation for smooth, natural curves.
  */
 object AquariumTerrain {
 
-    // Control points defining hills and valleys as (xFraction, yFraction) pairs.
-    private val controlPoints = listOf(
-        0.00f to 0.90f,   // left edge - mid height
-        0.10f to 0.86f,   // small hill
-        0.22f to 0.91f,   // valley
-        0.35f to 0.83f,   // main hill (tallest)
-        0.48f to 0.89f,   // valley
-        0.58f to 0.85f,   // medium hill
-        0.72f to 0.92f,   // deep valley
-        0.82f to 0.84f,   // hill
-        0.93f to 0.90f,   // gentle slope
-        1.00f to 0.88f,   // right edge
+    private data class GeneratedTerrain(
+        val seed: Long,
+        val heightVariation: Float,
+        val controlPoints: List<Pair<Float, Float>>
     )
+
+    private var cached: GeneratedTerrain = generateTerrain(AquariumTerrainConfig())
+
+    /**
+     * Reconfigures the terrain if the seed or heightVariation differs from the cached version.
+     * Should be called once before the first draw (e.g. from the cachedDecorations lazy block).
+     */
+    fun configure(config: AquariumTerrainConfig) {
+        if (cached.seed != config.seed || cached.heightVariation != config.heightVariation) {
+            cached = generateTerrain(config)
+        }
+    }
+
+    private fun generateTerrain(config: AquariumTerrainConfig): GeneratedTerrain {
+        val rng = kotlin.random.Random(config.seed)
+        val xFracs = listOf(0.00f, 0.12f, 0.25f, 0.38f, 0.50f, 0.63f, 0.76f, 0.87f, 1.00f)
+        val hv = config.heightVariation.coerceIn(0f, 1f)
+        val base = 0.84f
+        val amplitude = 0.022f * hv
+        val points = xFracs.mapIndexed { i, x ->
+            val y = when (i) {
+                0, 8 -> base + amplitude * 0.3f           // edges: slight valley
+                else -> if (i % 2 == 1)
+                    base - rng.nextFloat() * amplitude     // odd = hill (smaller Y = higher on screen)
+                else
+                    base + rng.nextFloat() * amplitude     // even = valley
+            }
+            x to y.coerceIn(0.80f, 0.90f)
+        }
+        return GeneratedTerrain(config.seed, config.heightVariation, points)
+    }
 
     /**
      * Returns the Y coordinate of the terrain at the given horizontal fraction.
@@ -37,26 +61,23 @@ object AquariumTerrain {
      */
     fun terrainY(xFraction: Float, screenHeight: Float): Float {
         val x = xFraction.coerceIn(0f, 1f)
-        val n = controlPoints.size
+        val pts = cached.controlPoints
+        val n = pts.size
 
-        // Find the segment: controlPoints[i] <= x < controlPoints[i+1]
         var segIndex = 0
         for (i in 0 until n - 1) {
-            if (x >= controlPoints[i].first) segIndex = i
+            if (x >= pts[i].first) segIndex = i
         }
 
-        val p0x = controlPoints[segIndex].first
-        val p1x = if (segIndex + 1 < n) controlPoints[segIndex + 1].first else p0x
+        val p0x = pts[segIndex].first
+        val p1x = if (segIndex + 1 < n) pts[segIndex + 1].first else p0x
         val segLen = p1x - p0x
-
-        // Local t within this segment [0..1]
         val t = if (segLen > 0f) ((x - p0x) / segLen).coerceIn(0f, 1f) else 0f
 
-        // Catmull-Rom needs 4 points: P_{i-1}, P_i, P_{i+1}, P_{i+2}
-        val y0 = controlPoints[(segIndex - 1).coerceAtLeast(0)].second
-        val y1 = controlPoints[segIndex].second
-        val y2 = controlPoints[(segIndex + 1).coerceAtMost(n - 1)].second
-        val y3 = controlPoints[(segIndex + 2).coerceAtMost(n - 1)].second
+        val y0 = pts[(segIndex - 1).coerceAtLeast(0)].second
+        val y1 = pts[segIndex].second
+        val y2 = pts[(segIndex + 1).coerceAtMost(n - 1)].second
+        val y3 = pts[(segIndex + 2).coerceAtMost(n - 1)].second
 
         val yFraction = catmullRom(t, y0, y1, y2, y3)
         return yFraction * screenHeight
@@ -69,15 +90,13 @@ object AquariumTerrain {
      *
      * @param screenWidth total screen width in pixels
      * @param screenHeight total screen height in pixels
-     * @param steps number of horizontal sample points for smoothness (default 80)
+     * @param steps number of horizontal sample points for smoothness (default 100)
      */
-    fun terrainPath(screenWidth: Float, screenHeight: Float, steps: Int = 80): Path {
+    fun terrainPath(screenWidth: Float, screenHeight: Float, steps: Int = 100): Path {
         return Path().apply {
-            // Start at left edge, terrain height
             val startY = terrainY(0f, screenHeight)
             moveTo(0f, startY)
 
-            // Trace the terrain curve left to right
             for (i in 1..steps) {
                 val xFrac = i.toFloat() / steps
                 val px = xFrac * screenWidth
@@ -85,7 +104,6 @@ object AquariumTerrain {
                 lineTo(px, py)
             }
 
-            // Close the path: go to bottom-right, bottom-left, then back to start
             lineTo(screenWidth, screenHeight)
             lineTo(0f, screenHeight)
             close()
@@ -95,12 +113,6 @@ object AquariumTerrain {
     /**
      * Catmull-Rom spline interpolation between p1 and p2,
      * using p0 and p3 as tangent guides. t in [0..1].
-     *
-     * Standard Catmull-Rom formula with alpha=0.5 (uniform):
-     *   q(t) = 0.5 * ((2*p1) +
-     *          (-p0 + p2) * t +
-     *          (2*p0 - 5*p1 + 4*p2 - p3) * t^2 +
-     *          (-p0 + 3*p1 - 3*p2 + p3) * t^3)
      */
     private fun catmullRom(t: Float, p0: Float, p1: Float, p2: Float, p3: Float): Float {
         val t2 = t * t

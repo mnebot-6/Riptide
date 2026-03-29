@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\.claude\\\\helpers\")",
+      "Bash(findstr /s /n /i \"worktree isolation\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\.claude\\\\helpers\\\\hook-handler.cjs\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\.claude\\\\helpers\\\\router.js\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\.claude\\\\helpers\\\\session.js\")",
+      "Read(//d C:/MyPrograms/AndroidStudioProjects/Riptide/**)",
+      "Bash(findstr /s /n /i \"worktree\" helpershook-handler.cjs helpersrouter.js helperssession.js)",
+      "Bash(findstr /n /i \"worktree\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\.claude\\\\helpers\\\\hook-handler.cjs\")",
+      "Bash(findstr /n /i \"worktree\")",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(./gradlew :composeApp:generateDebugResources --rerun-tasks)",
+      "Bash(./gradlew clean:*)"
+    ]
+  }
+}
