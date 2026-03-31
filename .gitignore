@@ -18,6 +18,14 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 
+# Release signing
+keystore.properties
+*.keystore
+*.jks
+
+# Claude worktrees (efimeros, nunca commitear)
+.claude/worktrees/
+
 # Ruflo runtime data
 .claude-flow/data/
 .claude-flow/logs/

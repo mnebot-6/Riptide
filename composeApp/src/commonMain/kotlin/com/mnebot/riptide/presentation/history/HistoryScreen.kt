@@ -254,7 +254,7 @@ private fun SearchField(
                 Spacer(Modifier.width(8.dp))
                 Icon(
                     painter = painterResource(Res.drawable.ic_x),
-                    contentDescription = null,
+                    contentDescription = stringResource(Res.string.a11y_clear_search),
                     tint = TextSecondary,
                     modifier = Modifier
                         .size(18.dp)

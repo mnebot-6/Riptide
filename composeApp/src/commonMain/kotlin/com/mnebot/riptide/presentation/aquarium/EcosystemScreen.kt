@@ -186,7 +186,7 @@ private fun EcosystemCategorySection(
             if (!isUnlocked) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_lock),
-                    contentDescription = null,
+                    contentDescription = stringResource(Res.string.a11y_locked),
                     tint = SectionLabel,
                     modifier = Modifier.size(11.dp)
                 )

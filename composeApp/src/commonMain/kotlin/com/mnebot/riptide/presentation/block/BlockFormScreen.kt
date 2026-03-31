@@ -173,7 +173,7 @@ fun BlockFormScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                items(colorPalette) { hex ->
+                items(colorPalette, key = { it }) { hex ->
                     val color = parseColor(hex)
                     val isSelected = hex == selectedColor
                     Box(

@@ -11,13 +11,22 @@ import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
 import kotlin.math.PI
 import kotlin.math.sin
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-private val BarrBody  = Color(0xFF3A5060)  // blue-gray
-private val BarrBelly = Color(0xFFD8E8F0)  // white belly
-private val BarrFin   = Color(0xFF2A4050)  // fins
-private val BarrLine  = Color(0xFF2A3848)  // lateral line + jaw details
-private val BarrTooth = Color(0xFFFFFFFF)  // teeth
-private val BarrSheen = Color(0xFF5090B0)  // iridescent sheen (level 5+)
+// ── Palette (from Recraft reference SVG) ─────────────────────────────────────
+private val BodySage       = Color(0xFF9FC8BC)  // sage green body
+private val BodyLightSage  = Color(0xFFB4D1C5)  // lighter sage
+private val BodyTealGray   = Color(0xFF72B4B8)  // teal-gray mid-tone
+private val BellyCream     = Color(0xFFF4F3E5)  // cream belly
+private val BellyWhite     = Color(0xFFF9F7F1)  // near-white highlight
+private val AccentCoral    = Color(0xFFFA835B)  // coral/salmon accent
+private val AccentPeach    = Color(0xFFFCA272)  // light peach
+private val AccentDeepRed  = Color(0xFFD95C4E)  // deeper red-coral
+private val AccentDarkRed  = Color(0xFFB94D49)  // dark red shadow
+private val HighlightTeal  = Color(0xFF15A3A8)  // teal highlight
+private val ShadowNavy     = Color(0xFF050530)  // near-black
+private val ShadowDeepBlue = Color(0xFF042974)  // dark blue-purple
+private val ShadowDarkTeal = Color(0xFF035578)  // dark teal
+private val DarkGray       = Color(0xFF323D44)  // dark gray accent
+private val MediumTeal     = Color(0xFF057E8E)  // medium teal
 
 object BarracudaRenderer : CreatureRenderer {
 
@@ -28,21 +37,29 @@ object BarracudaRenderer : CreatureRenderer {
         val s = size / 28f
         val t = animTimeMs / 1000f
 
-        // Barracuda is very elongated
-        val bodyLen = (18f + level * 1.2f) * s
-        val bodyH   = (4.5f + level * 0.35f) * s
+        val bodyLen  = (18f + level * 1.2f) * s
+        val bodyH    = (4.5f + level * 0.35f) * s
         val tailSway = sin(t * 4.0f * PI.toFloat()) * 1.5f * s
 
         withTransform({
             if (mirrored) scale(-1f, 1f, pivot = Offset(x, y))
         }) {
 
-            // ════════════════════════════════════════════════════════════════
-            // TAIL FIN — forked
-            // ════════════════════════════════════════════════════════════════
+            // ── TAIL FIN (forked, layered) ───────────────────────────────────
             val tailX = x + bodyLen * 0.45f
             val forkLen = 4.0f * s
 
+            // Tail shadow
+            val tailShadow = Path().apply {
+                moveTo(tailX - bodyLen * 0.02f, y)
+                lineTo(tailX + forkLen * 1.05f, y - forkLen * 1.25f + tailSway)
+                lineTo(tailX + forkLen * 0.5f, y + tailSway * 0.3f)
+                lineTo(tailX + forkLen * 1.05f, y + forkLen * 1.25f + tailSway)
+                close()
+            }
+            drawPath(tailShadow, ShadowDeepBlue.copy(alpha = 0.20f))
+
+            // Upper fork
             val tailTopFork = Path().apply {
                 moveTo(tailX, y - bodyH * 0.2f)
                 cubicTo(
@@ -57,8 +74,26 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(tailTopFork, BarrFin)
+            drawPath(tailTopFork, ShadowDarkTeal)
 
+            // Upper fork highlight
+            val tailTopHL = Path().apply {
+                moveTo(tailX + forkLen * 0.1f, y - bodyH * 0.18f)
+                cubicTo(
+                    tailX + forkLen * 0.35f, y - bodyH * 0.25f + tailSway * 0.3f,
+                    tailX + forkLen * 0.6f, y - forkLen * 0.7f + tailSway,
+                    tailX + forkLen * 0.85f, y - forkLen * 0.95f + tailSway
+                )
+                cubicTo(
+                    tailX + forkLen * 0.6f, y + tailSway * 0.2f,
+                    tailX + forkLen * 0.35f, y + bodyH * 0.05f + tailSway * 0.15f,
+                    tailX + forkLen * 0.1f, y - bodyH * 0.05f
+                )
+                close()
+            }
+            drawPath(tailTopHL, BodyTealGray.copy(alpha = 0.5f))
+
+            // Lower fork
             val tailBotFork = Path().apply {
                 moveTo(tailX, y)
                 cubicTo(
@@ -73,13 +108,24 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(tailBotFork, BarrFin)
+            drawPath(tailBotFork, ShadowDarkTeal)
 
-            // ════════════════════════════════════════════════════════════════
-            // DORSAL FINS — two separate fins
-            // ════════════════════════════════════════════════════════════════
+            // ── DORSAL FINS ──────────────────────────────────────────────────
             val dorsalSway = sin(t * 3f * PI.toFloat()) * 0.4f * s
-            // First dorsal (front, triangular)
+
+            // First dorsal shadow
+            val dorsal1Shadow = Path().apply {
+                moveTo(x - bodyLen * 0.12f, y - bodyH * 0.83f)
+                cubicTo(
+                    x - bodyLen * 0.02f + dorsalSway, y - bodyH * 1.75f,
+                    x + bodyLen * 0.10f + dorsalSway, y - bodyH * 1.70f,
+                    x + bodyLen * 0.16f, y - bodyH * 0.83f
+                )
+                close()
+            }
+            drawPath(dorsal1Shadow, ShadowDeepBlue.copy(alpha = 0.18f))
+
+            // First dorsal
             val dorsal1 = Path().apply {
                 moveTo(x - bodyLen * 0.1f, y - bodyH * 0.85f)
                 cubicTo(
@@ -94,9 +140,20 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(dorsal1, BarrFin)
+            drawPath(dorsal1, AccentDeepRed)
+            // Dorsal highlight
+            val dorsal1HL = Path().apply {
+                moveTo(x - bodyLen * 0.06f, y - bodyH * 0.87f)
+                cubicTo(
+                    x + dorsalSway * 0.6f, y - bodyH * 1.40f,
+                    x + bodyLen * 0.05f + dorsalSway * 0.6f, y - bodyH * 1.38f,
+                    x + bodyLen * 0.10f, y - bodyH * 0.87f
+                )
+                close()
+            }
+            drawPath(dorsal1HL, AccentCoral.copy(alpha = 0.6f))
 
-            // Second dorsal (rear, small)
+            // Second dorsal
             val dorsal2 = Path().apply {
                 moveTo(x + bodyLen * 0.22f, y - bodyH * 0.78f)
                 cubicTo(
@@ -111,9 +168,9 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(dorsal2, BarrFin)
+            drawPath(dorsal2, AccentDeepRed)
 
-            // Anal fin (matching small fin below)
+            // Anal fin
             val anal = Path().apply {
                 moveTo(x + bodyLen * 0.22f, y + bodyH * 0.78f)
                 cubicTo(
@@ -128,14 +185,33 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(anal, BarrFin)
+            drawPath(anal, AccentDeepRed)
 
-            // ════════════════════════════════════════════════════════════════
-            // MAIN BODY — very elongated torpedo
-            // ════════════════════════════════════════════════════════════════
-            val headX = x - bodyLen   // very long snout
+            // ── MAIN BODY (torpedo, layered) ─────────────────────────────────
+            val headX = x - bodyLen
+
+            // Body shadow
+            val bodyShadow = Path().apply {
+                moveTo(headX - 0.5f * s, y)
+                cubicTo(
+                    headX + bodyLen * 0.05f, y - bodyH * 1.05f,
+                    x - bodyLen * 0.28f, y - bodyH * 1.05f,
+                    x + bodyLen * 0.52f, y - bodyH * 0.28f
+                )
+                lineTo(tailX + 0.5f * s, y)
+                lineTo(x + bodyLen * 0.52f, y + bodyH * 0.28f)
+                cubicTo(
+                    x - bodyLen * 0.28f, y + bodyH * 1.05f,
+                    headX + bodyLen * 0.05f, y + bodyH * 1.05f,
+                    headX - 0.5f * s, y
+                )
+                close()
+            }
+            drawPath(bodyShadow, ShadowDeepBlue.copy(alpha = 0.18f))
+
+            // Main body
             val body = Path().apply {
-                moveTo(headX, y)      // upper jaw tip
+                moveTo(headX, y)
                 cubicTo(
                     headX + bodyLen * 0.05f, y - bodyH * 0.45f,
                     x - bodyLen * 0.3f, y - bodyH,
@@ -150,9 +226,26 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(body, BarrBody)
+            drawPath(body, BodySage)
 
-            // Belly counter-shading
+            // Upper body highlight
+            val upperHL = Path().apply {
+                moveTo(headX + bodyLen * 0.03f, y - bodyH * 0.15f)
+                cubicTo(
+                    headX + bodyLen * 0.08f, y - bodyH * 0.40f,
+                    x - bodyLen * 0.25f, y - bodyH * 0.90f,
+                    x + bodyLen * 0.45f, y - bodyH * 0.22f
+                )
+                cubicTo(
+                    x + bodyLen * 0.2f, y - bodyH * 0.55f,
+                    x - bodyLen * 0.15f, y - bodyH * 0.60f,
+                    headX + bodyLen * 0.03f, y - bodyH * 0.15f
+                )
+                close()
+            }
+            drawPath(upperHL, BodyLightSage.copy(alpha = 0.5f))
+
+            // Belly counter-shading (cream)
             val belly = Path().apply {
                 moveTo(headX + bodyLen * 0.05f, y + bodyH * 0.05f)
                 cubicTo(
@@ -167,11 +260,26 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(belly, BarrBelly.copy(alpha = 0.50f))
+            drawPath(belly, BellyCream.copy(alpha = 0.50f))
 
-            // ════════════════════════════════════════════════════════════════
-            // LOWER JAW — prominent underbite
-            // ════════════════════════════════════════════════════════════════
+            // Belly bright center
+            val bellyCenter = Path().apply {
+                moveTo(headX + bodyLen * 0.08f, y + bodyH * 0.10f)
+                cubicTo(
+                    x - bodyLen * 0.15f, y + bodyH * 0.65f,
+                    x + bodyLen * 0.25f, y + bodyH * 0.60f,
+                    tailX - bodyLen * 0.05f, y + bodyH * 0.15f
+                )
+                cubicTo(
+                    x + bodyLen * 0.2f, y + bodyH * 0.40f,
+                    x - bodyLen * 0.1f, y + bodyH * 0.42f,
+                    headX + bodyLen * 0.08f, y + bodyH * 0.10f
+                )
+                close()
+            }
+            drawPath(bellyCenter, BellyWhite.copy(alpha = 0.30f))
+
+            // ── LOWER JAW ────────────────────────────────────────────────────
             val lowerJaw = Path().apply {
                 moveTo(headX - 1.5f * s, y + bodyH * 0.08f)
                 cubicTo(
@@ -186,69 +294,110 @@ object BarracudaRenderer : CreatureRenderer {
                 )
                 close()
             }
-            drawPath(lowerJaw, BarrBody.copy(alpha = 0.8f))
+            drawPath(lowerJaw, DarkGray.copy(alpha = 0.7f))
 
-            // Teeth hints on lower jaw
-            val toothCount = 4
+            // Teeth (sharper, coral-tinted)
+            val toothCount = 5
             for (i in 0 until toothCount) {
+                val tx = headX + bodyLen * 0.015f + i * bodyLen * 0.022f
+                drawLine(
+                    BellyWhite.copy(alpha = 0.75f),
+                    Offset(tx, y + bodyH * 0.22f),
+                    Offset(tx, y + bodyH * 0.08f),
+                    strokeWidth = (0.7f * s).coerceAtLeast(0.4f),
+                    cap = StrokeCap.Round
+                )
+            }
+            // Upper teeth
+            for (i in 0 until 3) {
                 val tx = headX + bodyLen * 0.02f + i * bodyLen * 0.025f
                 drawLine(
-                    BarrTooth.copy(alpha = 0.7f),
-                    Offset(tx, y + bodyH * 0.20f),
-                    Offset(tx, y + bodyH * 0.10f),
-                    strokeWidth = (0.8f * s).coerceAtLeast(0.5f),
+                    BellyWhite.copy(alpha = 0.6f),
+                    Offset(tx, y - bodyH * 0.08f),
+                    Offset(tx, y + bodyH * 0.05f),
+                    strokeWidth = (0.6f * s).coerceAtLeast(0.3f),
                     cap = StrokeCap.Round
                 )
             }
 
-            // ════════════════════════════════════════════════════════════════
-            // LATERAL LINE
-            // ════════════════════════════════════════════════════════════════
+            // ── LATERAL LINE ─────────────────────────────────────────────────
             drawLine(
-                BarrLine.copy(alpha = 0.55f),
+                ShadowDarkTeal.copy(alpha = 0.45f),
                 Offset(headX + bodyLen * 0.10f, y - bodyH * 0.06f),
                 Offset(tailX - forkLen * 0.3f, y - bodyH * 0.08f),
                 strokeWidth = (0.7f * s).coerceAtLeast(0.4f),
                 cap = StrokeCap.Round
             )
 
-            // ════════════════════════════════════════════════════════════════
-            // LEVEL 3+: darker flank blotches
-            // ════════════════════════════════════════════════════════════════
+            // ── PECTORAL FIN (small, coral-tinted) ───────────────────────────
+            val pectSway = sin(t * 3.5f * PI.toFloat()) * 0.8f * s
+            val pect = Path().apply {
+                moveTo(x - bodyLen * 0.55f, y + bodyH * 0.15f)
+                cubicTo(
+                    x - bodyLen * 0.48f + pectSway, y + bodyH * 0.65f,
+                    x - bodyLen * 0.40f + pectSway, y + bodyH * 0.68f,
+                    x - bodyLen * 0.35f, y + bodyH * 0.35f
+                )
+                cubicTo(
+                    x - bodyLen * 0.42f, y + bodyH * 0.25f,
+                    x - bodyLen * 0.50f, y + bodyH * 0.18f,
+                    x - bodyLen * 0.55f, y + bodyH * 0.15f
+                )
+                close()
+            }
+            drawPath(pect, AccentCoral.copy(alpha = 0.55f))
+
+            // ── LEVEL 3+: Flank blotches (darker teal chevrons) ─────────────
             if (level >= 3) {
                 for (b in 0 until 5) {
                     val bx = x - bodyLen * 0.3f + b * bodyLen * 0.16f
                     drawLine(
-                        BarrLine.copy(alpha = 0.30f),
+                        ShadowDarkTeal.copy(alpha = 0.25f),
                         Offset(bx, y - bodyH * 0.55f),
-                        Offset(bx + 0.5f * s, y + bodyH * 0.45f),
+                        Offset(bx + 0.8f * s, y + bodyH * 0.45f),
                         strokeWidth = (2.5f * s).coerceAtLeast(1.0f),
                         cap = StrokeCap.Round
                     )
                 }
             }
 
-            // ════════════════════════════════════════════════════════════════
-            // LEVEL 5+: iridescent sheen line
-            // ════════════════════════════════════════════════════════════════
+            // ── LEVEL 5+: Iridescent sheen ──────────────────────────────────
             if (level >= 5) {
                 drawLine(
-                    BarrSheen.copy(alpha = 0.45f),
+                    HighlightTeal.copy(alpha = 0.40f),
                     Offset(headX + bodyLen * 0.08f, y - bodyH * 0.35f),
                     Offset(tailX, y - bodyH * 0.30f),
                     strokeWidth = (1.2f * s).coerceAtLeast(0.6f),
                     cap = StrokeCap.Round
                 )
+                // Coral accent line along belly
+                drawLine(
+                    AccentPeach.copy(alpha = 0.30f),
+                    Offset(headX + bodyLen * 0.12f, y + bodyH * 0.30f),
+                    Offset(tailX - forkLen * 0.5f, y + bodyH * 0.25f),
+                    strokeWidth = (0.8f * s).coerceAtLeast(0.4f),
+                    cap = StrokeCap.Round
+                )
             }
 
-            // ════════════════════════════════════════════════════════════════
-            // EYE — large, forward-positioned
-            // ════════════════════════════════════════════════════════════════
-            val eyeR  = (1.6f + level * 0.1f) * s
-            val eyeX  = headX + bodyLen * 0.10f
-            val eyeY  = y - bodyH * 0.28f
-            drawCircle(Color.White.copy(alpha = 0.85f), eyeR, Offset(eyeX, eyeY))
-            drawCircle(Color(0xFF111122), eyeR * 0.55f, Offset(eyeX + eyeR * 0.1f, eyeY))
+            // ── EYE (detailed) ───────────────────────────────────────────────
+            val eyeR = (1.6f + level * 0.1f) * s
+            val eyeX = headX + bodyLen * 0.10f
+            val eyeY = y - bodyH * 0.28f
+
+            // Eye socket shadow
+            drawCircle(ShadowNavy.copy(alpha = 0.3f), eyeR * 1.25f, Offset(eyeX, eyeY))
+            // Sclera
+            drawCircle(BellyWhite, eyeR, Offset(eyeX, eyeY))
+            // Iris (teal)
+            drawCircle(MediumTeal, eyeR * 0.60f, Offset(eyeX + eyeR * 0.08f, eyeY))
+            // Pupil
+            drawCircle(ShadowNavy, eyeR * 0.35f, Offset(eyeX + eyeR * 0.10f, eyeY + eyeR * 0.02f))
+            // Shine
+            drawCircle(Color.White, eyeR * 0.20f, Offset(eyeX - eyeR * 0.18f, eyeY - eyeR * 0.18f))
+            // Secondary shine
+            drawCircle(Color.White.copy(alpha = 0.5f), eyeR * 0.10f,
+                Offset(eyeX + eyeR * 0.15f, eyeY + eyeR * 0.12f))
         }
     }
 }

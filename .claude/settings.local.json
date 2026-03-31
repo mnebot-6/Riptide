@@ -27,7 +27,10 @@
       "Bash(where gh:*)",
       "Bash(find /c/MyPrograms/AndroidStudioProjects/Riptide -name MarineCategory* -o -name *Category*.kt)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep -l \"enum class CreatureSpecies\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide/composeApp/src/commonMain/kotlin/com/mnebot/riptide/domain/model/\"*.kt)",
+      "Bash(find composeApp/build -name *.xml -path */test-results/* -newer composeApp/src/commonTest/kotlin/com/mnebot/riptide/domain/LootboxResolverTest.kt)",
+      "Bash(./gradlew compileReleaseKotlin)"
     ]
   }
 }

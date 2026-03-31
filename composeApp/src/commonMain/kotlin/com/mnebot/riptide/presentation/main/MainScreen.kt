@@ -225,7 +225,7 @@ fun MainScreen(
                         contentColor = TextPrimary,
                         shape = CircleShape,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                    ) { Icon(painter = painterResource(Res.drawable.ic_x), contentDescription = null, modifier = Modifier.size(20.dp)) }
+                    ) { Icon(painter = painterResource(Res.drawable.ic_x), contentDescription = stringResource(Res.string.a11y_close_aquarium), modifier = Modifier.size(20.dp)) }
                 }
             }
             else -> {
@@ -784,9 +784,9 @@ private fun MainHeader(
     onDateSelected: (LocalDate) -> Unit,
     onWeekChange: (LocalDate) -> Unit
 ) {
-    val tasksByDate = remember(tasksByBlock) {
-        tasksByBlock.values
-            .flatten()
+    val allTasksToday = remember(tasksByBlock) { tasksByBlock.values.flatten() }
+    val tasksByDate = remember(allTasksToday) {
+        allTasksToday
             .groupBy { task ->
                 when (val schedule = task.schedule) {
                     is TaskSchedule.OneTime -> schedule.date
@@ -796,8 +796,6 @@ private fun MainHeader(
             .filterKeys { it != null }
             .mapKeys { it.key!! }
     }
-
-    val allTasksToday = remember(tasksByBlock) { tasksByBlock.values.flatten() }
     val totalTasks = allTasksToday.size
     val completedTasks = allTasksToday.count { it.status == TaskStatus.COMPLETED }
 
@@ -855,7 +853,7 @@ private fun MainHeader(
 
             // Volver a hoy (solo visible si no estamos en hoy)
             if (selectedDate != today) {
-                HeaderIconButton(painter = painterResource(Res.drawable.ic_history), onClick = onTodayClick)
+                HeaderIconButton(painter = painterResource(Res.drawable.ic_history), contentDescription = stringResource(Res.string.a11y_go_to_today), onClick = onTodayClick)
                 Spacer(modifier = Modifier.width(4.dp))
             } else // Racha global (solo visible si >= 2 días consecutivos)
             if (globalStreak >= 2) {
@@ -883,11 +881,11 @@ private fun MainHeader(
                 Spacer(modifier = Modifier.width(6.dp))
             }
 
-            HeaderIconButton(painter = painterResource(Res.drawable.ic_calendar), onClick = onCalendarClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_calendar), contentDescription = stringResource(Res.string.a11y_open_calendar), onClick = onCalendarClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(painter = painterResource(Res.drawable.ic_plus), onClick = onAddTaskClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_plus), contentDescription = stringResource(Res.string.a11y_add_task), onClick = onAddTaskClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(painter = painterResource(Res.drawable.ic_waves), onClick = onDrawerClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_waves), contentDescription = stringResource(Res.string.a11y_open_menu), onClick = onDrawerClick)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -904,7 +902,7 @@ private fun MainHeader(
 }
 
 @Composable
-private fun HeaderIconButton(painter: Painter, onClick: () -> Unit) {
+private fun HeaderIconButton(painter: Painter, contentDescription: String?, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(40.dp)
@@ -915,7 +913,7 @@ private fun HeaderIconButton(painter: Painter, onClick: () -> Unit) {
     ) {
         Icon(
             painter = painter,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = TextPrimary,
             modifier = Modifier.size(18.dp)
         )
@@ -969,7 +967,7 @@ private fun MainContent(
                         )
                     }
                 }
-                items(blocksWithTasks) { block ->
+                items(blocksWithTasks, key = { it.id }) { block ->
                     val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
                     val streak = streaksByBlock[block.id] ?: 0
                     BlockSection(
@@ -1003,7 +1001,7 @@ private fun MainContent(
             contentColor = TextPrimary,
             shape = CircleShape,
             elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) { Icon(painter = painterResource(Res.drawable.ic_fish), contentDescription = null, modifier = Modifier.size(20.dp)) }
+        ) { Icon(painter = painterResource(Res.drawable.ic_fish), contentDescription = stringResource(Res.string.a11y_view_aquarium), modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -1177,7 +1175,7 @@ private fun TaskCard(
         when {
             isPostponed -> Icon(
                 painter = painterResource(Res.drawable.ic_clock),
-                contentDescription = null,
+                contentDescription = stringResource(Res.string.a11y_task_postponed),
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp)
             )
@@ -1186,7 +1184,7 @@ private fun TaskCard(
                     if (isExpired) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_clock),
-                            contentDescription = null,
+                            contentDescription = stringResource(Res.string.a11y_task_expired),
                             tint = TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )

@@ -1,0 +1,141 @@
+A side-view illustration of a [NOMBRE_ESPECIE] in a flat vector art style
+for a mobile game about an ocean ecosystem.
+
+Style guidelines:
+- Flat illustration with subtle gradients, no outlines
+- Soft ocean color palette (teals, deep blues, coral oranges, sea greens)
+- Side profile facing right
+- Slightly stylized/cute proportions (not realistic, not chibi)
+- Clean geometric shapes, minimal detail noise
+- Transparent background, no background elements
+- Single creature centered, no other elements
+- Gentle, calming aesthetic similar to Alto's Odyssey or Headspace
+
+The creature should feel alive but peaceful. Show key anatomical features
+clearly (fins, tentacles, shell, etc.) so each species is instantly
+recognizable.
+
+_______________________________________________________
+
+Aquí va la lista completa:
+
+---
+
+## Fauna marina (prompt genérico) — 31 especies
+
+Usa el prompt estándar con `[NOMBRE_ESPECIE]` reemplazado por:
+
+| # | Renderer | Sustitución en prompt |
+|---|---|---|
+| 1 | Angelfish | DONE (angelfish.svg) |
+| 2 | Barracuda | DONE (barracuda.svg) |
+| 3 | BlueRingedOctopus | DONE (blue-ringed-octopus.svg) |
+| 4 | BlueWhale | DONE (blue-whale.svg) |
+| 5 | Clownfish | DONE (clownfish.svg) |
+| 6 | Cuttlefish | `common cuttlefish (Sepia officinalis) with tentacles visible` |
+| 7 | Dolphin | `bottlenose dolphin (Tursiops truncatus)` |
+| 8 | GiantClam | `giant clam (Tridacna gigas) with colorful mantle visible` |
+| 9 | Hammerhead | `hammerhead shark (Sphyrna lewini)` |
+| 10 | HermitCrab | `hermit crab in a spiral shell, walking on sand` |
+| 11 | Lionfish | `red lionfish (Pterois volitans) with spread pectoral fins` |
+| 12 | Lobster | `American lobster (Homarus americanus) with claws` |
+| 13 | Manatee | `West Indian manatee (Trichechus manatus)` |
+| 14 | MantaRay | `giant oceanic manta ray (Mobula birostris), seen from above at slight angle` |
+| 15 | MarineIguana | `marine iguana (Amblyrhynchus cristatus) swimming` |
+| 16 | MoonJellyfish | DONE (moon-jellyfish.svg) |
+| 17 | Nautilus | `chambered nautilus (Nautilus pompilius) with spiral shell` |
+| 18 | Octopus | `common octopus (Octopus vulgaris) with curling tentacles` |
+| 19 | Oyster | `pearl oyster slightly open, showing nacre interior` |
+| 20 | Pufferfish | `porcupinefish (Diodon hystrix) slightly inflated` |
+| 21 | SeaOtter | `sea otter (Enhydra lutris) floating on its back` |
+| 22 | SeaTurtle | `green sea turtle (Chelonia mydas) swimming` |
+| 23 | SeaUrchin | `purple sea urchin (Strongylocentrotus purpuratus) with visible spines` |
+| 24 | Seal | `harbor seal (Phoca vitulina) swimming` |
+| 25 | Shrimp | `cleaner shrimp (Lysmata amboinensis) with long antennae` |
+| 26 | SpiderCrab | `Japanese spider crab (Macrocheira kaempferi) with long legs` |
+| 27 | Squid | `reef squid (Sepioteuthis sepioidea) with tentacles trailing` |
+| 28 | Starfish | `royal starfish (Astropecten articulatus) with five arms, seen from above` |
+| 29 | Sunfish | `ocean sunfish (Mola mola)` |
+| 30 | Surgeonfish | `blue tang surgeonfish (Paracanthurus hepatus)` |
+| 31 | WhaleShark | `whale shark (Rhincodon typus) with spotted pattern` |
+
+---
+
+## Flora marina — prompt distinto (5)
+
+```
+A front-view illustration of a [NOMBRE_FLORA] in a flat vector art style
+for a mobile game about an ocean ecosystem.
+
+Style guidelines:
+- Flat illustration with subtle gradients, no outlines
+- Soft ocean color palette (teals, deep blues, coral greens, sandy tones)
+- Viewed from the front, growing upward from a small patch of sandy floor
+- Slightly stylized proportions, organic shapes
+- Clean geometric shapes, minimal detail noise
+- Transparent background, no background elements
+- Single specimen centered, no other elements
+- Gentle, calming aesthetic similar to Alto's Odyssey or Headspace
+
+The plant/coral should feel alive and gently swaying. Show key features
+clearly so it is instantly recognizable.
+```
+
+| # | Renderer | Sustitución |
+|---|---|---|
+| 32 | Anemone | `sea anemone (Actiniaria) with colorful tentacles extended` |
+| 33 | BrainCoral | `brain coral colony (Diploria) with visible grooved pattern` |
+| 34 | FanCoral | `purple sea fan coral (Gorgonia ventalina), flat branching structure` |
+| 35 | Kelp | `giant kelp (Macrocystis pyrifera), tall stalk with leaf blades` |
+| 36 | Posidonia | `Posidonia oceanica seagrass, cluster of long green ribbon leaves` |
+
+---
+
+## Decoraciones — prompt distinto (4)
+
+```
+A side-view illustration of a [NOMBRE_DECO] in a flat vector art style
+for a mobile game about an ocean ecosystem.
+
+Style guidelines:
+- Flat illustration with subtle gradients, no outlines
+- Soft ocean color palette (teals, deep blues, rusty browns, sandy tones)
+- Resting on sandy ocean floor, slightly weathered and encrusted with algae
+- Slightly stylized proportions
+- Clean geometric shapes, minimal detail noise
+- Transparent background, no background elements
+- Single object centered, no other elements
+- Gentle, calming aesthetic similar to Alto's Odyssey or Headspace
+
+The object should look like it has been underwater for a long time,
+with subtle signs of marine life growing on it.
+```
+
+| # | Renderer | Sustitución |
+|---|---|---|
+| 37 | Anchor | `old rusted ship anchor half-buried in sand` |
+| 38 | Barnacle | `cluster of barnacles on a small rock` |
+| 39 | SunkenShip | `small sunken wooden shipwreck, tilted on its side` |
+| 40 | TreasureChest | `old wooden treasure chest, slightly open with golden glow` |
+
+---
+
+## Bimba — prompt propio (easter egg)
+
+```
+A side-view illustration of a small orange tabby cat sitting on a floating
+piece of driftwood in the ocean, in a flat vector art style for a mobile game.
+
+Style guidelines:
+- Flat illustration with subtle gradients, no outlines
+- Soft warm palette (orange tabby fur, sandy driftwood, ocean blues)
+- The cat looks curious and content, tail slightly curled
+- Slightly stylized/cute proportions (not chibi, not realistic)
+- Clean geometric shapes, minimal detail noise
+- Transparent background, no background elements
+- Gentle, calming aesthetic similar to Alto's Odyssey or Headspace
+```
+
+---
+
+**Total: 41 imágenes** (1 ya hecha). Genera las 40 restantes con los prompts correspondientes y guárdalas en `docs/references/` con el nombre del renderer en minúsculas (ej: `angelfish.svg`, `brain_coral.svg`, `anchor.svg`, `bimba.svg`).

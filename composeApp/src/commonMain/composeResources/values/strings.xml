@@ -245,6 +245,19 @@
     <!-- Onboarding — skip -->
     <string name="onboarding_btn_skip">Skip</string>
 
+    <!-- Accessibility -->
+    <string name="a11y_close_aquarium">Close aquarium</string>
+    <string name="a11y_view_aquarium">View aquarium</string>
+    <string name="a11y_open_menu">Open menu</string>
+    <string name="a11y_add_task">Add task</string>
+    <string name="a11y_open_calendar">Open calendar</string>
+    <string name="a11y_go_to_today">Go to today</string>
+    <string name="a11y_clear_search">Clear search</string>
+    <string name="a11y_task_postponed">Postponed</string>
+    <string name="a11y_task_expired">Expired</string>
+    <string name="a11y_locked">Locked</string>
+    <string name="a11y_back">Back</string>
+
     <!-- Short month names (charts and history dates) -->
     <string name="month_jan">Jan</string>
     <string name="month_feb">Feb</string>
