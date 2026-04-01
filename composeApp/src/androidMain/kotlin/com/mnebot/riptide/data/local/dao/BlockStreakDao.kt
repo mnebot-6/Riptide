@@ -20,4 +20,13 @@ interface BlockStreakDao {
 
     @Update
     suspend fun update(streak: BlockStreakEntity)
+
+    @Query("SELECT * FROM block_streaks WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<BlockStreakEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<BlockStreakEntity>)
+
+    @Query("UPDATE block_streaks SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

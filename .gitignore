@@ -23,6 +23,10 @@ keystore.properties
 *.keystore
 *.jks
 
+# Backend secrets (NEVER commit)
+backend/.env
+backend/.env.local
+
 # Claude worktrees (efimeros, nunca commitear)
 .claude/worktrees/
 

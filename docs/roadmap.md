@@ -309,23 +309,29 @@ Efectos discretos por nivel añadidos a los 10 renderers de fauna que solo tení
 
 ---
 
-## Fase 1 — Producto completo
+## 🔨 Fase 1 — Producto completo
 
-### Sprint Backend
+### ✅ Sprint Backend
 
-- Proyecto Ktor (routing, content negotiation, CORS)
-- PostgreSQL schema (mirror de Room + tabla users)
-- API REST (CRUD: blocks, tasks, recurring defs, creatures, ecosystem states, summaries, streaks)
-- Autenticación (a decidir: Google Sign-In / email+password → JWT)
-- Hosting (a decidir: Railway / Render / VPS)
+- **Proyecto Ktor 3.0.3** en `/backend` — proyecto Gradle independiente con fat JAR
+- **PostgreSQL + Exposed 0.57.0** — mirror de Room v11 (9 tablas) + tabla `users` + campos `updatedAt`/`isDeleted` para sync
+- **API REST completa** — 8 recursos CRUD: `/api/blocks`, `/api/tasks`, `/api/recurring-defs`, `/api/creatures`, `/api/ecosystem-states`, `/api/summaries`, `/api/streaks`, `/api/block-categories`
+- **Autenticación Google Sign-In** — `POST /auth/google` (verificación idToken via `GoogleIdTokenVerifier`) → JWT (access 24h + refresh 30d). `POST /auth/refresh` para renovar.
+- **Sync-ready** — todos los GET soportan `?updatedSince=ISO` para pull incremental. Soft delete con `isDeleted`.
+- **Health check** — `GET /health` público
+- **Docker** — Dockerfile multi-stage (Gradle build → JRE Alpine)
+- **Hosting**: Railway (pendiente de deploy)
 
-### Sprint Sync
+### ✅ Sprint Sync
 
-- Campo `updatedAt` en entidades + Room migration
-- Lógica offline-first: write local → push al server en background
-- Pull on launch + resolución de conflictos (last-write-wins o merge)
-- Estado de sincronización visible en UI
-- Export/import JSON local como fallback
+- **Room v12**: `updatedAt TEXT` en las 8 tablas + `isDeleted INTEGER` en 3 (WorkBlock, DayTask, RecurringTaskDef). `MIGRATION_11_12` con 11 ALTER TABLE. Todos los DAOs con `getModifiedSince()`, `upsertAll()`, `stampUpdatedAt()`. Queries existentes filtran `isDeleted = 0`. Soft-delete en repos.
+- **Ktor Client**: OkHttp engine, ContentNegotiation JSON, Bearer Auth con auto-refresh, HttpTimeout 60s. `BuildConfig.API_BASE_URL` configurable.
+- **DTOs Android**: 8 DTOs de recurso (mirror de backend ApiModels), `SyncRequest`, `SyncResponse`, auth DTOs. `DtoMappers.kt` con 16 funciones Entity↔DTO.
+- **Backend `POST /api/sync`**: batch endpoint que recibe todos los datos dirty del cliente y devuelve todos los cambios del servidor. Upsert con conflict resolution (`updatedAt` wins), `isDeleted` en servidor es autoritativo, `hasBeenRewarded` usa OR lógico. Orden FK-safe.
+- **Auth Google Sign-In**: `AuthManager` con `getSignInIntent()` / `handleSignInResult()` / `logout()`. JWT pair + user info en DataStore. `DataStoreTokenProvider` puente entre prefs y Ktor Auth.
+- **SyncManager**: push dirty → single POST /api/sync → pull server changes → upsert local (respetando `hasBeenRewarded` OR-merge). `SyncTrigger` con debounce 5s. `SyncWorker` periódico (1h, constraint CONNECTED). `InitialSyncPreparer` para primera sync.
+- **UI**: sección "Cuenta" en drawer (avatar con inicial, nombre, email, "Sincronizar ahora" con status badge, "Cerrar sesión"). `SyncStatus` enum (IDLE/SYNCING/SUCCESS/ERROR/OFFLINE). 3 iconos Lucide nuevos (user, log-out, refresh-cw). Strings EN + ES.
+- **Conectividad**: `ConnectivityObserver` con `ConnectivityManager.NetworkCallback` + `Flow<Boolean>`.
 
 ---
 

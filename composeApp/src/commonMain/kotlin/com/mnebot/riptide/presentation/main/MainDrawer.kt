@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +23,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mnebot.riptide.domain.model.LoggedInUser
+import com.mnebot.riptide.domain.model.SyncStatus
 import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.components.TimeInputField
 import kotlinx.datetime.LocalTime
@@ -48,7 +51,12 @@ fun MainDrawer(
     onNavigateToEcosystem: () -> Unit,
     onSetLiveWallpaper: () -> Unit,
     onNavigateToStats: () -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToHistory: () -> Unit,
+    loggedInUser: LoggedInUser? = null,
+    syncStatus: SyncStatus = SyncStatus.IDLE,
+    onSignIn: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+    onSyncNow: () -> Unit = {}
 ) {
     val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
         LocalWindowInfo.current.containerSize.height.toDp()
@@ -125,6 +133,18 @@ fun MainDrawer(
             MorningReminderSetting(
                 currentTime = morningReminderTime,
                 onTimeChanged = onMorningReminderTimeChanged
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = DividerColor)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            AccountSection(
+                loggedInUser = loggedInUser,
+                syncStatus = syncStatus,
+                onSignIn = onSignIn,
+                onSignOut = onSignOut,
+                onSyncNow = onSyncNow
             )
         }
 
@@ -248,4 +268,114 @@ private fun DrawerBlockItem(block: WorkBlock, onClick: () -> Unit) {
         Text(text = block.name, color = TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text("›", color = TextSecondary, fontSize = 20.sp)
     }
+}
+
+@Composable
+private fun AccountSection(
+    loggedInUser: LoggedInUser?,
+    syncStatus: SyncStatus,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    onSyncNow: () -> Unit
+) {
+    SectionTitle(stringResource(Res.string.section_account))
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (loggedInUser == null) {
+        DrawerItem(
+            painter = painterResource(Res.drawable.ic_user),
+            label = stringResource(Res.string.btn_sign_in_google),
+            onClick = onSignIn
+        )
+    } else {
+        // User info row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar circle with initial
+            val initial = (loggedInUser.displayName?.firstOrNull()
+                ?: loggedInUser.email.firstOrNull()
+                ?: '?').uppercaseChar()
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF4A90D9)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial.toString(),
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                loggedInUser.displayName?.let { name ->
+                    Text(
+                        text = name,
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Text(
+                    text = loggedInUser.email,
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        // Sync now row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSyncNow() }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_refresh_cw),
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(Res.string.btn_sync_now),
+                color = TextSecondary,
+                fontSize = 15.sp
+            )
+            SyncStatusBadge(syncStatus, modifier = Modifier.padding(start = 8.dp))
+        }
+
+        // Sign out
+        DrawerItem(
+            painter = painterResource(Res.drawable.ic_log_out),
+            label = stringResource(Res.string.btn_sign_out),
+            onClick = onSignOut
+        )
+    }
+}
+
+@Composable
+private fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
+    val (text, color) = when (status) {
+        SyncStatus.IDLE -> return // Show nothing
+        SyncStatus.SYNCING -> stringResource(Res.string.sync_status_syncing) to Color(0xB3FFFFFF)
+        SyncStatus.SUCCESS -> stringResource(Res.string.sync_status_success) to Color(0xFF81C784)
+        SyncStatus.ERROR -> stringResource(Res.string.sync_status_error) to Color(0xFFE57373)
+        SyncStatus.OFFLINE -> stringResource(Res.string.sync_status_offline) to Color(0x80FFFFFF)
+    }
+    Text(
+        text = text,
+        color = color,
+        fontSize = 12.sp,
+        modifier = modifier
+    )
 }

@@ -11,5 +11,6 @@ data class DaySummaryEntity(
     val tasksTotal: Int,
     val tasksCompleted: Int,
     val streakDay: Int,
-    val feedbackMessage: String
+    val feedbackMessage: String,
+    val updatedAt: String = ""
 )

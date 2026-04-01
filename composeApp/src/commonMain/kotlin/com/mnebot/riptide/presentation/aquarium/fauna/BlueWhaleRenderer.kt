@@ -38,39 +38,52 @@ object BlueWhaleRenderer : CreatureRenderer {
         val bodyH    = (8f  + level * 0.5f) * s
         val tailExt  = (9f  + level * 0.6f) * s
 
-        val tailSway = sin(t * 0.9f * PI.toFloat()) * 2.0f * s
-        val bodyArc  = sin(t * 0.9f * PI.toFloat()) * bodyH * 0.08f
+        // ── Full-body S-wave: phase propagates head → tail ────────────────────
+        val freq     = 0.9f * PI.toFloat()
+        // Front (head): barely moves
+        val frontArc = sin(t * freq)         * bodyH * 0.01f
+        // Mid-body: moderate flex
+        val midArc   = sin(t * freq + 0.5f)  * bodyH * 0.04f
+        // Rear (caudal peduncle): full amplitude
+        val rearArc  = sin(t * freq + 1.0f)  * bodyH * 0.08f
+
+        val tailSway     = sin(t * freq + 1.0f)  * 2.0f * s
+        val flipperSweep = sin(t * freq + 1.2f)  * 0.3f * s  // pectoral flipper
+        val flukeAsym    = sin(t * freq + 1.0f)  * 0.12f     // lobe asymmetry hint
+
+        // Upper fluke slightly taller on upstroke, lower on downstroke
+        val upperFlukeH = bodyH * 1.3f * (1f + flukeAsym * 0.08f)
+        val lowerFlukeH = bodyH * 1.3f * (1f - flukeAsym * 0.08f)
 
         withTransform({
             if (mirrored) scale(-1f, 1f, pivot = Offset(x, y))
         }) {
 
-            // ── TAIL FLUKES (massive, layered) ───────────────────────────────
+            // ── TAIL FLUKES (massive, asymmetric for 3D hint) ────────────────
             val tailX = x + bodyLen * 0.47f
             val flukeSpan = tailExt * 0.85f
 
-            // Fluke shadows
             val flukeShadow = Path().apply {
-                moveTo(tailX - bodyLen * 0.01f, y + bodyArc * 0.3f)
-                lineTo(tailX + flukeSpan * 1.02f, y - bodyH * 1.35f + tailSway)
+                moveTo(tailX - bodyLen * 0.01f, y + rearArc * 0.3f)
+                lineTo(tailX + flukeSpan * 1.02f, y - upperFlukeH + tailSway)
                 lineTo(tailX + flukeSpan * 0.5f, y + tailSway * 0.3f)
-                lineTo(tailX + flukeSpan * 1.02f, y + bodyH * 1.35f + tailSway)
+                lineTo(tailX + flukeSpan * 1.02f, y + lowerFlukeH + tailSway)
                 close()
             }
             drawPath(flukeShadow, ShadowDeepNavy.copy(alpha = 0.15f))
 
             val upperFluke = Path().apply {
-                moveTo(tailX, y + bodyArc * 0.3f)
+                moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.4f, y - bodyH * 0.3f + tailSway,
                     tailX + flukeSpan * 0.8f, y - bodyH * 1.1f + tailSway,
-                    tailX + flukeSpan, y - bodyH * 1.3f + tailSway)
+                    tailX + flukeSpan, y - upperFlukeH + tailSway)
                 cubicTo(tailX + flukeSpan * 0.8f, y - bodyH * 0.8f + tailSway,
                     tailX + flukeSpan * 0.45f, y - bodyH * 0.2f + tailSway * 0.6f,
-                    tailX, y + bodyArc * 0.3f)
+                    tailX, y + rearArc * 0.3f)
                 close()
             }
             drawPath(upperFluke, ShadowDarkBlue)
-            // Upper fluke highlight
+
             val upperFlukeHL = Path().apply {
                 moveTo(tailX + flukeSpan * 0.15f, y - bodyH * 0.10f + tailSway * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.4f, y - bodyH * 0.5f + tailSway * 0.6f,
@@ -84,13 +97,13 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(upperFlukeHL, ShadowMedBlue.copy(alpha = 0.5f))
 
             val lowerFluke = Path().apply {
-                moveTo(tailX, y + bodyArc * 0.3f)
+                moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.45f, y + bodyH * 0.2f + tailSway * 0.6f,
                     tailX + flukeSpan * 0.8f, y + bodyH * 0.8f + tailSway,
-                    tailX + flukeSpan, y + bodyH * 1.3f + tailSway)
+                    tailX + flukeSpan, y + lowerFlukeH + tailSway)
                 cubicTo(tailX + flukeSpan * 0.8f, y + bodyH * 1.1f + tailSway,
                     tailX + flukeSpan * 0.4f, y + bodyH * 0.3f + tailSway,
-                    tailX, y + bodyArc * 0.3f)
+                    tailX, y + rearArc * 0.3f)
                 close()
             }
             drawPath(lowerFluke, ShadowDarkBlue)
@@ -98,147 +111,176 @@ object BlueWhaleRenderer : CreatureRenderer {
             // ── TINY DORSAL FIN ──────────────────────────────────────────────
             val dorsalX = x + bodyLen * 0.30f
             val dorsalShadow = Path().apply {
-                moveTo(dorsalX - bodyLen * 0.045f, y - bodyH * 0.83f + bodyArc * 0.1f)
-                cubicTo(dorsalX - bodyLen * 0.015f, y - bodyH * 1.33f + bodyArc * 0.1f,
-                    dorsalX + bodyLen * 0.035f, y - bodyH * 1.28f + bodyArc * 0.1f,
-                    dorsalX + bodyLen * 0.055f, y - bodyH * 0.83f + bodyArc * 0.1f)
+                moveTo(dorsalX - bodyLen * 0.045f, y - bodyH * 0.83f + midArc * 0.1f)
+                cubicTo(dorsalX - bodyLen * 0.015f, y - bodyH * 1.33f + midArc * 0.1f,
+                    dorsalX + bodyLen * 0.035f, y - bodyH * 1.28f + midArc * 0.1f,
+                    dorsalX + bodyLen * 0.055f, y - bodyH * 0.83f + midArc * 0.1f)
                 close()
             }
             drawPath(dorsalShadow, ShadowDeepNavy.copy(alpha = 0.18f))
 
             val dorsal = Path().apply {
-                moveTo(dorsalX - bodyLen * 0.04f, y - bodyH * 0.85f + bodyArc * 0.1f)
-                cubicTo(dorsalX - bodyLen * 0.01f, y - bodyH * 1.30f + bodyArc * 0.1f,
-                    dorsalX + bodyLen * 0.03f, y - bodyH * 1.25f + bodyArc * 0.1f,
-                    dorsalX + bodyLen * 0.05f, y - bodyH * 0.85f + bodyArc * 0.1f)
+                moveTo(dorsalX - bodyLen * 0.04f, y - bodyH * 0.85f + midArc * 0.1f)
+                cubicTo(dorsalX - bodyLen * 0.01f, y - bodyH * 1.30f + midArc * 0.1f,
+                    dorsalX + bodyLen * 0.03f, y - bodyH * 1.25f + midArc * 0.1f,
+                    dorsalX + bodyLen * 0.05f, y - bodyH * 0.85f + midArc * 0.1f)
                 close()
             }
             drawPath(dorsal, ShadowDarkBlue)
 
-            // ── PECTORAL FLIPPERS ────────────────────────────────────────────
+            // ── PECTORAL FLIPPERS (sweep with flipperSweep) ──────────────────
             val pectShadow = Path().apply {
-                moveTo(x - bodyLen * 0.14f, y + bodyH * 0.74f + bodyArc * 0.5f)
-                cubicTo(x - bodyLen * 0.04f, y + bodyH * 1.58f + bodyArc * 0.35f,
-                    x + bodyLen * 0.13f, y + bodyH * 1.65f + bodyArc * 0.25f,
-                    x + bodyLen * 0.24f, y + bodyH * 0.98f + bodyArc * 0.35f)
-                cubicTo(x + bodyLen * 0.13f, y + bodyH * 0.85f + bodyArc * 0.4f,
-                    x + bodyLen * 0.03f, y + bodyH * 0.78f + bodyArc * 0.45f,
-                    x - bodyLen * 0.14f, y + bodyH * 0.74f + bodyArc * 0.5f)
+                moveTo(x - bodyLen * 0.14f, y + bodyH * 0.74f + flipperSweep * 0.5f)
+                cubicTo(x - bodyLen * 0.04f, y + bodyH * 1.58f + flipperSweep * 0.35f,
+                    x + bodyLen * 0.13f, y + bodyH * 1.65f + flipperSweep * 0.25f,
+                    x + bodyLen * 0.24f, y + bodyH * 0.98f + flipperSweep * 0.35f)
+                cubicTo(x + bodyLen * 0.13f, y + bodyH * 0.85f + flipperSweep * 0.4f,
+                    x + bodyLen * 0.03f, y + bodyH * 0.78f + flipperSweep * 0.45f,
+                    x - bodyLen * 0.14f, y + bodyH * 0.74f + flipperSweep * 0.5f)
                 close()
             }
             drawPath(pectShadow, ShadowDeepNavy.copy(alpha = 0.18f))
 
             val pect = Path().apply {
-                moveTo(x - bodyLen * 0.15f, y + bodyH * 0.72f + bodyArc * 0.5f)
-                cubicTo(x - bodyLen * 0.05f, y + bodyH * 1.55f + bodyArc * 0.35f,
-                    x + bodyLen * 0.12f, y + bodyH * 1.62f + bodyArc * 0.25f,
-                    x + bodyLen * 0.22f, y + bodyH * 0.95f + bodyArc * 0.35f)
-                cubicTo(x + bodyLen * 0.12f, y + bodyH * 0.82f + bodyArc * 0.4f,
-                    x + bodyLen * 0.02f, y + bodyH * 0.76f + bodyArc * 0.45f,
-                    x - bodyLen * 0.15f, y + bodyH * 0.72f + bodyArc * 0.5f)
+                moveTo(x - bodyLen * 0.15f, y + bodyH * 0.72f + flipperSweep * 0.5f)
+                cubicTo(x - bodyLen * 0.05f, y + bodyH * 1.55f + flipperSweep * 0.35f,
+                    x + bodyLen * 0.12f, y + bodyH * 1.62f + flipperSweep * 0.25f,
+                    x + bodyLen * 0.22f, y + bodyH * 0.95f + flipperSweep * 0.35f)
+                cubicTo(x + bodyLen * 0.12f, y + bodyH * 0.82f + flipperSweep * 0.4f,
+                    x + bodyLen * 0.02f, y + bodyH * 0.76f + flipperSweep * 0.45f,
+                    x - bodyLen * 0.15f, y + bodyH * 0.72f + flipperSweep * 0.5f)
                 close()
             }
             drawPath(pect, BodyLightBlue)
-            // Flipper highlight
+
             val pectHL = Path().apply {
-                moveTo(x - bodyLen * 0.12f, y + bodyH * 0.75f + bodyArc * 0.5f)
-                cubicTo(x - bodyLen * 0.03f, y + bodyH * 1.25f + bodyArc * 0.35f,
-                    x + bodyLen * 0.06f, y + bodyH * 1.30f + bodyArc * 0.30f,
-                    x + bodyLen * 0.12f, y + bodyH * 0.90f + bodyArc * 0.35f)
-                cubicTo(x + bodyLen * 0.05f, y + bodyH * 0.88f + bodyArc * 0.4f,
-                    x - bodyLen * 0.02f, y + bodyH * 0.80f + bodyArc * 0.45f,
-                    x - bodyLen * 0.12f, y + bodyH * 0.75f + bodyArc * 0.5f)
+                moveTo(x - bodyLen * 0.12f, y + bodyH * 0.75f + flipperSweep * 0.5f)
+                cubicTo(x - bodyLen * 0.03f, y + bodyH * 1.25f + flipperSweep * 0.35f,
+                    x + bodyLen * 0.06f, y + bodyH * 1.30f + flipperSweep * 0.30f,
+                    x + bodyLen * 0.12f, y + bodyH * 0.90f + flipperSweep * 0.35f)
+                cubicTo(x + bodyLen * 0.05f, y + bodyH * 0.88f + flipperSweep * 0.4f,
+                    x - bodyLen * 0.02f, y + bodyH * 0.80f + flipperSweep * 0.45f,
+                    x - bodyLen * 0.12f, y + bodyH * 0.75f + flipperSweep * 0.5f)
                 close()
             }
             drawPath(pectHL, BellyPaleBlue.copy(alpha = 0.35f))
 
-            // ── MAIN BODY (enormous, layered) ────────────────────────────────
+            // ── MAIN BODY (S-wave: frontArc / midArc / rearArc by segment) ───
             val bodyShadow = Path().apply {
-                moveTo(x - bodyLen * 0.52f, y + bodyArc)
-                cubicTo(x - bodyLen * 0.47f, y - bodyH * 0.80f + bodyArc * 0.85f,
-                    x - bodyLen * 0.07f, y - bodyH * 1.02f + bodyArc * 0.5f,
-                    x + bodyLen * 0.22f, y - bodyH * 0.94f + bodyArc * 0.2f)
-                cubicTo(x + bodyLen * 0.37f, y - bodyH * 0.84f + bodyArc * 0.15f,
-                    x + bodyLen * 0.47f, y - bodyH * 0.44f + bodyArc * 0.1f,
-                    x + bodyLen * 0.49f, y - bodyH * 0.14f + bodyArc * 0.05f)
-                lineTo(x + bodyLen * 0.49f, y + bodyH * 0.14f + bodyArc * 0.05f)
-                cubicTo(x + bodyLen * 0.47f, y + bodyH * 0.44f + bodyArc * 0.1f,
-                    x + bodyLen * 0.37f, y + bodyH * 0.84f + bodyArc * 0.15f,
-                    x + bodyLen * 0.22f, y + bodyH * 0.94f + bodyArc * 0.2f)
-                cubicTo(x - bodyLen * 0.07f, y + bodyH * 1.02f + bodyArc * 0.5f,
-                    x - bodyLen * 0.47f, y + bodyH * 0.80f + bodyArc * 0.85f,
-                    x - bodyLen * 0.52f, y + bodyArc)
+                moveTo(x - bodyLen * 0.52f, y + frontArc)
+                cubicTo(x - bodyLen * 0.47f, y - bodyH * 0.80f + frontArc * 0.85f,
+                    x - bodyLen * 0.07f, y - bodyH * 1.02f + midArc * 0.5f,
+                    x + bodyLen * 0.22f, y - bodyH * 0.94f + midArc * 0.2f)
+                cubicTo(x + bodyLen * 0.37f, y - bodyH * 0.84f + rearArc * 0.15f,
+                    x + bodyLen * 0.47f, y - bodyH * 0.44f + rearArc * 0.1f,
+                    x + bodyLen * 0.49f, y - bodyH * 0.14f + rearArc * 0.05f)
+                lineTo(x + bodyLen * 0.49f, y + bodyH * 0.14f + rearArc * 0.05f)
+                cubicTo(x + bodyLen * 0.47f, y + bodyH * 0.44f + rearArc * 0.1f,
+                    x + bodyLen * 0.37f, y + bodyH * 0.84f + rearArc * 0.15f,
+                    x + bodyLen * 0.22f, y + bodyH * 0.94f + midArc * 0.2f)
+                cubicTo(x - bodyLen * 0.07f, y + bodyH * 1.02f + midArc * 0.5f,
+                    x - bodyLen * 0.47f, y + bodyH * 0.80f + frontArc * 0.85f,
+                    x - bodyLen * 0.52f, y + frontArc)
                 close()
             }
             drawPath(bodyShadow, ShadowDarkBlue.copy(alpha = 0.20f))
 
             val body = Path().apply {
-                moveTo(x - bodyLen * 0.5f, y + bodyArc)
-                cubicTo(x - bodyLen * 0.45f, y - bodyH * 0.78f + bodyArc * 0.85f,
-                    x - bodyLen * 0.05f, y - bodyH + bodyArc * 0.5f,
-                    x + bodyLen * 0.2f, y - bodyH * 0.92f + bodyArc * 0.2f)
-                cubicTo(x + bodyLen * 0.35f, y - bodyH * 0.82f + bodyArc * 0.15f,
-                    x + bodyLen * 0.45f, y - bodyH * 0.42f + bodyArc * 0.1f,
-                    x + bodyLen * 0.47f, y - bodyH * 0.12f + bodyArc * 0.05f)
-                lineTo(x + bodyLen * 0.47f, y + bodyH * 0.12f + bodyArc * 0.05f)
-                cubicTo(x + bodyLen * 0.45f, y + bodyH * 0.42f + bodyArc * 0.1f,
-                    x + bodyLen * 0.35f, y + bodyH * 0.82f + bodyArc * 0.15f,
-                    x + bodyLen * 0.2f, y + bodyH * 0.92f + bodyArc * 0.2f)
-                cubicTo(x - bodyLen * 0.05f, y + bodyH + bodyArc * 0.5f,
-                    x - bodyLen * 0.45f, y + bodyH * 0.78f + bodyArc * 0.85f,
-                    x - bodyLen * 0.5f, y + bodyArc)
+                moveTo(x - bodyLen * 0.5f, y + frontArc)
+                cubicTo(x - bodyLen * 0.45f, y - bodyH * 0.78f + frontArc * 0.85f,
+                    x - bodyLen * 0.05f, y - bodyH + midArc * 0.5f,
+                    x + bodyLen * 0.2f, y - bodyH * 0.92f + midArc * 0.2f)
+                cubicTo(x + bodyLen * 0.35f, y - bodyH * 0.82f + rearArc * 0.15f,
+                    x + bodyLen * 0.45f, y - bodyH * 0.42f + rearArc * 0.1f,
+                    x + bodyLen * 0.47f, y - bodyH * 0.12f + rearArc * 0.05f)
+                lineTo(x + bodyLen * 0.47f, y + bodyH * 0.12f + rearArc * 0.05f)
+                cubicTo(x + bodyLen * 0.45f, y + bodyH * 0.42f + rearArc * 0.1f,
+                    x + bodyLen * 0.35f, y + bodyH * 0.82f + rearArc * 0.15f,
+                    x + bodyLen * 0.2f, y + bodyH * 0.92f + midArc * 0.2f)
+                cubicTo(x - bodyLen * 0.05f, y + bodyH + midArc * 0.5f,
+                    x - bodyLen * 0.45f, y + bodyH * 0.78f + frontArc * 0.85f,
+                    x - bodyLen * 0.5f, y + frontArc)
                 close()
             }
             drawPath(body, BodyLightBlue)
 
+            // Body outline definition (subtle, from SVG style)
+            drawPath(body, ShadowDarkBlue.copy(alpha = 0.10f),
+                style = Stroke(width = (0.5f * s).coerceAtLeast(0.2f)))
+
+            // Mid-body shadow band (depth layering)
+            val midShadow = Path().apply {
+                moveTo(x - bodyLen * 0.10f, y - bodyH * 0.30f + midArc * 0.4f)
+                cubicTo(x + bodyLen * 0.05f, y - bodyH * 0.82f + midArc * 0.3f,
+                    x + bodyLen * 0.30f, y - bodyH * 0.78f + rearArc * 0.2f,
+                    x + bodyLen * 0.45f, y - bodyH * 0.38f + rearArc * 0.1f)
+                cubicTo(x + bodyLen * 0.30f, y - bodyH * 0.55f + rearArc * 0.15f,
+                    x + bodyLen * 0.05f, y - bodyH * 0.60f + midArc * 0.3f,
+                    x - bodyLen * 0.10f, y - bodyH * 0.30f + midArc * 0.4f)
+                close()
+            }
+            drawPath(midShadow, ShadowMedBlue.copy(alpha = 0.12f))
+
             // Upper body bright blue accent
             val upperAccent = Path().apply {
-                moveTo(x - bodyLen * 0.42f, y - bodyH * 0.30f + bodyArc * 0.8f)
-                cubicTo(x - bodyLen * 0.20f, y - bodyH * 0.90f + bodyArc * 0.5f,
-                    x + bodyLen * 0.15f, y - bodyH * 0.88f + bodyArc * 0.3f,
-                    x + bodyLen * 0.38f, y - bodyH * 0.50f + bodyArc * 0.15f)
-                cubicTo(x + bodyLen * 0.15f, y - bodyH * 0.62f + bodyArc * 0.3f,
-                    x - bodyLen * 0.10f, y - bodyH * 0.65f + bodyArc * 0.5f,
-                    x - bodyLen * 0.42f, y - bodyH * 0.30f + bodyArc * 0.8f)
+                moveTo(x - bodyLen * 0.42f, y - bodyH * 0.30f + frontArc * 0.8f)
+                cubicTo(x - bodyLen * 0.20f, y - bodyH * 0.90f + midArc * 0.5f,
+                    x + bodyLen * 0.15f, y - bodyH * 0.88f + midArc * 0.3f,
+                    x + bodyLen * 0.38f, y - bodyH * 0.50f + rearArc * 0.15f)
+                cubicTo(x + bodyLen * 0.15f, y - bodyH * 0.62f + midArc * 0.3f,
+                    x - bodyLen * 0.10f, y - bodyH * 0.65f + midArc * 0.5f,
+                    x - bodyLen * 0.42f, y - bodyH * 0.30f + frontArc * 0.8f)
                 close()
             }
             drawPath(upperAccent, BodyBrightBlue.copy(alpha = 0.25f))
 
             // Pale teal highlight near head
             val headHL = Path().apply {
-                moveTo(x - bodyLen * 0.45f, y - bodyH * 0.20f + bodyArc * 0.85f)
-                cubicTo(x - bodyLen * 0.38f, y - bodyH * 0.60f + bodyArc * 0.75f,
-                    x - bodyLen * 0.20f, y - bodyH * 0.65f + bodyArc * 0.6f,
-                    x - bodyLen * 0.10f, y - bodyH * 0.40f + bodyArc * 0.5f)
-                cubicTo(x - bodyLen * 0.18f, y - bodyH * 0.45f + bodyArc * 0.6f,
-                    x - bodyLen * 0.32f, y - bodyH * 0.42f + bodyArc * 0.75f,
-                    x - bodyLen * 0.45f, y - bodyH * 0.20f + bodyArc * 0.85f)
+                moveTo(x - bodyLen * 0.45f, y - bodyH * 0.20f + frontArc * 0.85f)
+                cubicTo(x - bodyLen * 0.38f, y - bodyH * 0.60f + frontArc * 0.75f,
+                    x - bodyLen * 0.20f, y - bodyH * 0.65f + midArc * 0.6f,
+                    x - bodyLen * 0.10f, y - bodyH * 0.40f + midArc * 0.5f)
+                cubicTo(x - bodyLen * 0.18f, y - bodyH * 0.45f + midArc * 0.6f,
+                    x - bodyLen * 0.32f, y - bodyH * 0.42f + frontArc * 0.75f,
+                    x - bodyLen * 0.45f, y - bodyH * 0.20f + frontArc * 0.85f)
                 close()
             }
             drawPath(headHL, BodyPaleTeal.copy(alpha = 0.30f))
 
+            // ── ROSTRUM DEFINITION (U-shaped head, darker outline) ───────────
+            val rostrum = Path().apply {
+                moveTo(x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
+                cubicTo(x - bodyLen * 0.49f, y + frontArc + bodyH * 0.45f,
+                    x - bodyLen * 0.44f, y + frontArc + bodyH * 0.52f,
+                    x - bodyLen * 0.38f, y + frontArc + bodyH * 0.35f)
+                cubicTo(x - bodyLen * 0.42f, y + frontArc + bodyH * 0.20f,
+                    x - bodyLen * 0.47f, y + frontArc + bodyH * 0.10f,
+                    x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
+                close()
+            }
+            drawPath(rostrum, ShadowDarkBlue.copy(alpha = 0.12f))
+
             // ── BELLY (pale, layered) ────────────────────────────────────────
             val belly = Path().apply {
-                moveTo(x - bodyLen * 0.48f, y + bodyArc + bodyH * 0.05f)
-                cubicTo(x - bodyLen * 0.35f, y + bodyH * 0.88f + bodyArc * 0.7f,
-                    x + bodyLen * 0.2f, y + bodyH * 0.90f + bodyArc * 0.2f,
-                    x + bodyLen * 0.44f, y + bodyH * 0.10f + bodyArc * 0.05f)
-                cubicTo(x + bodyLen * 0.2f, y + bodyH * 0.60f + bodyArc * 0.2f,
-                    x - bodyLen * 0.10f, y + bodyH * 0.65f + bodyArc * 0.5f,
-                    x - bodyLen * 0.48f, y + bodyArc + bodyH * 0.05f)
+                moveTo(x - bodyLen * 0.48f, y + frontArc + bodyH * 0.05f)
+                cubicTo(x - bodyLen * 0.35f, y + bodyH * 0.88f + midArc * 0.7f,
+                    x + bodyLen * 0.2f, y + bodyH * 0.90f + midArc * 0.2f,
+                    x + bodyLen * 0.44f, y + bodyH * 0.10f + rearArc * 0.05f)
+                cubicTo(x + bodyLen * 0.2f, y + bodyH * 0.60f + midArc * 0.2f,
+                    x - bodyLen * 0.10f, y + bodyH * 0.65f + midArc * 0.5f,
+                    x - bodyLen * 0.48f, y + frontArc + bodyH * 0.05f)
                 close()
             }
             drawPath(belly, BellyWhite.copy(alpha = 0.50f))
 
-            // Belly inner bright
             val bellyInner = Path().apply {
-                moveTo(x - bodyLen * 0.40f, y + bodyArc + bodyH * 0.10f)
-                cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.72f + bodyArc * 0.6f,
-                    x + bodyLen * 0.15f, y + bodyH * 0.70f + bodyArc * 0.2f,
-                    x + bodyLen * 0.38f, y + bodyH * 0.12f + bodyArc * 0.05f)
-                cubicTo(x + bodyLen * 0.15f, y + bodyH * 0.48f + bodyArc * 0.2f,
-                    x - bodyLen * 0.08f, y + bodyH * 0.50f + bodyArc * 0.4f,
-                    x - bodyLen * 0.40f, y + bodyArc + bodyH * 0.10f)
+                moveTo(x - bodyLen * 0.40f, y + frontArc + bodyH * 0.10f)
+                cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.72f + midArc * 0.6f,
+                    x + bodyLen * 0.15f, y + bodyH * 0.70f + midArc * 0.2f,
+                    x + bodyLen * 0.38f, y + bodyH * 0.12f + rearArc * 0.05f)
+                cubicTo(x + bodyLen * 0.15f, y + bodyH * 0.48f + midArc * 0.2f,
+                    x - bodyLen * 0.08f, y + bodyH * 0.50f + midArc * 0.4f,
+                    x - bodyLen * 0.40f, y + frontArc + bodyH * 0.10f)
                 close()
             }
             drawPath(bellyInner, BellyPaleGray.copy(alpha = 0.35f))
@@ -248,49 +290,74 @@ object BlueWhaleRenderer : CreatureRenderer {
             for (p in 0 until pleatCount) {
                 val pf = (p.toFloat() + 0.5f) / pleatCount.toFloat()
                 val px = x - bodyLen * 0.42f + bodyLen * 0.5f * pf
+                // Shadow side
                 drawLine(
-                    ShadowMedBlue.copy(alpha = 0.22f),
-                    Offset(px, y + bodyH * 0.12f + bodyArc * (1f - pf * 0.5f)),
-                    Offset(px + bodyLen * 0.08f, y + bodyH * 0.85f + bodyArc * (1f - pf * 0.3f)),
+                    ShadowMedBlue.copy(alpha = 0.28f),
+                    Offset(px, y + bodyH * 0.12f + midArc * (1f - pf * 0.5f)),
+                    Offset(px + bodyLen * 0.08f, y + bodyH * 0.85f + midArc * (1f - pf * 0.3f)),
                     strokeWidth = (0.8f * s).coerceAtLeast(0.3f)
+                )
+                // Highlight side (pale blue, offset by 0.5s)
+                drawLine(
+                    BellyPaleBlue.copy(alpha = 0.18f),
+                    Offset(px + 0.5f * s, y + bodyH * 0.12f + midArc * (1f - pf * 0.5f)),
+                    Offset(px + bodyLen * 0.08f + 0.5f * s, y + bodyH * 0.85f + midArc * (1f - pf * 0.3f)),
+                    strokeWidth = (0.5f * s).coerceAtLeast(0.2f)
                 )
             }
 
             // ── CORAL ACCENT (mouth/jaw area) ────────────────────────────────
             val mouthAccent = Path().apply {
-                moveTo(x - bodyLen * 0.50f, y + bodyArc - bodyH * 0.05f)
-                cubicTo(x - bodyLen * 0.48f, y + bodyArc + bodyH * 0.25f,
-                    x - bodyLen * 0.42f, y + bodyArc + bodyH * 0.30f,
-                    x - bodyLen * 0.35f, y + bodyArc + bodyH * 0.20f)
-                cubicTo(x - bodyLen * 0.40f, y + bodyArc + bodyH * 0.15f,
-                    x - bodyLen * 0.46f, y + bodyArc + bodyH * 0.08f,
-                    x - bodyLen * 0.50f, y + bodyArc - bodyH * 0.05f)
+                moveTo(x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
+                cubicTo(x - bodyLen * 0.48f, y + frontArc + bodyH * 0.25f,
+                    x - bodyLen * 0.42f, y + frontArc + bodyH * 0.30f,
+                    x - bodyLen * 0.35f, y + frontArc + bodyH * 0.20f)
+                cubicTo(x - bodyLen * 0.40f, y + frontArc + bodyH * 0.15f,
+                    x - bodyLen * 0.46f, y + frontArc + bodyH * 0.08f,
+                    x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
                 close()
             }
             drawPath(mouthAccent, AccentCoral.copy(alpha = 0.35f))
 
             // ── BLOW HOLE ────────────────────────────────────────────────────
             val blowX = x - bodyLen * 0.38f
-            val blowY = y - bodyH * 0.82f + bodyArc * 0.85f
+            val blowY = y - bodyH * 0.82f + frontArc * 0.85f
             drawLine(ShadowDarkBlue.copy(alpha = 0.55f),
                 Offset(blowX - bodyLen * 0.02f, blowY),
                 Offset(blowX + bodyLen * 0.01f, blowY),
                 strokeWidth = (1.2f * s).coerceAtLeast(0.5f), cap = StrokeCap.Round)
 
+            // ── PERIODIC BLOWHOLE SPRAY (level 3+, every 8s) ─────────────────
+            if (level >= 3) {
+                val sprayPeriod = 8000L
+                val sprayPhase = (animTimeMs % sprayPeriod).toFloat() / 1000f
+                if (sprayPhase < 1.2f) {
+                    val sprayProgress = sprayPhase / 1.2f
+                    val sprayAlpha = (1f - sprayProgress).coerceIn(0f, 1f)
+                    for (p in 0 until 6) {
+                        val drift = sin(p.toFloat() * 1.1f + p * 0.18f) * bodyLen * 0.025f
+                        val riseSpeed = (0.8f + p * 0.12f) * sprayProgress
+                        val pX = blowX + drift
+                        val pY = blowY - riseSpeed * bodyH * 1.8f
+                        val pR = (1.0f - sprayProgress * 0.6f) * s * 1.2f
+                        drawCircle(
+                            BellyPaleBlue.copy(alpha = sprayAlpha * 0.65f),
+                            pR.coerceAtLeast(0.3f),
+                            Offset(pX, pY)
+                        )
+                    }
+                }
+            }
+
             // ── EYE (detailed) ───────────────────────────────────────────────
             val eyeR = (1.2f + level * 0.07f) * s
             val eyeX = x - bodyLen * 0.38f
-            val eyeY = y - bodyH * 0.55f + bodyArc * 0.85f
+            val eyeY = y - bodyH * 0.55f + frontArc * 0.85f
 
-            // Eye socket
             drawCircle(ShadowDeepNavy.copy(alpha = 0.3f), eyeR * 1.3f, Offset(eyeX, eyeY))
-            // Sclera
             drawCircle(BellyWhite, eyeR * 1.05f, Offset(eyeX, eyeY))
-            // Iris (bright blue)
             drawCircle(BodyMedBlue, eyeR * 0.65f, Offset(eyeX + eyeR * 0.05f, eyeY))
-            // Pupil
             drawCircle(ShadowDeepNavy, eyeR * 0.35f, Offset(eyeX + eyeR * 0.07f, eyeY + eyeR * 0.02f))
-            // Shine
             drawCircle(Color.White, eyeR * 0.18f, Offset(eyeX - eyeR * 0.15f, eyeY - eyeR * 0.15f))
         }
     }

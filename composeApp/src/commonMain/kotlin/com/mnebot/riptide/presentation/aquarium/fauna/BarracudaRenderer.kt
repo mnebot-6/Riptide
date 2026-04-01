@@ -39,7 +39,14 @@ object BarracudaRenderer : CreatureRenderer {
 
         val bodyLen  = (18f + level * 1.2f) * s
         val bodyH    = (4.5f + level * 0.35f) * s
-        val tailSway = sin(t * 4.0f * PI.toFloat()) * 1.5f * s
+
+        // ── Barracuda two-state locomotion (5s cycle: 3.5s glide + 1.5s burst) ──
+        val cycle      = (animTimeMs % 5000L).toFloat() / 1000f
+        val burstBlend = if (cycle > 3.5f) ((cycle - 3.5f) / 0.15f).coerceIn(0f, 1f) else 0f
+        val tailFreq   = 0.8f + burstBlend * 5.2f
+        val tailAmp    = (0.4f + burstBlend * 1.6f) * s
+        val tailSway   = sin(t * tailFreq * PI.toFloat()) * tailAmp
+        val jawOpen    = sin(t * 0.7f * PI.toFloat()) * 0.015f * s
 
         withTransform({
             if (mirrored) scale(-1f, 1f, pivot = Offset(x, y))
@@ -111,7 +118,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(tailBotFork, ShadowDarkTeal)
 
             // ── DORSAL FINS ──────────────────────────────────────────────────
-            val dorsalSway = sin(t * 3f * PI.toFloat()) * 0.4f * s
+            val dorsalSway = sin(t * 3f * PI.toFloat()) * 0.4f * s * (1f - burstBlend * 0.8f)
 
             // First dorsal shadow
             val dorsal1Shadow = Path().apply {
@@ -169,6 +176,17 @@ object BarracudaRenderer : CreatureRenderer {
                 close()
             }
             drawPath(dorsal2, AccentDeepRed)
+            // Dorsal 2 highlight
+            val dorsal2HL = Path().apply {
+                moveTo(x + bodyLen * 0.24f, y - bodyH * 0.75f)
+                cubicTo(
+                    x + bodyLen * 0.28f + dorsalSway * 0.3f, y - bodyH * 1.0f,
+                    x + bodyLen * 0.32f + dorsalSway * 0.3f, y - bodyH * 0.98f,
+                    x + bodyLen * 0.36f, y - bodyH * 0.73f
+                )
+                close()
+            }
+            drawPath(dorsal2HL, AccentCoral.copy(alpha = 0.45f))
 
             // Anal fin
             val anal = Path().apply {
@@ -279,31 +297,48 @@ object BarracudaRenderer : CreatureRenderer {
             }
             drawPath(bellyCenter, BellyWhite.copy(alpha = 0.30f))
 
-            // ── LOWER JAW ────────────────────────────────────────────────────
-            val lowerJaw = Path().apply {
-                moveTo(headX - 1.5f * s, y + bodyH * 0.08f)
+            // ── UPPER JAW RIDGE ──────────────────────────────────────────────
+            val upperJaw = Path().apply {
+                moveTo(headX - 1.5f * s, y - bodyH * 0.08f)
                 cubicTo(
-                    headX + bodyLen * 0.02f, y + bodyH * 0.35f,
-                    headX + bodyLen * 0.06f, y + bodyH * 0.38f,
-                    headX + bodyLen * 0.14f, y + bodyH * 0.3f
+                    headX + bodyLen * 0.02f, y - bodyH * 0.22f,
+                    headX + bodyLen * 0.06f, y - bodyH * 0.24f,
+                    headX + bodyLen * 0.14f, y - bodyH * 0.18f
                 )
                 cubicTo(
-                    headX + bodyLen * 0.08f, y + bodyH * 0.3f,
-                    headX + bodyLen * 0.03f, y + bodyH * 0.18f,
-                    headX - 1.5f * s, y + bodyH * 0.08f
+                    headX + bodyLen * 0.08f, y - bodyH * 0.14f,
+                    headX + bodyLen * 0.03f, y - bodyH * 0.10f,
+                    headX - 1.5f * s, y - bodyH * 0.08f
+                )
+                close()
+            }
+            drawPath(upperJaw, DarkGray.copy(alpha = 0.45f))
+
+            // ── LOWER JAW ────────────────────────────────────────────────────
+            val lowerJaw = Path().apply {
+                moveTo(headX - 1.5f * s, y + bodyH * 0.08f + jawOpen)
+                cubicTo(
+                    headX + bodyLen * 0.02f, y + bodyH * 0.35f + jawOpen,
+                    headX + bodyLen * 0.06f, y + bodyH * 0.38f + jawOpen,
+                    headX + bodyLen * 0.14f, y + bodyH * 0.3f + jawOpen
+                )
+                cubicTo(
+                    headX + bodyLen * 0.08f, y + bodyH * 0.3f + jawOpen,
+                    headX + bodyLen * 0.03f, y + bodyH * 0.18f + jawOpen,
+                    headX - 1.5f * s, y + bodyH * 0.08f + jawOpen
                 )
                 close()
             }
             drawPath(lowerJaw, DarkGray.copy(alpha = 0.7f))
 
-            // Teeth (sharper, coral-tinted)
+            // Teeth (sharper, coral-tinted) — lower teeth follow jawOpen
             val toothCount = 5
             for (i in 0 until toothCount) {
                 val tx = headX + bodyLen * 0.015f + i * bodyLen * 0.022f
                 drawLine(
                     BellyWhite.copy(alpha = 0.75f),
-                    Offset(tx, y + bodyH * 0.22f),
-                    Offset(tx, y + bodyH * 0.08f),
+                    Offset(tx, y + bodyH * 0.22f + jawOpen),
+                    Offset(tx, y + bodyH * 0.08f + jawOpen),
                     strokeWidth = (0.7f * s).coerceAtLeast(0.4f),
                     cap = StrokeCap.Round
                 )
@@ -330,7 +365,8 @@ object BarracudaRenderer : CreatureRenderer {
             )
 
             // ── PECTORAL FIN (small, coral-tinted) ───────────────────────────
-            val pectSway = sin(t * 3.5f * PI.toFloat()) * 0.8f * s
+            val pectAmp  = (1f - burstBlend) * 0.5f * s
+            val pectSway = sin(t * 3.5f * PI.toFloat()) * pectAmp
             val pect = Path().apply {
                 moveTo(x - bodyLen * 0.55f, y + bodyH * 0.15f)
                 cubicTo(
@@ -346,6 +382,23 @@ object BarracudaRenderer : CreatureRenderer {
                 close()
             }
             drawPath(pect, AccentCoral.copy(alpha = 0.55f))
+
+            // ── PELVIC FINS (ventral pair, small) ────────────────────────────
+            val pelv = Path().apply {
+                moveTo(x - bodyLen * 0.30f, y + bodyH * 0.35f)
+                cubicTo(
+                    x - bodyLen * 0.25f + pectSway * 0.3f, y + bodyH * 0.72f,
+                    x - bodyLen * 0.18f + pectSway * 0.3f, y + bodyH * 0.70f,
+                    x - bodyLen * 0.15f, y + bodyH * 0.40f
+                )
+                cubicTo(
+                    x - bodyLen * 0.20f, y + bodyH * 0.30f,
+                    x - bodyLen * 0.27f, y + bodyH * 0.28f,
+                    x - bodyLen * 0.30f, y + bodyH * 0.35f
+                )
+                close()
+            }
+            drawPath(pelv, AccentPeach.copy(alpha = 0.50f))
 
             // ── LEVEL 3+: Flank blotches (darker teal chevrons) ─────────────
             if (level >= 3) {
@@ -398,6 +451,18 @@ object BarracudaRenderer : CreatureRenderer {
             // Secondary shine
             drawCircle(Color.White.copy(alpha = 0.5f), eyeR * 0.10f,
                 Offset(eyeX + eyeR * 0.15f, eyeY + eyeR * 0.12f))
+
+            // ── GILL COVER SHADOW ────────────────────────────────────────────
+            val gillCover = Path().apply {
+                moveTo(headX + bodyLen * 0.08f, y - bodyH * 0.10f)
+                cubicTo(
+                    headX + bodyLen * 0.18f, y - bodyH * 0.45f,
+                    headX + bodyLen * 0.22f, y + bodyH * 0.35f,
+                    headX + bodyLen * 0.10f, y + bodyH * 0.15f
+                )
+                close()
+            }
+            drawPath(gillCover, ShadowDarkTeal.copy(alpha = 0.15f))
         }
     }
 }

@@ -7,6 +7,22 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mnebot.riptide.data.local.dao.*
 import com.mnebot.riptide.data.local.entity.*
 
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE work_blocks ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE block_categories ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE day_tasks ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE recurring_task_defs ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE day_summaries ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE block_streaks ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE ecosystem_states ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE marine_creatures ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE work_blocks ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE day_tasks ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE recurring_task_defs ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 val MIGRATION_10_11 = object : Migration(10, 11) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL(
@@ -37,7 +53,7 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         EcosystemStateEntity::class,
         MarineCreatureEntity::class
     ],
-    version = 11
+    version = 12
 )
 
 abstract class RiptideDatabase : RoomDatabase() {

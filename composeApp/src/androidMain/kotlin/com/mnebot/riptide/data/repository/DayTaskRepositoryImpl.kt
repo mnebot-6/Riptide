@@ -3,6 +3,7 @@ package com.mnebot.riptide.data.repository
 import com.mnebot.riptide.data.local.dao.DayTaskDao
 import com.mnebot.riptide.data.local.mapper.toDomain
 import com.mnebot.riptide.data.local.mapper.toEntity
+import com.mnebot.riptide.data.local.nowIso
 import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.TaskStatus
 import com.mnebot.riptide.domain.repository.DayTaskRepository
@@ -22,25 +23,27 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
         dao.getPendingBefore(date.toString()).map { it.toDomain() }
 
     override suspend fun insert(task: DayTask) =
-        dao.insert(task.toEntity())
+        dao.insert(task.toEntity().copy(updatedAt = nowIso()))
 
     override suspend fun update(task: DayTask) =
-        dao.update(task.toEntity())
+        dao.update(task.toEntity().copy(updatedAt = nowIso()))
 
     override suspend fun updateStatus(id: String, status: TaskStatus) =
         dao.updateStatus(id, status.name)
 
-    override suspend fun delete(id: String) =
-        dao.delete(id)
+    override suspend fun delete(id: String) {
+        val existing = dao.getById(id) ?: return
+        dao.update(existing.copy(isDeleted = true, updatedAt = nowIso()))
+    }
 
     override suspend fun deleteBySourceTask(sourceTaskId: String) =
-        dao.deleteBySourceTask(sourceTaskId)
+        dao.softDeleteBySourceTask(sourceTaskId, nowIso())
 
     override suspend fun deleteBySourceId(sourceTaskId: String) =
-        dao.deleteBySourceTask(sourceTaskId)
+        dao.softDeleteBySourceTask(sourceTaskId, nowIso())
 
     override suspend fun deleteBySourceIdFromDate(sourceTaskId: String, fromDate: LocalDate) =
-        dao.deleteBySourceTaskFromDate(sourceTaskId, fromDate.toString())
+        dao.softDeleteBySourceTaskFromDate(sourceTaskId, fromDate.toString(), nowIso())
 
     override suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask> =
         dao.getByDateAndBlock(date.toString(), blockId).map { it.toDomain() }

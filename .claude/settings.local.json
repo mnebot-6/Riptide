@@ -30,7 +30,29 @@
       "Bash(git commit:*)",
       "Bash(grep -l \"enum class CreatureSpecies\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide/composeApp/src/commonMain/kotlin/com/mnebot/riptide/domain/model/\"*.kt)",
       "Bash(find composeApp/build -name *.xml -path */test-results/* -newer composeApp/src/commonTest/kotlin/com/mnebot/riptide/domain/LootboxResolverTest.kt)",
-      "Bash(./gradlew compileReleaseKotlin)"
+      "Bash(./gradlew compileReleaseKotlin)",
+      "Bash(cp \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\gradle\\\\wrapper\\\\gradle-wrapper.jar\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\backend\\\\gradle\\\\wrapper\"\" && cp \"C:MyProgramsAndroidStudioProjectsRiptidegradlewrappergradle-wrapper.properties\" \"C:MyProgramsAndroidStudioProjectsRiptidebackendgradlewrapper\"\")",
+      "Bash(cp \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\gradlew\" \"C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide\\\\backend\"\" && cp \"C:MyProgramsAndroidStudioProjectsRiptidegradlew.bat\" \"C:MyProgramsAndroidStudioProjectsRiptidebackend\"\")",
+      "Bash(.gradlew.bat compileKotlin)",
+      "Bash(cmd /c \"gradlew.bat compileKotlin\")",
+      "Bash(chmod +x gradlew)",
+      "Bash(bash gradlew:*)",
+      "Bash(java -version)",
+      "Bash(xargs grep:*)",
+      "Bash(keytool -list -v -keystore \"%USERPROFILE%\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(findstr \"SHA1\")",
+      "Bash(findstr /i \"SHA1\")",
+      "Bash(keytool -list -v -keystore \"C:\\\\Users\\\\mnebo\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(adb logcat:*)",
+      "Bash(.gradlew.bat clean:*)",
+      "Bash(cmd /c \"gradlew.bat clean compileDebugKotlin\")",
+      "Bash(cmd.exe /c \"gradlew.bat clean compileDebugKotlin\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide && gradlew.bat clean compileDebugKotlin\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\MyPrograms\\\\AndroidStudioProjects\\\\Riptide & gradlew.bat clean compileDebugKotlin 2>&1\")",
+      "Bash(adb shell:*)",
+      "Bash(ipconfig.exe)",
+      "Bash(curl -s -X POST http://192.168.1.142:8080/api/sync -H \"Content-Type: application/json\" -H \"Authorization: Bearer test\" -d '{\"\"lastSyncTime\"\":null,\"\"workBlocks\"\":[],\"\"blockCategories\"\":[],\"\"dayTasks\"\":[],\"\"recurringTaskDefs\"\":[],\"\"daySummaries\"\":[],\"\"blockStreaks\"\":[],\"\"ecosystemStates\"\":[],\"\"marineCreatures\"\":[]}')",
+      "WebFetch(domain:www.tododeia.com)"
     ]
   }
 }

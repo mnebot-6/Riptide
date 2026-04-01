@@ -13,5 +13,6 @@ data class MarineCreatureEntity(
     val unlockedAtLevel: Int,
     val experience: Int,
     val creatureLevel: Int,
-    val unlockedAt: String
+    val unlockedAt: String,
+    val updatedAt: String = ""
 )

@@ -3,6 +3,7 @@ package com.mnebot.riptide.data.repository
 import com.mnebot.riptide.data.local.dao.BlockCategoryDao
 import com.mnebot.riptide.data.local.mapper.toDomain
 import com.mnebot.riptide.data.local.mapper.toEntity
+import com.mnebot.riptide.data.local.nowIso
 import com.mnebot.riptide.domain.model.BlockCategory
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.repository.BlockCategoryRepository
@@ -22,8 +23,9 @@ class BlockCategoryRepositoryImpl(
 
     override suspend fun setCategories(blockId: String, categories: List<MarineCategory>) {
         dao.deleteForBlock(blockId)
+        val now = nowIso()
         categories.forEach { category ->
-            dao.insert(BlockCategory(blockId, category).toEntity())
+            dao.insert(BlockCategory(blockId, category).toEntity().copy(updatedAt = now))
         }
     }
 

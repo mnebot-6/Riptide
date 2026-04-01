@@ -23,4 +23,13 @@ interface MarineCreatureDao {
 
     @Update
     suspend fun update(creature: MarineCreatureEntity)
+
+    @Query("SELECT * FROM marine_creatures WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<MarineCreatureEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<MarineCreatureEntity>)
+
+    @Query("UPDATE marine_creatures SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

@@ -22,4 +22,13 @@ interface BlockCategoryDao {
 
     @Query("DELETE FROM block_categories")
     suspend fun deleteAll()
+
+    @Query("SELECT * FROM block_categories WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<BlockCategoryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<BlockCategoryEntity>)
+
+    @Query("UPDATE block_categories SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

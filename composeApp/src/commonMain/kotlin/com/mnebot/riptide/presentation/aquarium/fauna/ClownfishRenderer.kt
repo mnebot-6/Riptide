@@ -39,12 +39,19 @@ object ClownfishRenderer : CreatureRenderer {
         val bodyH   = (6f + level * 0.4f) * s
         val tailExt = (4.5f + level * 0.35f) * s
 
-        val tailSway  = sin(t * 3.8f * PI.toFloat()) * 1.8f * s
-        val bodyWave  = sin(t * 3.8f * PI.toFloat() + 0.5f) * 0.4f * s
+        // ── Clownfish waddle: pectoral-propelled + vertical bob + body tilt ─────
+        val bobY     = sin(t * 3.8f * PI.toFloat()) * s * 0.08f
+        val bodyTilt = sin(t * 3.8f * PI.toFloat() + 0.3f) * 5f  // degrees
+        val tailSway = sin(t * 3.8f * PI.toFloat()) * 0.8f * s   // was 1.8s → pectoral-propelled
+        val bodyWave = sin(t * 3.8f * PI.toFloat() + 0.5f) * 0.4f * s
 
         withTransform({
             if (mirrored) scale(-1f, 1f, pivot = Offset(x, y))
         }) {
+            withTransform({
+                translate(left = 0f, top = bobY)
+                rotate(degrees = bodyTilt, pivot = Offset(x, y))
+            }) {
 
             // ── TAIL FIN (layered) ───────────────────────────────────────────
             val tailX = x + bodyLen * 0.5f
@@ -369,6 +376,10 @@ object ClownfishRenderer : CreatureRenderer {
                 )
             }
 
+            // ── BODY OUTLINE (thin dark navy, from SVG reference) ────────────
+            drawPath(body, DeepNavy.copy(alpha = 0.22f),
+                style = Stroke(width = (0.5f * s).coerceAtLeast(0.2f)))
+
             // ── HEAD PATCH (dark, blended) ───────────────────────────────────
             val head = Path().apply {
                 moveTo(x - bodyLen, y + bodyWave * 0.2f)
@@ -405,8 +416,36 @@ object ClownfishRenderer : CreatureRenderer {
             }
             drawPath(headFade, DarkNavy.copy(alpha = 0.35f))
 
+            // ── GILL PLATE DETAIL ────────────────────────────────────────────
+            val gillPlate = Path().apply {
+                moveTo(x - bodyLen * 0.54f, y - bodyH * 0.28f)
+                cubicTo(
+                    x - bodyLen * 0.50f, y - bodyH * 0.55f,
+                    x - bodyLen * 0.46f, y - bodyH * 0.58f,
+                    x - bodyLen * 0.44f, y - bodyH * 0.28f
+                )
+                cubicTo(
+                    x - bodyLen * 0.46f, y - bodyH * 0.12f,
+                    x - bodyLen * 0.50f, y - bodyH * 0.10f,
+                    x - bodyLen * 0.54f, y - bodyH * 0.28f
+                )
+                close()
+            }
+            drawPath(gillPlate, DarkNavy.copy(alpha = 0.20f))
+            // Gill plate edge line
+            val gillEdge = Path().apply {
+                moveTo(x - bodyLen * 0.54f, y - bodyH * 0.42f)
+                cubicTo(
+                    x - bodyLen * 0.50f, y - bodyH * 0.65f,
+                    x - bodyLen * 0.46f, y + bodyH * 0.55f,
+                    x - bodyLen * 0.54f, y + bodyH * 0.38f
+                )
+            }
+            drawPath(gillEdge, DarkNavy.copy(alpha = 0.30f),
+                style = Stroke(width = (0.5f * s).coerceAtLeast(0.25f), cap = StrokeCap.Round))
+
             // ── PECTORAL FIN (layered) ───────────────────────────────────────
-            val pectSway = sin(t * 4.5f * PI.toFloat()) * 1.2f * s
+            val pectSway = sin(t * 4.5f * PI.toFloat()) * 2.5f * s   // was 1.2s → primary propulsor
 
             // Shadow
             val pectShadow = Path().apply {
@@ -527,6 +566,8 @@ object ClownfishRenderer : CreatureRenderer {
                     Offset(eyeX + eyeR * 1.8f, eyeY - eyeR * 0.3f)
                 )
             }
+
+            } // waddle + bob transform
         }
     }
 }

@@ -34,19 +34,37 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 
 ## Stack
 
+### Android (KMP)
+
 | Tecnología | Versión |
 |---|---|
 | Kotlin | 2.3.10 |
 | Compose Multiplatform | 1.10.2 |
-| Room | 2.8.4 (schema v10) |
+| Room | 2.8.4 (schema v12) |
+| Ktor Client | 3.0.3 |
+| Google Play Services Auth | 21.3.0 |
 | kotlinx-serialization | 1.7.3 |
 | androidx-datastore | 1.1.7 |
 | androidx-work (WorkManager) | 2.10.1 |
-| Gradle | 8.12.3 |
+| Gradle | 8.14.3 |
+
+### Backend (`/backend`)
+
+| Tecnología | Versión |
+|---|---|
+| Kotlin | 2.0.21 |
+| Ktor | 3.0.3 |
+| Exposed ORM | 0.57.0 |
+| HikariCP | 6.2.1 |
+| PostgreSQL JDBC | 42.7.4 |
+| google-api-client | 2.7.2 |
+| Logback | 1.5.12 |
 
 ---
 
 ## Comandos útiles
+
+### Android
 
 ```bash
 # Build debug
@@ -60,6 +78,25 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 
 # Verificar compilación sin generar APK
 ./gradlew compileDebugKotlin
+```
+
+### Backend
+
+```bash
+# Compilar backend
+cd backend && bash gradlew compileKotlin
+
+# Generar fat JAR
+cd backend && bash gradlew buildFatJar
+
+# Ejecutar localmente (requiere PostgreSQL)
+cd backend && bash gradlew run
+
+# Ejecutar con variables de entorno
+DATABASE_URL=jdbc:postgresql://localhost:5432/riptide \
+DATABASE_USER=riptide DATABASE_PASSWORD=riptide \
+JWT_SECRET=your-secret GOOGLE_CLIENT_ID=your-client-id \
+cd backend && bash gradlew run
 ```
 
 ---
@@ -78,10 +115,10 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 
 ---
 
-## Estado actual (marzo 2026)
+## Estado actual (abril 2026)
 
 **Completado:**
-- MVVM + Room offline-first (v10, migraciones reales)
+- MVVM + Room offline-first (v12, migraciones reales)
 - Ecosistema marino: 40 especies, 9 categorías, sistema lootbox con rareza, crecimiento individual
 - Patrones de nado orgánicos (tempo warping, variación por instancia, márgenes simétricos)
 - Resumen nocturno con filtrado correcto por `summaryTime`; push notification tras `processDay`
@@ -109,9 +146,10 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 - **Flora del fondo escalada**: Kelp (1.0→0.50), Anemone (0.65→0.42), BrainCoral (1.0→0.50), FanCoral (1.0→0.48), Posidonia (1.0→0.52), SeaUrchin (1.0→0.55)
 - **Rediseño BrainCoral**: reemplaza líneas rectas por cúpula hemisférica con gradiente + grooves laberínticos sinusoidales + highlight especular + glow secundario (nivel 3+)
 
+- **Backend Ktor**: proyecto `/backend` independiente — Ktor 3.0.3 + Exposed 0.57.0 + PostgreSQL. 10 tablas (mirror Room v12 + users + refresh_tokens), API REST CRUD completa (8 recursos), auth Google Sign-In + JWT con refresh token rotation y theft detection, Dockerfile multi-stage, health check.
+- **Sync offline-first**: Room v12 con `updatedAt` en 8 tablas + `isDeleted` en 3 (soft delete). Ktor Client (OkHttp) con auto-refresh JWT. `POST /api/sync` batch endpoint (push+pull en una llamada). `SyncManager` con conflict resolution (`updatedAt` wins, `hasBeenRewarded` OR-merge, server deletion autoritativo). `SyncTrigger` (5s debounce) + `SyncWorker` (1h periodic via WorkManager). Google Sign-In en drawer con sección "Cuenta" (avatar, sync status badge, logout). `InitialSyncPreparer` para primera sincronización de datos pre-existentes.
+
 **Próximo (→ Play Store):**
-- Sprint Backend (Ktor + PostgreSQL + API REST + auth)
-- Sprint Sync (offline-first, updatedAt, conflict resolution, export/import JSON)
 - Sprint QA & Polish (tests integración, accesibilidad, performance)
 - Sprint Store Prep (firma, privacy policy, screenshots, listing)
 - 🚀 Play Store
@@ -158,7 +196,57 @@ composeApp/src/
     ├── wallpaper/WallpaperDataProvider.kt    # Carga criaturas de Room, refresco cada 5min
     ├── presentation/stats/StatsViewModelFactory.kt
     ├── presentation/history/HistoryViewModelFactory.kt
-    └── data/local/
-        ├── db/RiptideDatabase.kt       # Room DB v10, migraciones reales (8_9, 9_10)
-        └── dao/                        # DAOs para cada entidad
+    ├── data/local/
+    │   ├── db/RiptideDatabase.kt       # Room DB v12, migraciones reales (8_9..11_12)
+    │   ├── dao/                        # DAOs para cada entidad (+getModifiedSince, upsertAll, stampUpdatedAt)
+    │   └── SyncTimestamp.kt            # nowIso() utility
+    ├── data/remote/
+    │   ├── ApiClient.kt               # Ktor HttpClient (OkHttp, JSON, Bearer auth, auto-refresh)
+    │   ├── RiptideApi.kt              # sync(), authGoogle(), logout()
+    │   ├── TokenProvider.kt           # Interface abstracta para JWT storage
+    │   ├── DataStoreTokenProvider.kt  # Implementación con DataStore
+    │   ├── AuthManager.kt             # Google Sign-In flow + JWT lifecycle
+    │   └── dto/
+    │       ├── SyncDtos.kt            # SyncRequest, SyncResponse, 8 DTOs de recurso, auth DTOs
+    │       └── DtoMappers.kt          # Entity↔DTO conversiones (16 funciones)
+    └── data/sync/
+        ├── SyncManager.kt             # Push/pull bidireccional con conflict resolution
+        ├── SyncTrigger.kt             # Debounce 5s tras mutación local
+        ├── SyncWorker.kt              # WorkManager periódico (1h, constraint CONNECTED)
+        ├── InitialSyncPreparer.kt     # Stampar datos pre-existentes para primera sync
+        └── ConnectivityObserver.kt    # Flow<Boolean> de estado de red
+
+backend/src/main/kotlin/com/mnebot/riptide/backend/
+├── Application.kt                  # Ktor entry point (EngineMain + module)
+├── plugins/
+│   ├── Routing.kt                  # Registro central de rutas + CORS + CallLogging
+│   ├── Serialization.kt           # ContentNegotiation + kotlinx.serialization JSON
+│   ├── Security.kt                # JWT config + Google token verification + JwtConfig object
+│   └── StatusPages.kt             # Manejo global de errores (400, 401, 404, 500)
+├── db/
+│   ├── DatabaseFactory.kt         # HikariCP pool + Exposed + SchemaUtils.create()
+│   └── tables/                    # 10 tablas Exposed (mirror Room v12 + users + refresh_tokens)
+│       ├── UsersTable.kt          # id, email, googleId, displayName, avatarUrl
+│       ├── WorkBlocksTable.kt     # + userId, updatedAt, isDeleted
+│       ├── BlockCategoriesTable.kt
+│       ├── DayTasksTable.kt       # 14 campos — mirror exacto de DayTaskEntity
+│       ├── RecurringTaskDefsTable.kt
+│       ├── DaySummariesTable.kt
+│       ├── BlockStreaksTable.kt   # + longestStreak (Room v11)
+│       ├── EcosystemStatesTable.kt
+│       └── MarineCreaturesTable.kt
+├── models/
+│   ├── Auth.kt                    # GoogleAuthRequest, TokenResponse, RefreshRequest
+│   └── ApiModels.kt              # DTOs + SyncRequest + FullSyncResponse
+└── routes/
+    ├── AuthRoutes.kt              # POST /auth/google, POST /auth/refresh, POST /auth/logout
+    ├── SyncRoutes.kt              # POST /api/sync — batch push/pull con conflict resolution
+    ├── WorkBlockRoutes.kt         # CRUD /api/blocks
+    ├── BlockCategoryRoutes.kt     # GET + POST(upsert) /api/block-categories
+    ├── DayTaskRoutes.kt           # CRUD /api/tasks (?date=, ?updatedSince=)
+    ├── RecurringTaskDefRoutes.kt  # CRUD /api/recurring-defs
+    ├── DaySummaryRoutes.kt        # CRUD /api/summaries (?from=, ?to=)
+    ├── BlockStreakRoutes.kt       # GET + POST(upsert) /api/streaks
+    ├── EcosystemStateRoutes.kt    # GET + POST(upsert) /api/ecosystem-states
+    └── MarineCreatureRoutes.kt    # GET + POST(upsert) /api/creatures (?category=)
 ```

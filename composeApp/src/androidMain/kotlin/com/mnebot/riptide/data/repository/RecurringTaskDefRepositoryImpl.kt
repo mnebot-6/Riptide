@@ -3,6 +3,7 @@ package com.mnebot.riptide.data.repository
 import com.mnebot.riptide.data.local.dao.RecurringTaskDefDao
 import com.mnebot.riptide.data.local.mapper.toDomain
 import com.mnebot.riptide.data.local.mapper.toEntity
+import com.mnebot.riptide.data.local.nowIso
 import com.mnebot.riptide.domain.model.RecurringTaskDef
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
 
@@ -17,11 +18,13 @@ class RecurringTaskDefRepositoryImpl(private val dao: RecurringTaskDefDao) : Rec
         dao.getByBlock(blockId).map { it.toDomain() }
 
     override suspend fun insert(def: RecurringTaskDef) =
-        dao.insert(def.toEntity())
+        dao.insert(def.toEntity().copy(updatedAt = nowIso()))
 
     override suspend fun update(def: RecurringTaskDef) =
-        dao.update(def.toEntity())
+        dao.update(def.toEntity().copy(updatedAt = nowIso()))
 
-    override suspend fun delete(id: String) =
-        dao.delete(id)
+    override suspend fun delete(id: String) {
+        val existing = dao.getById(id) ?: return
+        dao.update(existing.copy(isDeleted = true, updatedAt = nowIso()))
+    }
 }

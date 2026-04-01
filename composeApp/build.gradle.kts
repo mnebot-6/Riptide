@@ -38,6 +38,13 @@ kotlin {
             implementation(libs.androidx.core.splashscreen)
             implementation(libs.androidx.glance.appwidget)
             implementation(libs.androidx.glance.material3)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.auth)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.play.services.auth)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -87,6 +94,17 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+
+        val localProps = Properties().apply {
+            val localFile = rootProject.file("local.properties")
+            if (localFile.exists()) load(localFile.inputStream())
+        }
+        buildConfigField("String", "API_BASE_URL", "\"${localProps.getProperty("API_BASE_URL", "http://10.0.2.2:8080")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_CLIENT_ID", "")}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
     packaging {
         resources {

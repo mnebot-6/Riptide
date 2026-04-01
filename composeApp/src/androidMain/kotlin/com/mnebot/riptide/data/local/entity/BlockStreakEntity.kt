@@ -8,5 +8,6 @@ data class BlockStreakEntity(
     @PrimaryKey val blockId: String,
     val currentStreak: Int,
     val lastActiveDate: String,
-    val longestStreak: Int = 0
+    val longestStreak: Int = 0,
+    val updatedAt: String = ""
 )

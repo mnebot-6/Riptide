@@ -22,4 +22,13 @@ interface DaySummaryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(summary: DaySummaryEntity)
+
+    @Query("SELECT * FROM day_summaries WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<DaySummaryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<DaySummaryEntity>)
+
+    @Query("UPDATE day_summaries SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

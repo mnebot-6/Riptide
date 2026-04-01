@@ -17,7 +17,7 @@ class MarineCategoryAssigner(
         // Solo categorías desbloqueadas y que no son DECORATION
         val unlockedCategories = ecosystemStateRepository.getUnlocked()
             .map { it.category }
-            .filter { it != MarineCategory.DECORATION }
+            .filter { it != MarineCategory.DECORATION && it != MarineCategory.COMPANION }
 
         if (unlockedCategories.isEmpty()) return
 

@@ -29,7 +29,12 @@ import com.mnebot.riptide.presentation.stats.StatsViewModelFactory
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
+import com.mnebot.riptide.data.remote.AuthManager
+import com.mnebot.riptide.data.sync.InitialSyncPreparer
+import com.mnebot.riptide.data.sync.SyncManager
 import com.mnebot.riptide.wallpaper.RiptideWallpaperService
 import kotlinx.coroutines.launch
 
@@ -61,10 +66,36 @@ fun NavGraphBuilder.onboardingGraph(
 fun NavGraphBuilder.mainGraph(
     mainViewModel: MainViewModel,
     nightSummaryScheduler: NightSummaryScheduler,
-    navController: NavController
+    navController: NavController,
+    authManager: AuthManager? = null,
+    syncManager: SyncManager? = null,
+    initialSyncPreparer: InitialSyncPreparer? = null
 ) {
     composable(ROUTE_MAIN) {
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+
+        val signInLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            android.util.Log.d("RiptideAuth", "Sign-in result: resultCode=${result.resultCode}, data=${result.data}")
+            scope.launch {
+                authManager?.let { am ->
+                    val loginResult = am.handleSignInResult(result.data)
+                    loginResult.onSuccess { user ->
+                        android.util.Log.d("RiptideAuth", "Sign-in SUCCESS: ${user.email}")
+                        mainViewModel.onSignInCompleted(user)
+                        // Stamp pre-existing data and trigger initial sync
+                        initialSyncPreparer?.stampAllEntities()
+                        syncManager?.sync()
+                    }
+                    loginResult.onFailure { e ->
+                        android.util.Log.e("RiptideAuth", "Sign-in FAILED", e)
+                    }
+                }
+            }
+        }
+
         MainScreen(
             viewModel = mainViewModel,
             nightSummaryScheduler = nightSummaryScheduler,
@@ -83,7 +114,12 @@ fun NavGraphBuilder.mainGraph(
                 context.startActivity(intent)
             },
             onNavigateToStats = { navController.navigate(ROUTE_STATS) },
-            onNavigateToHistory = { navController.navigate(ROUTE_HISTORY) }
+            onNavigateToHistory = { navController.navigate(ROUTE_HISTORY) },
+            onSignIn = {
+                authManager?.let { am ->
+                    signInLauncher.launch(am.getSignInIntent(context))
+                }
+            }
         )
     }
 

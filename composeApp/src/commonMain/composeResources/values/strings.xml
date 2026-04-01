@@ -258,6 +258,16 @@
     <string name="a11y_locked">Locked</string>
     <string name="a11y_back">Back</string>
 
+    <!-- Account / Sync -->
+    <string name="section_account">ACCOUNT</string>
+    <string name="btn_sign_in_google">Sign in with Google</string>
+    <string name="btn_sign_out">Sign out</string>
+    <string name="btn_sync_now">Sync now</string>
+    <string name="sync_status_syncing">Syncing\u2026</string>
+    <string name="sync_status_success">Synced</string>
+    <string name="sync_status_error">Sync error</string>
+    <string name="sync_status_offline">Offline</string>
+
     <!-- Short month names (charts and history dates) -->
     <string name="month_jan">Jan</string>
     <string name="month_feb">Feb</string>

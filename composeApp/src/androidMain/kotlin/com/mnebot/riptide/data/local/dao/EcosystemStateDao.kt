@@ -23,4 +23,13 @@ interface EcosystemStateDao {
 
     @Update
     suspend fun update(state: EcosystemStateEntity)
+
+    @Query("SELECT * FROM ecosystem_states WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<EcosystemStateEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<EcosystemStateEntity>)
+
+    @Query("UPDATE ecosystem_states SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

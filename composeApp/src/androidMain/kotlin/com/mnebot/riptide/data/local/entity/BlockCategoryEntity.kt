@@ -17,5 +17,6 @@ import androidx.room.ForeignKey
 )
 data class BlockCategoryEntity(
     val blockId: String,
-    val category: String
+    val category: String,
+    val updatedAt: String = ""
 )

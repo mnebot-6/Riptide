@@ -125,10 +125,10 @@ fun CreatureDetailDialog(
                 }
 
                 Spacer(Modifier.height(20.dp))
-            }
 
-            // xpRequiredForLevel viene de CreatureExtensions.kt
-            XpBar(creature = creature)
+                // xpRequiredForLevel viene de CreatureExtensions.kt
+                XpBar(creature = creature)
+            }
 
             Spacer(Modifier.height(16.dp))
 

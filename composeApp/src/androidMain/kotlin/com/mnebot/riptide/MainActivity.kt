@@ -20,6 +20,13 @@ import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
 import com.mnebot.riptide.data.repository.MarineCreatureRepositoryImpl
 import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
+import com.mnebot.riptide.data.remote.ApiClient
+import com.mnebot.riptide.data.remote.AuthManager
+import com.mnebot.riptide.data.remote.DataStoreTokenProvider
+import com.mnebot.riptide.data.remote.RiptideApi
+import com.mnebot.riptide.data.sync.InitialSyncPreparer
+import com.mnebot.riptide.data.sync.SyncManager
+import com.mnebot.riptide.data.sync.SyncWorker
 import com.mnebot.riptide.domain.BlockStreakProcessor
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.MarineCategoryAssigner
@@ -57,6 +64,23 @@ class MainActivity : ComponentActivity() {
 
         val scheduler = NightSummarySchedulerImpl(applicationContext)
         val userPreferencesRepository = UserPreferencesRepositoryImpl(applicationContext)
+
+        // Sync infrastructure
+        val tokenProvider = DataStoreTokenProvider(userPreferencesRepository)
+        val httpClient = ApiClient.create(tokenProvider)
+        val api = RiptideApi(httpClient)
+        val dbForSync = DatabaseProvider.getDatabase(applicationContext)
+        val authManager = AuthManager(api, userPreferencesRepository)
+        val syncManager = SyncManager(dbForSync, api, userPreferencesRepository)
+        val initialSyncPreparer = InitialSyncPreparer(dbForSync)
+
+        // Launch sync on startup if logged in
+        lifecycleScope.launch {
+            if (userPreferencesRepository.getAccessToken() != null) {
+                SyncWorker.schedulePeriodic(applicationContext)
+                syncManager.sync()
+            }
+        }
 
         lifecycleScope.launch {
             val db = DatabaseProvider.getDatabase(applicationContext)
@@ -115,7 +139,10 @@ class MainActivity : ComponentActivity() {
             App(
                 viewModel = viewModel,
                 nightSummaryScheduler = scheduler,
-                userPreferencesRepository = userPreferencesRepository
+                userPreferencesRepository = userPreferencesRepository,
+                authManager = authManager,
+                syncManager = syncManager,
+                initialSyncPreparer = initialSyncPreparer
             )
         }
     }

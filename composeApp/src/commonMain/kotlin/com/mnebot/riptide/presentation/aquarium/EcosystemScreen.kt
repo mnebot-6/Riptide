@@ -204,10 +204,7 @@ private fun EcosystemCategorySection(
             val unlockLevels = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
             val nextUnlockLevel = unlockLevels.firstOrNull { it > categoryLevel }
             val progress = if (nextUnlockLevel != null) {
-                val prevLevel = unlockLevels.lastOrNull { it <= categoryLevel } ?: 0
-                val range = nextUnlockLevel - prevLevel
-                if (range > 0) ((categoryLevel - prevLevel).toFloat() / range).coerceIn(0f, 1f)
-                else 1f
+                (categoryLevel.toFloat() / nextUnlockLevel).coerceIn(0f, 1f)
             } else {
                 1f // todas desbloqueadas
             }

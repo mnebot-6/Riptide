@@ -10,5 +10,7 @@ data class WorkBlockEntity(
     val color: String,
     val icon: String,
     val recurrenceJson: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val updatedAt: String = "",
+    val isDeleted: Boolean = false
 )

@@ -218,8 +218,8 @@ object BimbaRenderer : CreatureRenderer {
             drawCircle(Color.White.copy(alpha = 0.55f), eyeR * 0.22f,
                 Offset(eyeX - eyeR * 0.25f, eyeY - eyeR * 0.28f))          // brillo
 
-            // ── NIVEL 3+: Collar azul marino ─────────────────────────────────
-            if (level >= 3) {
+            // ── Collar azul marino (siempre visible — Bimba es decoración) ────
+            run {
                 val collarX = headX + headR * 0.3f
                 val collarY = headY + headR * 0.7f
                 drawLine(
@@ -233,8 +233,8 @@ object BimbaRenderer : CreatureRenderer {
                     Offset(collarX + headR * 0.05f, collarY + headR * 0.25f))
             }
 
-            // ── NIVEL 5+: Destello dorado (el pelaje brilla como el sol) ─────
-            if (level >= 5) {
+            // ── Destello dorado (siempre visible — Bimba es decoración) ───────
+            run {
                 val sheenPulse = (sin(t * 1.4f * PI.toFloat()) * 0.5f + 0.5f) * 0.18f + 0.10f
                 drawCircle(
                     Color(0xFFFFD060).copy(alpha = sheenPulse),

@@ -10,7 +10,7 @@ import com.mnebot.riptide.data.local.entity.WorkBlockEntity
 
 @Dao
 interface WorkBlockDao {
-    @Query("SELECT * FROM work_blocks")
+    @Query("SELECT * FROM work_blocks WHERE isDeleted = 0")
     suspend fun getAll(): List<WorkBlockEntity>
 
     @Query("SELECT * FROM work_blocks WHERE id = :id")
@@ -24,4 +24,13 @@ interface WorkBlockDao {
 
     @Query("DELETE FROM work_blocks WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT * FROM work_blocks WHERE updatedAt > :since")
+    suspend fun getModifiedSince(since: String): List<WorkBlockEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<WorkBlockEntity>)
+
+    @Query("UPDATE work_blocks SET updatedAt = :now WHERE updatedAt = ''")
+    suspend fun stampUpdatedAt(now: String)
 }

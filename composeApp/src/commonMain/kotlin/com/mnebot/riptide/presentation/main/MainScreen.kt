@@ -119,7 +119,8 @@ fun MainScreen(
     onNavigateToEcosystem: () -> Unit,
     onSetLiveWallpaper: () -> Unit,
     onNavigateToStats: () -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToHistory: () -> Unit,
+    onSignIn: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
@@ -654,7 +655,24 @@ fun MainScreen(
                             showDrawer = false
                         }
                         onNavigateToHistory()
-                    }
+                    },
+                    loggedInUser = uiState.loggedInUser,
+                    syncStatus = uiState.syncStatus,
+                    onSignIn = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        onSignIn()
+                    },
+                    onSignOut = {
+                        scope.launch {
+                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
+                            showDrawer = false
+                        }
+                        viewModel.signOut()
+                    },
+                    onSyncNow = { viewModel.syncNow() }
                 )
             }
         }

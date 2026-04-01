@@ -1,5 +1,6 @@
 package com.mnebot.riptide.domain.fakes
 
+import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.model.PendingLootbox
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.Flow
@@ -30,4 +31,30 @@ class FakeUserPreferencesRepository : UserPreferencesRepository {
     override suspend fun setOnboardingCompleted() {}
     override suspend fun isWallpaperActivated(): Boolean = wallpaperActivated
     override suspend fun setWallpaperActivated() { wallpaperActivated = true }
+
+    // Auth
+    private var accessToken: String? = null
+    private var refreshToken: String? = null
+    private var loggedInUser: LoggedInUser? = null
+    private var lastSyncTime: String? = null
+
+    override suspend fun getAccessToken(): String? = accessToken
+    override suspend fun getRefreshToken(): String? = refreshToken
+    override suspend fun saveTokens(accessToken: String, refreshToken: String) {
+        this.accessToken = accessToken
+        this.refreshToken = refreshToken
+    }
+    override suspend fun clearAuth() {
+        accessToken = null
+        refreshToken = null
+        loggedInUser = null
+        lastSyncTime = null
+    }
+    override suspend fun getLoggedInUser(): LoggedInUser? = loggedInUser
+    override suspend fun saveUser(user: LoggedInUser) { loggedInUser = user }
+    override fun isLoggedIn(): Flow<Boolean> = flowOf(accessToken != null)
+
+    // Sync
+    override suspend fun getLastSyncTime(): String? = lastSyncTime
+    override suspend fun setLastSyncTime(time: String) { lastSyncTime = time }
 }

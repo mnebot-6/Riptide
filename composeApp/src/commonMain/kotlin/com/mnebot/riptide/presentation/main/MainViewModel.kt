@@ -10,6 +10,7 @@ import com.mnebot.riptide.domain.MarineCategoryAssigner
 import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.domain.repository.BlockCategoryRepository
+import kotlinx.coroutines.flow.Flow
 import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
@@ -52,6 +53,12 @@ class MainViewModel(
     private val taskReminderScheduler: TaskReminderScheduler? = null,
     private val decorationUnlockChecker: DecorationUnlockChecker? = null,
     private val onTaskMutated: (suspend () -> Unit)? = null,
+    /** Flow emitting SyncStatus from SyncManager (null when sync is not available). */
+    private val syncStatusFlow: Flow<SyncStatus>? = null,
+    /** Notify debounced sync trigger after local mutations. */
+    private val onSyncMutation: (() -> Unit)? = null,
+    /** Force immediate sync (e.g., user taps "Sync Now"). */
+    private val onSyncNow: (() -> Unit)? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
@@ -65,6 +72,35 @@ class MainViewModel(
             // Pick up any lootboxes queued by checkAll (e.g. decoration unlocks)
             checkPendingLootboxes()
         }
+        // Load logged-in user
+        viewModelScope.launch {
+            val user = userPreferencesRepository.getLoggedInUser()
+            _uiState.update { it.copy(loggedInUser = user) }
+        }
+        // Observe sync status
+        viewModelScope.launch {
+            syncStatusFlow?.collect { status ->
+                _uiState.update { it.copy(syncStatus = status) }
+            }
+        }
+    }
+
+    /** Called from the Activity layer after Google Sign-In completes successfully. */
+    fun onSignInCompleted(user: LoggedInUser?) {
+        _uiState.update { it.copy(loggedInUser = user) }
+    }
+
+    /** Sign out and clear auth state. */
+    fun signOut() {
+        viewModelScope.launch {
+            userPreferencesRepository.clearAuth()
+            _uiState.update { it.copy(loggedInUser = null, syncStatus = SyncStatus.IDLE) }
+        }
+    }
+
+    /** Manual sync trigger. */
+    fun syncNow() {
+        onSyncNow?.invoke()
     }
 
     fun selectDate(date: LocalDate) {
@@ -111,6 +147,7 @@ class MainViewModel(
 
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -145,6 +182,7 @@ class MainViewModel(
             }
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -185,6 +223,7 @@ class MainViewModel(
             }
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -232,6 +271,7 @@ class MainViewModel(
             }
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -373,6 +413,7 @@ class MainViewModel(
             dayTaskRepository.delete(task.id)
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -403,6 +444,7 @@ class MainViewModel(
             }
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -429,6 +471,7 @@ class MainViewModel(
             }
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -438,6 +481,7 @@ class MainViewModel(
             dayTaskRepository.update(task.copy(status = TaskStatus.CANCELLED))
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -455,6 +499,7 @@ class MainViewModel(
             dayTaskRepository.deleteBySourceIdFromDate(sourceId, date)
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 
@@ -470,6 +515,7 @@ class MainViewModel(
             dayTaskRepository.deleteBySourceId(sourceId)
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
         }
     }
 

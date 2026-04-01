@@ -21,7 +21,7 @@ class EcosystemProcessor(
         val targets = if (categories.isEmpty()) {
             ecosystemStateRepository.getUnlocked()
                 .map { it.category }
-                .filter { it != MarineCategory.DECORATION }
+                .filter { it != MarineCategory.DECORATION && it != MarineCategory.COMPANION }
         } else {
             categories
         }
@@ -51,7 +51,7 @@ class EcosystemProcessor(
         val targets = if (categories.isEmpty()) {
             ecosystemStateRepository.getUnlocked()
                 .map { it.category }
-                .filter { it != MarineCategory.DECORATION }
+                .filter { it != MarineCategory.DECORATION && it != MarineCategory.COMPANION }
         } else {
             categories
         }
@@ -84,7 +84,7 @@ class EcosystemProcessor(
      */
     private suspend fun findSpilloverTarget(excludes: List<MarineCategory>): MarineCategory? {
         val candidates = ecosystemStateRepository.getUnlocked()
-            .filter { it.category != MarineCategory.DECORATION }
+            .filter { it.category != MarineCategory.DECORATION && it.category != MarineCategory.COMPANION }
             .filter { it.category !in excludes }
         if (candidates.isEmpty()) return null
         val minXp = candidates.minOf { it.totalExperience }
@@ -192,7 +192,7 @@ class EcosystemProcessor(
     ): List<PendingLootbox> {
         val allStates = ecosystemStateRepository.getUnlocked()
         val candidates = allStates
-            .filter { it.category != MarineCategory.DECORATION }
+            .filter { it.category != MarineCategory.DECORATION && it.category != MarineCategory.COMPANION }
             .filter { it.category != sourceCategory }
             .filter { state ->
                 val specsInCat    = allCreatures.count { it.category == state.category }

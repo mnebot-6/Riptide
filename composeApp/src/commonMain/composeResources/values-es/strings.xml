@@ -258,6 +258,16 @@
     <string name="a11y_locked">Bloqueado</string>
     <string name="a11y_back">Volver</string>
 
+    <!-- Cuenta / Sincronización -->
+    <string name="section_account">CUENTA</string>
+    <string name="btn_sign_in_google">Iniciar sesión con Google</string>
+    <string name="btn_sign_out">Cerrar sesión</string>
+    <string name="btn_sync_now">Sincronizar ahora</string>
+    <string name="sync_status_syncing">Sincronizando\u2026</string>
+    <string name="sync_status_success">Sincronizado</string>
+    <string name="sync_status_error">Error de sincronización</string>
+    <string name="sync_status_offline">Sin conexión</string>
+
     <!-- Nombres cortos de meses (gráficos y fechas del historial) -->
     <string name="month_jan">Ene</string>
     <string name="month_feb">Feb</string>

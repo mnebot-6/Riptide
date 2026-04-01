@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mnebot.riptide.domain.model.CreatureSpecies
+import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.PendingLootbox
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
@@ -32,6 +33,13 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_WALLPAPER_ACTIVATED  = booleanPreferencesKey("wallpaper_activated")
         private val KEY_MORNING_HOUR   = intPreferencesKey("morning_reminder_hour")
         private val KEY_MORNING_MINUTE = intPreferencesKey("morning_reminder_minute")
+        private val KEY_ACCESS_TOKEN = stringPreferencesKey("access_token")
+        private val KEY_REFRESH_TOKEN = stringPreferencesKey("refresh_token")
+        private val KEY_USER_ID = stringPreferencesKey("user_id")
+        private val KEY_USER_EMAIL = stringPreferencesKey("user_email")
+        private val KEY_USER_NAME = stringPreferencesKey("user_display_name")
+        private val KEY_USER_AVATAR = stringPreferencesKey("user_avatar_url")
+        private val KEY_LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val DISABLED = -1          // sentinel for "no morning reminder"
@@ -134,5 +142,66 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
 
     override suspend fun setWallpaperActivated() {
         context.dataStore.edit { prefs -> prefs[KEY_WALLPAPER_ACTIVATED] = true }
+    }
+
+    // ── Auth ────────────────────────────────────────────────────────────────────
+
+    override suspend fun getAccessToken(): String? =
+        context.dataStore.data.first()[KEY_ACCESS_TOKEN]
+
+    override suspend fun getRefreshToken(): String? =
+        context.dataStore.data.first()[KEY_REFRESH_TOKEN]
+
+    override suspend fun saveTokens(accessToken: String, refreshToken: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ACCESS_TOKEN] = accessToken
+            prefs[KEY_REFRESH_TOKEN] = refreshToken
+        }
+    }
+
+    override suspend fun clearAuth() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_ACCESS_TOKEN)
+            prefs.remove(KEY_REFRESH_TOKEN)
+            prefs.remove(KEY_USER_ID)
+            prefs.remove(KEY_USER_EMAIL)
+            prefs.remove(KEY_USER_NAME)
+            prefs.remove(KEY_USER_AVATAR)
+            prefs.remove(KEY_LAST_SYNC_TIME)
+        }
+    }
+
+    override suspend fun getLoggedInUser(): LoggedInUser? {
+        val prefs = context.dataStore.data.first()
+        val id = prefs[KEY_USER_ID] ?: return null
+        return LoggedInUser(
+            id = id,
+            email = prefs[KEY_USER_EMAIL] ?: "",
+            displayName = prefs[KEY_USER_NAME],
+            avatarUrl = prefs[KEY_USER_AVATAR]
+        )
+    }
+
+    override suspend fun saveUser(user: LoggedInUser) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_USER_ID] = user.id
+            prefs[KEY_USER_EMAIL] = user.email
+            user.displayName?.let { prefs[KEY_USER_NAME] = it }
+            user.avatarUrl?.let { prefs[KEY_USER_AVATAR] = it }
+        }
+    }
+
+    override fun isLoggedIn(): Flow<Boolean> =
+        context.dataStore.data.map { prefs -> prefs[KEY_ACCESS_TOKEN] != null }
+
+    // ── Sync ────────────────────────────────────────────────────────────────────
+
+    override suspend fun getLastSyncTime(): String? =
+        context.dataStore.data.first()[KEY_LAST_SYNC_TIME]
+
+    override suspend fun setLastSyncTime(time: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAST_SYNC_TIME] = time
+        }
     }
 }

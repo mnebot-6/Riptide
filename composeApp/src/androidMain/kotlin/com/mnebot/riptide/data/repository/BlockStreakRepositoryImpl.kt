@@ -3,6 +3,7 @@ package com.mnebot.riptide.data.repository
 import com.mnebot.riptide.data.local.dao.BlockStreakDao
 import com.mnebot.riptide.data.local.mapper.toDomain
 import com.mnebot.riptide.data.local.mapper.toEntity
+import com.mnebot.riptide.data.local.nowIso
 import com.mnebot.riptide.domain.model.BlockStreak
 import com.mnebot.riptide.domain.repository.BlockStreakRepository
 
@@ -14,8 +15,8 @@ class BlockStreakRepositoryImpl(private val dao: BlockStreakDao) : BlockStreakRe
         dao.getAll().map { it.toDomain() }
 
     override suspend fun insert(streak: BlockStreak) =
-        dao.insert(streak.toEntity())
+        dao.insert(streak.toEntity().copy(updatedAt = nowIso()))
 
     override suspend fun update(streak: BlockStreak) =
-        dao.update(streak.toEntity())
+        dao.update(streak.toEntity().copy(updatedAt = nowIso()))
 }

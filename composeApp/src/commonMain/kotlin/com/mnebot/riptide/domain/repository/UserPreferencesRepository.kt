@@ -1,5 +1,6 @@
 package com.mnebot.riptide.domain.repository
 
+import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.model.PendingLootbox
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
@@ -31,4 +32,17 @@ interface UserPreferencesRepository {
     // Live wallpaper
     suspend fun isWallpaperActivated(): Boolean
     suspend fun setWallpaperActivated()
+
+    // Auth
+    suspend fun getAccessToken(): String?
+    suspend fun getRefreshToken(): String?
+    suspend fun saveTokens(accessToken: String, refreshToken: String)
+    suspend fun clearAuth()
+    suspend fun getLoggedInUser(): LoggedInUser?
+    suspend fun saveUser(user: LoggedInUser)
+    fun isLoggedIn(): Flow<Boolean>
+
+    // Sync
+    suspend fun getLastSyncTime(): String?
+    suspend fun setLastSyncTime(time: String)
 }

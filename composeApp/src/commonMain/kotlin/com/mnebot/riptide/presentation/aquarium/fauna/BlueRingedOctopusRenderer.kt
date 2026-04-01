@@ -11,6 +11,7 @@ import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 // ── Palette (from Recraft reference SVG) ─────────────────────────────────────
 private val BodyCoral      = Color(0xFFF7835A)  // coral-orange body
@@ -27,6 +28,7 @@ private val ShadowDkTeal   = Color(0xFF064264)  // dark blue-teal
 
 // Ring positions: (x_offset_fraction_of_bodyR, y_offset_fraction, radius_fraction)
 private val ringPositions = listOf(
+    // Core rings (larger, prominent)
     Triple( 0.20f,  -0.50f, 0.22f),
     Triple(-0.30f,  -0.55f, 0.20f),
     Triple( 0.55f,  -0.15f, 0.19f),
@@ -43,6 +45,15 @@ private val ringPositions = listOf(
     Triple(-0.75f,   0.70f, 0.14f),
     Triple( 0.30f,   1.10f, 0.15f),
     Triple(-0.30f,   1.15f, 0.14f),
+    // Additional rings for SVG-accurate density
+    Triple( 0.15f,   0.00f, 0.13f),
+    Triple(-0.20f,   0.05f, 0.12f),
+    Triple( 0.70f,   0.30f, 0.12f),
+    Triple(-0.80f,   0.25f, 0.11f),
+    Triple( 0.40f,  -0.40f, 0.11f),
+    Triple(-0.50f,  -0.35f, 0.10f),
+    Triple( 0.60f,   0.60f, 0.10f),
+    Triple(-0.65f,   0.65f, 0.10f),
 )
 
 object BlueRingedOctopusRenderer : CreatureRenderer {
@@ -57,29 +68,43 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
         val bodyR  = (7f + level * 0.5f) * s
         val armLen = (8f + level * 0.6f) * s
 
+        // Chromatophore pulse: mantle breathes
+        val bodyPulse = sin(t * 1.2f * PI.toFloat()) * 0.06f
+        val bodyRDyn  = bodyR * (1f + bodyPulse)
+
         withTransform({
             if (mirrored) scale(-1f, 1f, pivot = Offset(x, y))
         }) {
 
-            // ── ARMS (8, with shadow + suckers) ──────────────────────────────
+            // ── ARMS (8, multi-joint wave propagating base → tip) ────────────
             val armAngles = floatArrayOf(
                 -2.4f, -1.8f, -1.2f, -0.7f, 0.7f, 1.2f, 1.8f, 2.4f
             )
             for ((idx, baseAngle) in armAngles.withIndex()) {
-                val armSway = sin(t * 1.8f * PI.toFloat() + idx * 0.6f) * 0.15f
-                val angle   = baseAngle + armSway
-                val midX    = x + cos(angle) * armLen * 0.5f
-                val midY    = y + sin(angle) * armLen * 0.5f + bodyR * 0.6f
-                val tipX    = x + cos(angle + armSway * 0.5f) * armLen
-                val tipY    = y + sin(angle + armSway * 0.5f) * armLen + bodyR * 0.8f
+                val phaseBase = t * 1.8f * PI.toFloat() + idx * 0.6f
 
-                val armBaseX = x + cos(angle) * bodyR * 0.7f
-                val armBaseY = y + sin(angle) * bodyR * 0.7f + bodyR * 0.3f
+                // Three control-point offsets — wave travels from base to tip
+                val cp1Offset = sin(phaseBase)        * armLen * 0.08f
+                val cp2Offset = sin(phaseBase + 0.5f) * armLen * 0.18f
+                val cp3Offset = sin(phaseBase + 1.0f) * armLen * 0.32f
+
+                // Perpendicular to arm direction: wave undulates transversally
+                val perpX = -sin(baseAngle)
+                val perpY =  cos(baseAngle)
+
+                val armBaseX = x + cos(baseAngle) * bodyRDyn * 0.7f
+                val armBaseY = y + sin(baseAngle) * bodyRDyn * 0.7f + bodyR * 0.3f
+
+                val cp1X = x + cos(baseAngle) * armLen * 0.30f + perpX * cp1Offset
+                val cp1Y = y + sin(baseAngle) * armLen * 0.30f + perpY * cp1Offset + bodyR * 0.4f
+                val cp2X = x + cos(baseAngle) * armLen * 0.65f + perpX * cp2Offset
+                val cp2Y = y + sin(baseAngle) * armLen * 0.65f + perpY * cp2Offset + bodyR * 0.6f
+                val tipX  = x + cos(baseAngle) * armLen        + perpX * cp3Offset
+                val tipY  = y + sin(baseAngle) * armLen        + perpY * cp3Offset + bodyR * 0.8f
 
                 val arm = Path().apply {
                     moveTo(armBaseX, armBaseY)
-                    cubicTo(midX * 0.8f + x * 0.2f, midY * 0.8f + y * 0.2f,
-                        midX, midY, tipX, tipY)
+                    cubicTo(cp1X, cp1Y, cp2X, cp2Y, tipX, tipY)
                 }
 
                 // Arm shadow
@@ -95,52 +120,69 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
                     style = Stroke(width = (0.8f * s).coerceAtLeast(0.4f),
                         cap = StrokeCap.Round))
 
-                // Suckers (sage green)
+                // Suckers — interpolated along arm curve with wave offset
                 val suckerCount = 3
                 for (sk in 1..suckerCount) {
                     val skFrac = sk.toFloat() / (suckerCount + 1)
-                    val skX = x + cos(angle) * armLen * skFrac
-                    val skY = y + sin(angle) * armLen * skFrac + bodyR * 0.4f * skFrac
+                    val skPhase = phaseBase + skFrac * 1.0f
+                    val skX = armBaseX * (1f - skFrac) + tipX * skFrac +
+                              perpX * sin(skPhase) * armLen * skFrac * 0.18f
+                    val skY = armBaseY * (1f - skFrac) + tipY * skFrac +
+                              perpY * sin(skPhase) * armLen * skFrac * 0.18f
                     drawCircle(AccentSage.copy(alpha = 0.45f), 0.65f * s, Offset(skX, skY))
                     drawCircle(AccentDkSage.copy(alpha = 0.30f), 0.35f * s, Offset(skX, skY))
                 }
             }
 
-            // ── MANTLE SHADOW ────────────────────────────────────────────────
-            drawCircle(ShadowNavy.copy(alpha = 0.20f), bodyR * 1.06f, Offset(x + bodyR * 0.03f, y + bodyR * 0.04f))
+            // ── MANTLE SHADOW (uses pulsing radius) ──────────────────────────
+            drawCircle(ShadowNavy.copy(alpha = 0.20f), bodyRDyn * 1.06f, Offset(x + bodyR * 0.03f, y + bodyR * 0.04f))
 
-            // ── MANTLE (body, coral-orange) ──────────────────────────────────
-            drawCircle(BodyCoral, bodyR, Offset(x, y))
+            // ── MANTLE (body, coral-orange, pulsing) ─────────────────────────
+            drawCircle(BodyCoral, bodyRDyn, Offset(x, y))
+
+            // Papillae texture (bumpy skin — subtle circles)
+            for (i in 0 until 16) {
+                val bAngle = (i * 360f / 16f) * PI.toFloat() / 180f
+                val bumpX = x + cos(bAngle) * bodyRDyn * 0.50f
+                val bumpY = y + sin(bAngle) * bodyRDyn * 0.40f + bodyR * 0.20f
+                drawCircle(BodyDeepCoral.copy(alpha = 0.10f), bodyR * 0.09f, Offset(bumpX, bumpY))
+            }
 
             // Body shading (darker lower half)
             val mantleLower = Path().apply {
-                moveTo(x - bodyR, y)
-                cubicTo(x - bodyR, y + bodyR * 0.5f, x - bodyR * 0.7f, y + bodyR, x, y + bodyR)
-                cubicTo(x + bodyR * 0.7f, y + bodyR, x + bodyR, y + bodyR * 0.5f, x + bodyR, y)
+                moveTo(x - bodyRDyn, y)
+                cubicTo(x - bodyRDyn, y + bodyRDyn * 0.5f, x - bodyRDyn * 0.7f, y + bodyRDyn, x, y + bodyRDyn)
+                cubicTo(x + bodyRDyn * 0.7f, y + bodyRDyn, x + bodyRDyn, y + bodyRDyn * 0.5f, x + bodyRDyn, y)
                 close()
             }
             drawPath(mantleLower, BodyDeepCoral.copy(alpha = 0.35f))
 
             // Highlight (upper mantle)
-            drawCircle(BodyCoral.copy(alpha = 0.3f), bodyR * 0.55f,
+            drawCircle(BodyCoral.copy(alpha = 0.3f), bodyRDyn * 0.55f,
                 Offset(x - bodyR * 0.15f, y - bodyR * 0.25f))
 
             // Teal accent shimmer
-            drawCircle(AccentTealGrn.copy(alpha = 0.12f), bodyR * 0.7f,
+            drawCircle(AccentTealGrn.copy(alpha = 0.12f), bodyRDyn * 0.7f,
                 Offset(x + bodyR * 0.1f, y - bodyR * 0.1f))
 
-            // ── BLUE RINGS (pulsing) ─────────────────────────────────────────
+            // ── BLUE RINGS (propagating outward from centre) ─────────────────
             for ((idx, ring) in ringPositions.withIndex()) {
                 val (xFrac, yFrac, rFrac) = ring
-                val pulse = sin(t * 2f * PI.toFloat() + idx * 0.5f)
-                val ringAlpha = (0.55f + pulse * 0.30f).coerceIn(0.25f, 0.90f)
+                // Rings closer to centre pulse first; outer rings follow with delay
+                val ringDist  = sqrt(xFrac * xFrac + yFrac * yFrac)
+                val ringDelay = ringDist * 0.3f
+                val pulse = sin(t * 2f * PI.toFloat() - ringDelay)
+                val ringAlpha = (0.65f + pulse * 0.35f).coerceIn(0.40f, 0.95f)
                 val ringScale = 1f + pulse * 0.12f
                 val ringR = rFrac * bodyR * ringScale
                 val ringX = x + xFrac * bodyR
                 val ringY = y + yFrac * bodyR
 
+                // Outer halo
+                drawCircle(RingBlue.copy(alpha = ringAlpha * 0.15f), ringR * 2.2f,
+                    Offset(ringX, ringY))
                 // Ring glow
-                drawCircle(RingBlue.copy(alpha = ringAlpha * 0.3f), ringR * 1.4f,
+                drawCircle(RingBlue.copy(alpha = ringAlpha * 0.5f), ringR * 1.8f,
                     Offset(ringX, ringY))
                 // Outer ring (vivid blue)
                 drawCircle(RingBlue.copy(alpha = ringAlpha), ringR,
@@ -165,8 +207,20 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
             drawCircle(Color(0xFFFEFEFE), eyeR, Offset(eyeX, eyeY))
             // Iris (sage-teal)
             drawCircle(AccentTealGrn, eyeR * 0.70f, Offset(eyeX + eyeR * 0.04f, eyeY))
-            // Pupil
-            drawCircle(ShadowBlack, eyeR * 0.40f, Offset(eyeX + eyeR * 0.06f, eyeY + eyeR * 0.02f))
+            // Pupil — vertical slit (characteristic of octopuses)
+            val pupilPath = Path().apply {
+                val px = eyeX + eyeR * 0.06f
+                val py = eyeY + eyeR * 0.02f
+                moveTo(px, py - eyeR * 0.35f)
+                cubicTo(px + eyeR * 0.10f, py - eyeR * 0.35f,
+                    px + eyeR * 0.10f, py + eyeR * 0.35f,
+                    px, py + eyeR * 0.35f)
+                cubicTo(px - eyeR * 0.02f, py + eyeR * 0.35f,
+                    px - eyeR * 0.02f, py - eyeR * 0.35f,
+                    px, py - eyeR * 0.35f)
+                close()
+            }
+            drawPath(pupilPath, ShadowBlack)
             // Shine
             drawCircle(Color.White, eyeR * 0.20f, Offset(eyeX - eyeR * 0.18f, eyeY - eyeR * 0.18f))
             drawCircle(Color.White.copy(alpha = 0.5f), eyeR * 0.10f,

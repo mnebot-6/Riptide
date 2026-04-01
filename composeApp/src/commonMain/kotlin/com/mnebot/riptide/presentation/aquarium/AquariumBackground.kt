@@ -87,12 +87,6 @@ private val WaveCrest   = Color(0x50FFFFFF)
 private val BubbleColor = Color(0x407EC8E3)
 
 
-// ── Cache procedural de terreno y decoraciones ────────────────────────────────
-private val defaultTerrainConfig = AquariumTerrainConfig(decorationDensity = 0.65f)
-private val cachedDecorations: TerrainDecorations by lazy {
-    AquariumTerrain.configure(defaultTerrainConfig)
-    generateDecorations(defaultTerrainConfig)
-}
 
 // ── Burbujas ───────────────────────────────────────────────────────────────────
 private data class BubbleData(val x: Float, val size: Float, val speed: Float, val startOffset: Float)
@@ -239,7 +233,7 @@ internal fun DrawScope.drawAquariumBackground(
     drawRain(elapsedMs, surfaceY, weather)
 
     // 5. Fondo marino elaborado
-    drawSeaFloor(floorY, swayAngle, elapsedMs)
+    drawSeaFloor(floorY)
 
     // 6. Sun rays (after floor, before creatures)
     drawSunRays(elapsedMs, surfaceY, floorY, hourFraction, weather)
@@ -257,15 +251,11 @@ internal fun DrawScope.drawAquariumBackground(
     drawBubbles(bubbleProgress, surfaceY, floorY)
 }
 
-private fun DrawScope.drawSeaFloor(floorY: Float, swayAngle: Float, elapsedMs: Long) {
+private fun DrawScope.drawSeaFloor(floorY: Float) {
     val w = size.width
     val h = size.height
-    val decs = cachedDecorations
 
-    // ── LAYER 1: Distant silhouettes (far background) ──────────────────────────
-    drawDistantSilhouettes(decs)
-
-    // ── LAYER 2: Sand fill following the terrain curve ────────────────────────
+    // ── LAYER 1: Sand fill following the terrain curve ────────────────────────
     val sandPath = AquariumTerrain.terrainPath(w, h)
     drawPath(
         sandPath,
@@ -276,7 +266,7 @@ private fun DrawScope.drawSeaFloor(floorY: Float, swayAngle: Float, elapsedMs: L
         )
     )
 
-    // ── LAYER 3: Shadow band ──────────────────────────────────────────────────
+    // ── LAYER 2: Shadow band ──────────────────────────────────────────────────
     val shadowColor = Color.Black.copy(alpha = 0.12f)
     drawRect(
         color = shadowColor,
@@ -284,23 +274,7 @@ private fun DrawScope.drawSeaFloor(floorY: Float, swayAngle: Float, elapsedMs: L
         size = androidx.compose.ui.geometry.Size(w, 6f.dp.toPx())
     )
 
-    // ── LAYER 4: Background rocks (farthest depth) ───────────────────────────
-    decs.bgRocks.forEach { rock ->
-        drawRock(
-            cx = rock.cx * w,
-            floorY = AquariumTerrain.terrainY(rock.cx, h),
-            rw = rock.wFrac * w,
-            rh = rock.hFrac * h,
-            style = rock.style,
-            alpha = 0.4f,
-            tint = -1
-        )
-    }
-
-    // ── LAYER 5: Seaweed clusters with sway animation ───────────────────────
-    drawSeaweedLayer(decs, swayAngle, elapsedMs)
-
-    // ── LAYER 6: Sand ripple texture lines ─────────────────────────────────────
+    // ── LAYER 3: Sand ripple texture lines ─────────────────────────────────────
     val sandLineColor = SandMid.copy(alpha = 0.35f)
     val lineStroke = 1.dp.toPx()
     for (i in 1..3) {
@@ -320,34 +294,6 @@ private fun DrawScope.drawSeaFloor(floorY: Float, swayAngle: Float, elapsedMs: L
         drawPath(linePath, sandLineColor, style = Stroke(width = lineStroke, cap = StrokeCap.Round))
     }
 
-    // ── LAYER 7: Floor decorations (pebbles, shells, starfish, small corals) ──
-    drawFloorDecorations(decs)
-
-    // ── LAYER 8: Mid-depth rocks ──────────────────────────────────────────────
-    decs.midRocks.forEach { rock ->
-        drawRock(
-            cx = rock.cx * w,
-            floorY = AquariumTerrain.terrainY(rock.cx, h),
-            rw = rock.wFrac * w,
-            rh = rock.hFrac * h,
-            style = rock.style,
-            alpha = 1f,
-            tint = 0
-        )
-    }
-
-    // ── LAYER 9: Foreground rocks (closest depth) ──────────────────────────────
-    decs.fgRocks.forEach { rock ->
-        drawRock(
-            cx = rock.cx * w,
-            floorY = AquariumTerrain.terrainY(rock.cx, h),
-            rw = rock.wFrac * w,
-            rh = rock.hFrac * h,
-            style = rock.style,
-            alpha = 1f,
-            tint = 1
-        )
-    }
 }
 
 // ── Rock drawing (kept for potential future use) ──────────────────────────────

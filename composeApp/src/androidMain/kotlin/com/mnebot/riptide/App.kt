@@ -6,6 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.mnebot.riptide.data.remote.AuthManager
+import com.mnebot.riptide.data.sync.InitialSyncPreparer
+import com.mnebot.riptide.data.sync.SyncManager
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 import com.mnebot.riptide.presentation.ROUTE_MAIN
 import com.mnebot.riptide.presentation.ROUTE_ONBOARDING
@@ -17,7 +20,10 @@ import com.mnebot.riptide.presentation.main.MainViewModel
 fun App(
     viewModel: MainViewModel,
     nightSummaryScheduler: NightSummaryScheduler,
-    userPreferencesRepository: UserPreferencesRepository
+    userPreferencesRepository: UserPreferencesRepository,
+    authManager: AuthManager? = null,
+    syncManager: SyncManager? = null,
+    initialSyncPreparer: InitialSyncPreparer? = null
 ) {
     val onboardingCompleted by remember { userPreferencesRepository.hasCompletedOnboarding() }
         .collectAsState(initial = null)
@@ -39,7 +45,10 @@ fun App(
         mainGraph(
             mainViewModel = viewModel,
             nightSummaryScheduler = nightSummaryScheduler,
-            navController = navController
+            navController = navController,
+            authManager = authManager,
+            syncManager = syncManager,
+            initialSyncPreparer = initialSyncPreparer
         )
     }
 }
