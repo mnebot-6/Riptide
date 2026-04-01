@@ -158,6 +158,35 @@
     <string name="species_treasure_chest">Cofre del tesoro</string>
     <string name="species_anchor">Ancla</string>
     <string name="species_sunken_ship">Barco hundido</string>
+    <string name="species_butterflyfish">Pez mariposa</string>
+    <string name="species_seahorse">Caballito de mar</string>
+    <string name="species_moray_eel">Morena</string>
+    <string name="species_tube_sponge">Esponja tubular</string>
+    <string name="species_sea_grass">Hierba marina</string>
+    <string name="species_fire_coral">Coral de fuego</string>
+    <string name="species_staghorn_coral">Coral cuerno de ciervo</string>
+    <string name="species_krill">Krill</string>
+    <string name="species_horseshoe_crab">Cangrejo herradura</string>
+    <string name="species_mantis_shrimp">Gamba mantis</string>
+    <string name="species_coconut_crab">Cangrejo cocotero</string>
+    <string name="species_conch">Caracola</string>
+    <string name="species_scallop">Vieira</string>
+    <string name="species_sea_slug">Nudibranquio</string>
+    <string name="species_sea_cucumber">Pepino de mar</string>
+    <string name="species_bluefin_tuna">Atún rojo</string>
+    <string name="species_flying_fish">Pez volador</string>
+    <string name="species_lionsmane_jellyfish">Medusa melena de león</string>
+    <string name="species_swordfish">Pez espada</string>
+    <string name="species_chambered_nautilus">Nautilus cámara</string>
+    <string name="species_giant_pacific_octopus">Pulpo gigante del Pacífico</string>
+    <string name="species_green_sea_turtle">Tortuga verde</string>
+    <string name="species_sea_snake">Serpiente marina</string>
+    <string name="species_leatherback_turtle">Tortuga laúd</string>
+    <string name="species_saltwater_crocodile">Cocodrilo marino</string>
+    <string name="species_narwhal">Narval</string>
+    <string name="species_diving_helmet">Escafandra</string>
+    <string name="species_coral_throne">Trono de coral</string>
+    <string name="species_golden_trident">Tridente dorado</string>
     <!-- Companion easter egg -->
     <string name="species_bimba">Bimba</string>
     <string name="category_companion">Compañeros</string>
@@ -240,6 +269,9 @@
     <string name="decoration_hint_treasure_chest">7 días perfectos seguidos (%1$d/7)</string>
     <string name="decoration_hint_anchor">Completa 100 tareas (%1$d/100)</string>
     <string name="decoration_hint_sunken_ship">Activa el wallpaper de Riptide</string>
+    <string name="decoration_hint_diving_helmet">Inicia sesión con Google</string>
+    <string name="decoration_hint_coral_throne">14 días perfectos seguidos (%1$d/14)</string>
+    <string name="decoration_hint_golden_trident">Desbloquea todas las especies de una categoría</string>
     <string name="msg_decoration_unlock">¡Una decoración especial ha llegado a tu acuario!</string>
 
     <!-- Onboarding — saltar -->
@@ -257,6 +289,12 @@
     <string name="a11y_task_expired">Expirada</string>
     <string name="a11y_locked">Bloqueado</string>
     <string name="a11y_back">Volver</string>
+    <string name="a11y_streak_count">Cuenta de racha</string>
+    <string name="a11y_notification">Notificación de tarea</string>
+    <string name="a11y_search">Buscar</string>
+    <string name="a11y_riptide_logo">Logo de Riptide</string>
+    <string name="a11y_save">Guardar</string>
+    <string name="a11y_delete_block">Eliminar bloque</string>
 
     <!-- Cuenta / Sincronización -->
     <string name="section_account">CUENTA</string>

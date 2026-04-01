@@ -181,7 +181,7 @@ fun TaskFormSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_bell),
-                                contentDescription = null,
+                                contentDescription = stringResource(Res.string.a11y_notification),
                                 tint = TextSecondary,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -220,7 +220,7 @@ fun TaskFormSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_bell),
-                                contentDescription = null,
+                                contentDescription = stringResource(Res.string.a11y_notification),
                                 tint = TextSecondary,
                                 modifier = Modifier.size(14.dp)
                             )

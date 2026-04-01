@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -225,7 +226,7 @@ private fun SearchField(
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_search),
-                contentDescription = null,
+                contentDescription = stringResource(Res.string.a11y_search),
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp)
             )
@@ -252,14 +253,17 @@ private fun SearchField(
             }
             if (query.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
-                Icon(
-                    painter = painterResource(Res.drawable.ic_x),
-                    contentDescription = stringResource(Res.string.a11y_clear_search),
-                    tint = TextSecondary,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable { onQueryChanged("") }
-                )
+                IconButton(
+                    onClick = { onQueryChanged("") },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_x),
+                        contentDescription = stringResource(Res.string.a11y_clear_search),
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

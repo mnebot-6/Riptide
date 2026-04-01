@@ -76,7 +76,7 @@ fun MainDrawer(
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_riptide_logo),
-                contentDescription = null,
+                contentDescription = stringResource(Res.string.a11y_riptide_logo),
                 tint = TextPrimary,
                 modifier = Modifier.size(30.dp)
             )

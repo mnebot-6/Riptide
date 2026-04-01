@@ -324,6 +324,12 @@ private fun LockedCreatureCard(
             stringResource(Res.string.decoration_hint_anchor, decorationProgress.completedTasksTotal)
         CreatureSpecies.SUNKEN_SHIP ->
             stringResource(Res.string.decoration_hint_sunken_ship)
+        CreatureSpecies.DIVING_HELMET ->
+            stringResource(Res.string.decoration_hint_diving_helmet)
+        CreatureSpecies.CORAL_THRONE ->
+            stringResource(Res.string.decoration_hint_coral_throne, decorationProgress.longestPerfectStreak)
+        CreatureSpecies.GOLDEN_TRIDENT ->
+            stringResource(Res.string.decoration_hint_golden_trident)
         else -> if (unlockedCategory) stringResource(Res.string.msg_unlock_hint) else null
     }
 

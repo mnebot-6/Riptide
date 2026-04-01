@@ -11,6 +11,7 @@ import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.MarineCreatureRepository
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
+import com.mnebot.riptide.presentation.aquarium.allCreatures
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -22,11 +23,14 @@ class DecorationUnlockChecker(
     private val ecosystemProcessor: EcosystemProcessor,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
-    /** Checks all 3 conditions. Returns list of newly unlocked species (may be empty). */
+    /** Checks all 6 decoration conditions. Returns list of newly unlocked species (may be empty). */
     suspend fun checkAll(): List<CreatureSpecies> = listOfNotNull(
         checkTreasureChest(),
         checkAnchor(),
-        checkSunkenShip()
+        checkSunkenShip(),
+        checkDivingHelmet(),
+        checkCoralThrone(),
+        checkGoldenTrident()
     )
 
     /**
@@ -72,13 +76,65 @@ class DecorationUnlockChecker(
         return doUnlockCompanion(CreatureSpecies.BIMBA)
     }
 
+    /** DIVING_HELMET: sign in with Google. */
+    suspend fun checkDivingHelmet(): CreatureSpecies? {
+        if (isAlreadyUnlocked(CreatureSpecies.DIVING_HELMET)) return null
+        val user = userPreferencesRepository.getLoggedInUser() ?: return null
+        return doUnlock(CreatureSpecies.DIVING_HELMET)
+    }
+
+    /** CORAL_THRONE: 14 consecutive perfect days. */
+    suspend fun checkCoralThrone(): CreatureSpecies? {
+        if (isAlreadyUnlocked(CreatureSpecies.CORAL_THRONE)) return null
+        val latest = daySummaryRepository.getLatestN(14)
+        if (latest.size < 14) return null
+        val streak = countConsecutivePerfectDays(latest)
+        if (streak < 14) return null
+        return doUnlock(CreatureSpecies.CORAL_THRONE)
+    }
+
+    /** GOLDEN_TRIDENT: unlock every species in any single category. */
+    suspend fun checkGoldenTrident(): CreatureSpecies? {
+        if (isAlreadyUnlocked(CreatureSpecies.GOLDEN_TRIDENT)) return null
+        val lootboxCategories = listOf(
+            MarineCategory.FISH, MarineCategory.FLORA, MarineCategory.CRUSTACEAN,
+            MarineCategory.MOLLUSK, MarineCategory.PELAGIC, MarineCategory.CEPHALOPOD,
+            MarineCategory.REPTILE, MarineCategory.MAMMAL
+        )
+        val completed = lootboxCategories.any { cat ->
+            val totalInCat = allCreatures.count { it.category == cat }
+            val unlockedInCat = marineCreatureRepository.getByCategory(cat).size
+            unlockedInCat >= totalInCat
+        }
+        if (!completed) return null
+        return doUnlock(CreatureSpecies.GOLDEN_TRIDENT)
+    }
+
     /** Returns decoration unlock progress for UI display. */
     suspend fun getProgress(): DecorationProgress {
-        val latest = daySummaryRepository.getLatestN(7)
+        val latest = daySummaryRepository.getLatestN(14)
         val streak = countConsecutivePerfectDays(latest)
         val totalCompleted = dayTaskRepository.countCompletedAllTime()
         val wallpaperActive = userPreferencesRepository.isWallpaperActivated()
-        return DecorationProgress(streak, totalCompleted, wallpaperActive)
+        val googleSignedIn = userPreferencesRepository.getLoggedInUser() != null
+        val lootboxCategories = listOf(
+            MarineCategory.FISH, MarineCategory.FLORA, MarineCategory.CRUSTACEAN,
+            MarineCategory.MOLLUSK, MarineCategory.PELAGIC, MarineCategory.CEPHALOPOD,
+            MarineCategory.REPTILE, MarineCategory.MAMMAL
+        )
+        val hasCompletedCat = lootboxCategories.any { cat ->
+            val totalInCat = allCreatures.count { it.category == cat }
+            val unlockedInCat = marineCreatureRepository.getByCategory(cat).size
+            unlockedInCat >= totalInCat
+        }
+        return DecorationProgress(
+            perfectDaysStreak = streak,
+            completedTasksTotal = totalCompleted,
+            wallpaperActivated = wallpaperActive,
+            googleSignedIn = googleSignedIn,
+            longestPerfectStreak = streak,
+            hasCompletedAnyCategory = hasCompletedCat
+        )
     }
 
     // ─────────────────────────────────────────────────────────────────────────

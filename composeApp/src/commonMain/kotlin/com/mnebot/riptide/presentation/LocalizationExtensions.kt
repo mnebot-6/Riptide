@@ -60,6 +60,35 @@ fun CreatureSpecies.displayNameRes(): StringResource = when (this) {
     CreatureSpecies.TREASURE_CHEST -> Res.string.species_treasure_chest
     CreatureSpecies.ANCHOR -> Res.string.species_anchor
     CreatureSpecies.SUNKEN_SHIP -> Res.string.species_sunken_ship
+    CreatureSpecies.BUTTERFLYFISH -> Res.string.species_butterflyfish
+    CreatureSpecies.SEAHORSE -> Res.string.species_seahorse
+    CreatureSpecies.MORAY_EEL -> Res.string.species_moray_eel
+    CreatureSpecies.TUBE_SPONGE -> Res.string.species_tube_sponge
+    CreatureSpecies.SEA_GRASS -> Res.string.species_sea_grass
+    CreatureSpecies.FIRE_CORAL -> Res.string.species_fire_coral
+    CreatureSpecies.STAGHORN_CORAL -> Res.string.species_staghorn_coral
+    CreatureSpecies.KRILL -> Res.string.species_krill
+    CreatureSpecies.HORSESHOE_CRAB -> Res.string.species_horseshoe_crab
+    CreatureSpecies.MANTIS_SHRIMP -> Res.string.species_mantis_shrimp
+    CreatureSpecies.COCONUT_CRAB -> Res.string.species_coconut_crab
+    CreatureSpecies.CONCH -> Res.string.species_conch
+    CreatureSpecies.SCALLOP -> Res.string.species_scallop
+    CreatureSpecies.SEA_SLUG -> Res.string.species_sea_slug
+    CreatureSpecies.SEA_CUCUMBER -> Res.string.species_sea_cucumber
+    CreatureSpecies.BLUEFIN_TUNA -> Res.string.species_bluefin_tuna
+    CreatureSpecies.FLYING_FISH -> Res.string.species_flying_fish
+    CreatureSpecies.LIONSMANE_JELLYFISH -> Res.string.species_lionsmane_jellyfish
+    CreatureSpecies.SWORDFISH -> Res.string.species_swordfish
+    CreatureSpecies.CHAMBERED_NAUTILUS -> Res.string.species_chambered_nautilus
+    CreatureSpecies.GIANT_PACIFIC_OCTOPUS -> Res.string.species_giant_pacific_octopus
+    CreatureSpecies.GREEN_SEA_TURTLE -> Res.string.species_green_sea_turtle
+    CreatureSpecies.SEA_SNAKE -> Res.string.species_sea_snake
+    CreatureSpecies.LEATHERBACK_TURTLE -> Res.string.species_leatherback_turtle
+    CreatureSpecies.SALTWATER_CROCODILE -> Res.string.species_saltwater_crocodile
+    CreatureSpecies.NARWHAL -> Res.string.species_narwhal
+    CreatureSpecies.DIVING_HELMET -> Res.string.species_diving_helmet
+    CreatureSpecies.CORAL_THRONE -> Res.string.species_coral_throne
+    CreatureSpecies.GOLDEN_TRIDENT -> Res.string.species_golden_trident
     CreatureSpecies.BIMBA -> Res.string.species_bimba
 }
 

@@ -158,6 +158,35 @@
     <string name="species_treasure_chest">Treasure Chest</string>
     <string name="species_anchor">Anchor</string>
     <string name="species_sunken_ship">Sunken Ship</string>
+    <string name="species_butterflyfish">Butterflyfish</string>
+    <string name="species_seahorse">Seahorse</string>
+    <string name="species_moray_eel">Moray Eel</string>
+    <string name="species_tube_sponge">Tube Sponge</string>
+    <string name="species_sea_grass">Sea Grass</string>
+    <string name="species_fire_coral">Fire Coral</string>
+    <string name="species_staghorn_coral">Staghorn Coral</string>
+    <string name="species_krill">Krill</string>
+    <string name="species_horseshoe_crab">Horseshoe Crab</string>
+    <string name="species_mantis_shrimp">Mantis Shrimp</string>
+    <string name="species_coconut_crab">Coconut Crab</string>
+    <string name="species_conch">Conch</string>
+    <string name="species_scallop">Scallop</string>
+    <string name="species_sea_slug">Sea Slug</string>
+    <string name="species_sea_cucumber">Sea Cucumber</string>
+    <string name="species_bluefin_tuna">Bluefin Tuna</string>
+    <string name="species_flying_fish">Flying Fish</string>
+    <string name="species_lionsmane_jellyfish">Lion\'s Mane Jellyfish</string>
+    <string name="species_swordfish">Swordfish</string>
+    <string name="species_chambered_nautilus">Chambered Nautilus</string>
+    <string name="species_giant_pacific_octopus">Giant Pacific Octopus</string>
+    <string name="species_green_sea_turtle">Green Sea Turtle</string>
+    <string name="species_sea_snake">Sea Snake</string>
+    <string name="species_leatherback_turtle">Leatherback Turtle</string>
+    <string name="species_saltwater_crocodile">Saltwater Crocodile</string>
+    <string name="species_narwhal">Narwhal</string>
+    <string name="species_diving_helmet">Diving Helmet</string>
+    <string name="species_coral_throne">Coral Throne</string>
+    <string name="species_golden_trident">Golden Trident</string>
     <!-- Companion easter egg -->
     <string name="species_bimba">Bimba</string>
     <string name="category_companion">Companions</string>
@@ -240,6 +269,9 @@
     <string name="decoration_hint_treasure_chest">7 perfect days in a row (%1$d/7)</string>
     <string name="decoration_hint_anchor">Complete 100 tasks (%1$d/100)</string>
     <string name="decoration_hint_sunken_ship">Activate the Riptide wallpaper</string>
+    <string name="decoration_hint_diving_helmet">Sign in with Google</string>
+    <string name="decoration_hint_coral_throne">14 perfect days in a row (%1$d/14)</string>
+    <string name="decoration_hint_golden_trident">Unlock every species in any category</string>
     <string name="msg_decoration_unlock">A special decoration has been added to your aquarium!</string>
 
     <!-- Onboarding — skip -->
@@ -257,6 +289,12 @@
     <string name="a11y_task_expired">Expired</string>
     <string name="a11y_locked">Locked</string>
     <string name="a11y_back">Back</string>
+    <string name="a11y_streak_count">Streak count</string>
+    <string name="a11y_notification">Task notification</string>
+    <string name="a11y_search">Search</string>
+    <string name="a11y_riptide_logo">Riptide logo</string>
+    <string name="a11y_save">Save</string>
+    <string name="a11y_delete_block">Delete block</string>
 
     <!-- Account / Sync -->
     <string name="section_account">ACCOUNT</string>

@@ -470,7 +470,7 @@ private fun StreakRow(block: WorkBlock, streak: Int) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 painter = painterResource(Res.drawable.ic_flame),
-                contentDescription = null,
+                contentDescription = stringResource(Res.string.a11y_streak_count),
                 tint = Color(0xFFFFB347),
                 modifier = Modifier.size(14.dp)
             )

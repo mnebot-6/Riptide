@@ -165,16 +165,16 @@ data class CreatureSpec(
 // Cada entrada = un nivel de categoría al que se consigue una lootbox.
 // Debe haber al menos tantos niveles como especies en esa categoría.
 val CATEGORY_UNLOCK_LEVELS: Map<MarineCategory, List<Int>> = mapOf(
-    MarineCategory.FISH       to listOf(2, 4, 6, 8, 10, 12),
-    MarineCategory.FLORA      to listOf(2, 4, 6, 8, 10),
-    MarineCategory.CRUSTACEAN to listOf(2, 4, 6, 8, 10),
-    MarineCategory.MOLLUSK    to listOf(2, 4, 6, 8, 10),
-    MarineCategory.PELAGIC    to listOf(2, 4, 6, 8, 10),
-    MarineCategory.CEPHALOPOD to listOf(2, 4, 6, 8),
-    MarineCategory.REPTILE    to listOf(2, 5),
-    MarineCategory.MAMMAL     to listOf(2, 5, 8, 11, 14),
+    MarineCategory.FISH       to listOf(2, 4, 6, 8, 10, 12, 14, 16, 18),
+    MarineCategory.FLORA      to listOf(2, 4, 6, 8, 10, 12, 14, 16, 18),
+    MarineCategory.CRUSTACEAN to listOf(2, 4, 6, 8, 10, 12, 14, 16, 18),
+    MarineCategory.MOLLUSK    to listOf(2, 4, 6, 8, 10, 12, 14, 16, 18),
+    MarineCategory.PELAGIC    to listOf(2, 4, 6, 8, 10, 12, 14, 16, 18),
+    MarineCategory.CEPHALOPOD to listOf(2, 4, 6, 8, 10, 12),
+    MarineCategory.REPTILE    to listOf(2, 5, 8, 11, 14, 17),
+    MarineCategory.MAMMAL     to listOf(2, 5, 8, 11, 14, 17),
     // DECORATION: sin niveles de lootbox — se desbloquean por condiciones específicas
-    // (DecorationUnlockChecker): TREASURE_CHEST=7 días perfectos, ANCHOR=100 tareas, SUNKEN_SHIP=wallpaper
+    // (DecorationUnlockChecker)
 )
 
 val allCreatures = listOf(
@@ -235,6 +235,33 @@ val allCreatures = listOf(
         microWobble = 0.004f, xErraticness = 0.00f,
         tempoVariation = 0.06f, sizeMultiplier = 0.70f),
 
+    // Butterflyfish — disco rayado, aletas finas, cruza suavemente.
+    CreatureSpec("🦋", CreatureSpecies.BUTTERFLYFISH,
+        MarineCategory.FISH, CreatureRarity.UNCOMMON, 9500, 0.45f, 0.04f, SwimZone.MID,
+        personalYFraction = 0.40f, waveCount = 2, erraticness = 0.22f,
+        driftSpeed = 0.30f, driftAmplitude = 0.32f, pauseFraction = 0.05f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.016f, xErraticness = 0.04f,
+        tempoVariation = 0.14f, sizeMultiplier = 0.70f),
+
+    // Seahorse — vertical, cola curvada, muy lento.
+    CreatureSpec("🐴", CreatureSpecies.SEAHORSE,
+        MarineCategory.FISH, CreatureRarity.RARE, 18000, 0.55f, 0.01f, SwimZone.LOWER,
+        personalYFraction = 0.40f, waveCount = 1, erraticness = 0.15f,
+        driftSpeed = 0.12f, driftAmplitude = 0.20f, pauseFraction = 0.20f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.006f, xErraticness = 0.00f,
+        tempoVariation = 0.08f, sizeMultiplier = 0.60f),
+
+    // Moray Eel — serpentina, asoma de cueva, pausa larga.
+    CreatureSpec("🐍", CreatureSpecies.MORAY_EEL,
+        MarineCategory.FISH, CreatureRarity.EPIC, 16000, 0.25f, 0.02f, SwimZone.LOWER,
+        personalYFraction = 0.70f, waveCount = 3, erraticness = 0.18f,
+        driftSpeed = 0.18f, driftAmplitude = 0.22f, pauseFraction = 0.35f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.010f, xErraticness = 0.00f,
+        tempoVariation = 0.12f, sizeMultiplier = 0.95f),
+
     // ── FLORA ─────────────────────────────────────────────────────────────────
     //
     // Brain Coral — absolutamente rígido. 2 instancias en el suelo.
@@ -261,6 +288,26 @@ val allCreatures = listOf(
     CreatureSpec("🪭", CreatureSpecies.FAN_CORAL,
         MarineCategory.FLORA, CreatureRarity.EPIC, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f, instanceCount = 1, sizeMultiplier = 0.48f),
+
+    // Tube Sponge — tubos verticales rígidos.
+    CreatureSpec("🧽", CreatureSpecies.TUBE_SPONGE,
+        MarineCategory.FLORA, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.45f),
+
+    // Sea Grass — hierba corta con vaivén suave.
+    CreatureSpec("🌱", CreatureSpecies.SEA_GRASS,
+        MarineCategory.FLORA, CreatureRarity.UNCOMMON, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, instanceCount = 2, sizeMultiplier = 0.40f),
+
+    // Fire Coral — ramas cálidas con pulso de brillo.
+    CreatureSpec("🔥", CreatureSpecies.FIRE_CORAL,
+        MarineCategory.FLORA, CreatureRarity.RARE, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, instanceCount = 1, sizeMultiplier = 0.50f),
+
+    // Staghorn Coral — ramificación de astas con pólipos animados.
+    CreatureSpec("🦌", CreatureSpecies.STAGHORN_CORAL,
+        MarineCategory.FLORA, CreatureRarity.EPIC, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, instanceCount = 1, sizeMultiplier = 0.55f),
 
     // ── CRUSTACEAN ────────────────────────────────────────────────────────────
     //
@@ -305,6 +352,42 @@ val allCreatures = listOf(
         MarineCategory.CRUSTACEAN, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f),
 
+    // Krill — diminuto, rápido, errático.
+    CreatureSpec("🦐", CreatureSpecies.KRILL,
+        MarineCategory.CRUSTACEAN, CreatureRarity.COMMON, 4500, 0.60f, 0.05f, SwimZone.UPPER,
+        personalYFraction = 0.25f, waveCount = 4, erraticness = 0.80f,
+        driftSpeed = 0.65f, driftAmplitude = 0.50f, pauseFraction = 0.01f,
+        easingType = EasingType.BURST, verticalCoupling = 0.00f,
+        microWobble = 0.040f, xErraticness = 0.25f,
+        tempoVariation = 0.30f, sizeMultiplier = 0.45f),
+
+    // Horseshoe Crab — cúpula lenta, cola larga.
+    CreatureSpec("🪲", CreatureSpecies.HORSESHOE_CRAB,
+        MarineCategory.CRUSTACEAN, CreatureRarity.UNCOMMON, 22000, 0.10f, 0.01f, SwimZone.BOTTOM,
+        personalYFraction = 0.85f, waveCount = 1, erraticness = 0.06f,
+        driftSpeed = 0.08f, driftAmplitude = 0.08f, pauseFraction = 0.30f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.15f,
+        microWobble = 0.005f, xErraticness = 0.00f,
+        tempoVariation = 0.35f, sizeMultiplier = 0.80f),
+
+    // Mantis Shrimp — multicolor arcoíris, burst.
+    CreatureSpec("🌈", CreatureSpecies.MANTIS_SHRIMP,
+        MarineCategory.CRUSTACEAN, CreatureRarity.RARE, 6500, 0.50f, 0.05f, SwimZone.LOWER,
+        personalYFraction = 0.45f, waveCount = 2, erraticness = 0.60f,
+        driftSpeed = 0.45f, driftAmplitude = 0.42f, pauseFraction = 0.15f,
+        easingType = EasingType.BURST, verticalCoupling = 0.00f,
+        microWobble = 0.025f, xErraticness = 0.10f,
+        tempoVariation = 0.28f, sizeMultiplier = 0.75f),
+
+    // Coconut Crab — grande, crawl lento, intimidante.
+    CreatureSpec("🦀", CreatureSpecies.COCONUT_CRAB,
+        MarineCategory.CRUSTACEAN, CreatureRarity.EPIC, 24000, 0.08f, 0.01f, SwimZone.BOTTOM,
+        personalYFraction = 0.90f, waveCount = 1, erraticness = 0.05f,
+        driftSpeed = 0.07f, driftAmplitude = 0.06f, pauseFraction = 0.38f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.20f,
+        microWobble = 0.006f, xErraticness = 0.00f,
+        tempoVariation = 0.45f, sizeMultiplier = 1.15f),
+
     // ── MOLLUSK (fijos) ───────────────────────────────────────────────────────
     CreatureSpec("🌑", CreatureSpecies.SEA_URCHIN,
         MarineCategory.MOLLUSK, CreatureRarity.COMMON,  0, 0f, 0f, SwimZone.BOTTOM,
@@ -331,6 +414,38 @@ val allCreatures = listOf(
     CreatureSpec("🦪", CreatureSpecies.GIANT_CLAM,
         MarineCategory.MOLLUSK, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f, sizeMultiplier = 1.15f),
+
+    // Conch — caracola espiral, fija.
+    CreatureSpec("🐚", CreatureSpecies.CONCH,
+        MarineCategory.MOLLUSK, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, sizeMultiplier = 0.75f),
+
+    // Scallop — concha abanico con aleteo.
+    CreatureSpec("🐚", CreatureSpecies.SCALLOP,
+        MarineCategory.MOLLUSK, CreatureRarity.UNCOMMON, 8000, 0.30f, 0.02f, SwimZone.BOTTOM,
+        personalYFraction = 0.80f, waveCount = 1, erraticness = 0.40f,
+        driftSpeed = 0.20f, driftAmplitude = 0.25f, pauseFraction = 0.40f,
+        easingType = EasingType.BURST, verticalCoupling = 0.50f,
+        microWobble = 0.010f, xErraticness = 0.00f,
+        tempoVariation = 0.20f, sizeMultiplier = 0.65f),
+
+    // Sea Slug — nudibranquio colorido, ultra-lento.
+    CreatureSpec("🐌", CreatureSpecies.SEA_SLUG,
+        MarineCategory.MOLLUSK, CreatureRarity.RARE, 25000, 0.08f, 0.01f, SwimZone.BOTTOM,
+        personalYFraction = 0.85f, waveCount = 1, erraticness = 0.10f,
+        driftSpeed = 0.06f, driftAmplitude = 0.06f, pauseFraction = 0.25f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.00f,
+        microWobble = 0.004f, xErraticness = 0.00f,
+        tempoVariation = 0.10f, sizeMultiplier = 0.60f),
+
+    // Sea Cucumber — alargado, textura única.
+    CreatureSpec("🥒", CreatureSpecies.SEA_CUCUMBER,
+        MarineCategory.MOLLUSK, CreatureRarity.EPIC, 28000, 0.05f, 0.01f, SwimZone.BOTTOM,
+        personalYFraction = 0.90f, waveCount = 1, erraticness = 0.04f,
+        driftSpeed = 0.05f, driftAmplitude = 0.04f, pauseFraction = 0.30f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.00f,
+        microWobble = 0.003f, xErraticness = 0.00f,
+        tempoVariation = 0.08f, sizeMultiplier = 0.90f),
 
     // ── PELAGIC ───────────────────────────────────────────────────────────────
     //
@@ -379,6 +494,42 @@ val allCreatures = listOf(
         microWobble = 0.025f, xErraticness = 0.03f,
         tempoVariation = 0.12f, sizeMultiplier = 0.90f),
 
+    // Bluefin Tuna — robusto, azul metálico, rápido.
+    CreatureSpec("🐟", CreatureSpecies.BLUEFIN_TUNA,
+        MarineCategory.PELAGIC, CreatureRarity.COMMON, 5000, 0.20f, 0.05f, SwimZone.MID,
+        personalYFraction = 0.55f, waveCount = 2, erraticness = 0.10f,
+        driftSpeed = 0.25f, driftAmplitude = 0.18f, pauseFraction = 0.02f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.022f, xErraticness = 0.03f,
+        tempoVariation = 0.10f, sizeMultiplier = 0.95f),
+
+    // Flying Fish — aletas pectorales extendidas, saltos.
+    CreatureSpec("🕊️", CreatureSpecies.FLYING_FISH,
+        MarineCategory.PELAGIC, CreatureRarity.UNCOMMON, 6000, 0.45f, 0.05f, SwimZone.SURFACE,
+        personalYFraction = 0.40f, waveCount = 2, erraticness = 0.30f,
+        driftSpeed = 0.55f, driftAmplitude = 0.50f, pauseFraction = 0.03f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.90f,
+        microWobble = 0.018f, xErraticness = 0.08f,
+        tempoVariation = 0.20f, sizeMultiplier = 0.70f),
+
+    // Lion's Mane Jellyfish — grande con tentáculos largos.
+    CreatureSpec("🪼", CreatureSpecies.LIONSMANE_JELLYFISH,
+        MarineCategory.PELAGIC, CreatureRarity.RARE, 20000, 0.80f, -0.01f, SwimZone.UPPER,
+        personalYFraction = 0.35f, waveCount = 1, erraticness = 0.85f,
+        driftSpeed = 0.50f, driftAmplitude = 0.85f, pauseFraction = 0.00f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.002f, xErraticness = 0.18f,
+        tempoVariation = 0.06f, sizeMultiplier = 1.10f),
+
+    // Swordfish — cuerpo aerodinámico, pico largo.
+    CreatureSpec("⚔️", CreatureSpecies.SWORDFISH,
+        MarineCategory.PELAGIC, CreatureRarity.EPIC, 5500, 0.18f, 0.05f, SwimZone.MID,
+        personalYFraction = 0.45f, waveCount = 1, erraticness = 0.06f,
+        driftSpeed = 0.22f, driftAmplitude = 0.15f, pauseFraction = 0.02f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.020f, xErraticness = 0.02f,
+        tempoVariation = 0.10f, sizeMultiplier = 1.05f),
+
     // ── CEPHALOPOD ────────────────────────────────────────────────────────────
     //
     // Octopus — BURST + pausa 28%.
@@ -417,6 +568,24 @@ val allCreatures = listOf(
         microWobble = 0.018f, xErraticness = 0.05f,
         tempoVariation = 0.28f, sizeMultiplier = 0.85f),
 
+    // Chambered Nautilus — espiral con cámaras, nado suave.
+    CreatureSpec("🐚", CreatureSpecies.CHAMBERED_NAUTILUS,
+        MarineCategory.CEPHALOPOD, CreatureRarity.RARE, 11000, 0.35f, 0.02f, SwimZone.MID,
+        personalYFraction = 0.50f, waveCount = 1, erraticness = 0.12f,
+        driftSpeed = 0.22f, driftAmplitude = 0.28f, pauseFraction = 0.10f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.008f, xErraticness = 0.00f,
+        tempoVariation = 0.10f, sizeMultiplier = 0.80f),
+
+    // Giant Pacific Octopus — enorme, tentáculos largos.
+    CreatureSpec("🐙", CreatureSpecies.GIANT_PACIFIC_OCTOPUS,
+        MarineCategory.CEPHALOPOD, CreatureRarity.LEGENDARY, 15000, 0.60f, 0.02f, SwimZone.LOWER,
+        personalYFraction = 0.50f, waveCount = 1, erraticness = 0.50f,
+        driftSpeed = 0.30f, driftAmplitude = 0.45f, pauseFraction = 0.30f,
+        easingType = EasingType.BURST, verticalCoupling = 0.00f,
+        microWobble = 0.015f, xErraticness = 0.00f,
+        tempoVariation = 0.25f, sizeMultiplier = 1.30f),
+
     // ── REPTILE ───────────────────────────────────────────────────────────────
     //
     // Sea Turtle — nado sereno.
@@ -436,6 +605,42 @@ val allCreatures = listOf(
         easingType = EasingType.CRAWL, verticalCoupling = 0.10f,
         microWobble = 0.010f, xErraticness = 0.00f,
         tempoVariation = 0.15f, sizeMultiplier = 0.78f),
+
+    // Green Sea Turtle — menor y más rápida que Sea Turtle.
+    CreatureSpec("🐢", CreatureSpecies.GREEN_SEA_TURTLE,
+        MarineCategory.REPTILE, CreatureRarity.COMMON, 11000, 0.28f, 0.03f, SwimZone.UPPER,
+        personalYFraction = 0.45f, waveCount = 1, erraticness = 0.12f,
+        driftSpeed = 0.35f, driftAmplitude = 0.30f, pauseFraction = 0.08f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.013f, xErraticness = 0.00f,
+        tempoVariation = 0.14f, sizeMultiplier = 0.75f),
+
+    // Sea Snake — sinusoidal, bandas, waveCount alto.
+    CreatureSpec("🐍", CreatureSpecies.SEA_SNAKE,
+        MarineCategory.REPTILE, CreatureRarity.UNCOMMON, 7500, 0.40f, 0.04f, SwimZone.MID,
+        personalYFraction = 0.55f, waveCount = 4, erraticness = 0.25f,
+        driftSpeed = 0.40f, driftAmplitude = 0.35f, pauseFraction = 0.04f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.020f, xErraticness = 0.06f,
+        tempoVariation = 0.18f, sizeMultiplier = 0.70f),
+
+    // Leatherback Turtle — grande, caparazón coriáceo.
+    CreatureSpec("🐢", CreatureSpecies.LEATHERBACK_TURTLE,
+        MarineCategory.REPTILE, CreatureRarity.EPIC, 18000, 0.15f, -0.02f, SwimZone.MID,
+        personalYFraction = 0.40f, waveCount = 1, erraticness = 0.08f,
+        driftSpeed = 0.20f, driftAmplitude = 0.18f, pauseFraction = 0.12f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.00f,
+        microWobble = 0.008f, xErraticness = 0.00f,
+        tempoVariation = 0.10f, sizeMultiplier = 1.10f),
+
+    // Saltwater Crocodile — lento, imponente, mandíbula.
+    CreatureSpec("🐊", CreatureSpecies.SALTWATER_CROCODILE,
+        MarineCategory.REPTILE, CreatureRarity.LEGENDARY, 20000, 0.06f, -0.01f, SwimZone.SURFACE,
+        personalYFraction = 0.55f, waveCount = 1, erraticness = 0.04f,
+        driftSpeed = 0.10f, driftAmplitude = 0.08f, pauseFraction = 0.20f,
+        easingType = EasingType.CRAWL, verticalCoupling = 0.00f,
+        microWobble = 0.004f, xErraticness = 0.00f,
+        tempoVariation = 0.06f, sizeMultiplier = 1.20f),
 
     // ── MAMMAL ────────────────────────────────────────────────────────────────
     //
@@ -484,6 +689,15 @@ val allCreatures = listOf(
         microWobble = 0.005f, xErraticness = 0.00f,
         tempoVariation = 0.08f, sizeMultiplier = 1.00f),
 
+    // Narwhal — colmillo largo, ártico.
+    CreatureSpec("🦄", CreatureSpecies.NARWHAL,
+        MarineCategory.MAMMAL, CreatureRarity.RARE, 12000, 0.25f, 0.02f, SwimZone.SURFACE,
+        personalYFraction = 0.45f, waveCount = 1, erraticness = 0.10f,
+        driftSpeed = 0.25f, driftAmplitude = 0.20f, pauseFraction = 0.08f,
+        easingType = EasingType.SMOOTH, verticalCoupling = 0.30f,
+        microWobble = 0.010f, xErraticness = 0.00f,
+        tempoVariation = 0.12f, sizeMultiplier = 0.92f),
+
     // ── DECORATION (condiciones específicas — ver DecorationUnlockChecker) ───
     CreatureSpec("🪙", CreatureSpecies.TREASURE_CHEST,
         MarineCategory.DECORATION, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
@@ -496,6 +710,18 @@ val allCreatures = listOf(
     CreatureSpec("🚢", CreatureSpecies.SUNKEN_SHIP,
         MarineCategory.DECORATION, CreatureRarity.COMMON, 0, 0f, 0f, SwimZone.BOTTOM,
         fixedWobbleScale = 0.00f, sizeMultiplier = 1.25f),
+
+    CreatureSpec("🤿", CreatureSpecies.DIVING_HELMET,
+        MarineCategory.DECORATION, CreatureRarity.UNCOMMON, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, sizeMultiplier = 0.80f),
+
+    CreatureSpec("👑", CreatureSpecies.CORAL_THRONE,
+        MarineCategory.DECORATION, CreatureRarity.RARE, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, sizeMultiplier = 1.00f),
+
+    CreatureSpec("🔱", CreatureSpecies.GOLDEN_TRIDENT,
+        MarineCategory.DECORATION, CreatureRarity.LEGENDARY, 0, 0f, 0f, SwimZone.BOTTOM,
+        fixedWobbleScale = 0.00f, sizeMultiplier = 0.90f),
 
     // ── COMPANION (easter egg — nada en la superficie) ────────────────────────
     // Bimba: labrador amarilla de 12 años, 3 patas, ama el agua 🐾
