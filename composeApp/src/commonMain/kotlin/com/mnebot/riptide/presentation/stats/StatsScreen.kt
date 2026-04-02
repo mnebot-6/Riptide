@@ -388,7 +388,7 @@ private fun CompletionBarChart(
             dates.forEach { date ->
                 val label = when (range) {
                     StatsRange.WEEK  -> dowLabels[date.dayOfWeek.ordinal]
-                    StatsRange.MONTH -> if (date.dayOfMonth % 5 == 0) date.dayOfMonth.toString() else ""
+                    StatsRange.MONTH -> if (date.day % 5 == 0) date.day.toString() else ""
                     StatsRange.ALL_TIME -> ""
                 }
                 Box(

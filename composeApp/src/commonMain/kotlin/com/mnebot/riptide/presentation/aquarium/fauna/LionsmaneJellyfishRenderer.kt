@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val ShadowDark     = Color(0xFF401008)  // dark shadow
 private val BellCream      = Color(0xFFFFE8D0)  // cream highlight
 
 object LionsmaneJellyfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -70,7 +73,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
 
                 val tLen = tentLen * (0.6f + 0.4f * sin(i.toFloat() * 0.7f))
 
-                val tentacle = Path().apply {
+                val tentacle = paths.obtain().apply {
                     moveTo(baseX, baseY)
                     cubicTo(
                         baseX + seg1Sway, baseY + tLen * 0.3f,
@@ -108,7 +111,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
                 val armY = y + bellRY * 0.5f
 
                 val armSway = sin(t * 1.5f * PI.toFloat() + i * 0.8f - 0.5f) * maneLen * 0.20f
-                val armPath = Path().apply {
+                val armPath = paths.obtain().apply {
                     moveTo(armX, armY)
                     cubicTo(
                         armX + armSway * 0.3f, armY + maneLen * 0.3f,
@@ -142,7 +145,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
                     val fineSway = sin(t * 1.5f * PI.toFloat() + i * 0.6f + 2f) * tentLen * 0.18f
                     val fineLen = tentLen * 0.5f
 
-                    val fine = Path().apply {
+                    val fine = paths.obtain().apply {
                         moveTo(baseX, baseY)
                         quadraticTo(
                             baseX + fineSway * 0.5f, baseY + fineLen * 0.5f,
@@ -157,7 +160,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
             }
 
             // ── BELL SHADOW ──────────────────────────────────────────────────
-            val bellShadow = Path().apply {
+            val bellShadow = paths.obtain().apply {
                 moveTo(x - bellRX * 1.04f, y + bellRY * 0.05f)
                 cubicTo(
                     x - bellRX * 1.04f, y - bellRY * 1.0f,
@@ -174,7 +177,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
             drawPath(bellShadow, ShadowDark.copy(alpha = 0.18f))
 
             // ── BELL DOME (main body) ────────────────────────────────────────
-            val bell = Path().apply {
+            val bell = paths.obtain().apply {
                 moveTo(x - bellRX, y)
                 cubicTo(
                     x - bellRX, y - bellRY * 0.95f,
@@ -191,7 +194,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
             drawPath(bell, BellRed.copy(alpha = 0.50f))
 
             // Inner bell layer
-            val bellInner = Path().apply {
+            val bellInner = paths.obtain().apply {
                 moveTo(x - bellRX * 0.88f, y + bellRY * 0.03f)
                 cubicTo(
                     x - bellRX * 0.88f, y - bellRY * 0.88f,
@@ -208,7 +211,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
             drawPath(bellInner, BellGold.copy(alpha = 0.25f))
 
             // Upper highlight
-            val bellHL = Path().apply {
+            val bellHL = paths.obtain().apply {
                 moveTo(x - bellRX * 0.55f, y - bellRY * 0.35f)
                 cubicTo(
                     x - bellRX * 0.4f, y - bellRY * 0.82f,
@@ -247,7 +250,7 @@ object LionsmaneJellyfishRenderer : CreatureRenderer {
             }
 
             // ── BELL RIM ─────────────────────────────────────────────────────
-            val rim = Path().apply {
+            val rim = paths.obtain().apply {
                 moveTo(x - bellRX, y)
                 cubicTo(
                     x - bellRX * 0.7f, y + bellRY * 0.35f,

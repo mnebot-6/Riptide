@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val StarDot     = Color(0xFFF09060)  // tube foot dots
 private val StarOutline = Color(0xFF8A2010)  // outline
 
 object StarfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base (floor), draw upward & centred around floor
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -37,7 +40,7 @@ object StarfishRenderer : CreatureRenderer {
         val pulse = 1f + sin(t * 0.8f * PI.toFloat()) * 0.04f
 
         // ── STAR BODY (5-pointed) ──────────────────────────────────────────────
-        val starPath = Path()
+        val starPath = paths.obtain()
         for (i in 0 until armCount * 2) {
             val angle = i.toFloat() * PI.toFloat() / armCount.toFloat() - PI.toFloat() / 2f
             val r = if (i % 2 == 0) outerR * pulse else innerR

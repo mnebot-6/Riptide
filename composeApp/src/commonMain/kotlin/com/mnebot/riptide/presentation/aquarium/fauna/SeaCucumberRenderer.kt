@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val ShadowDark      = Color(0xFF301818)  // dark shadow
 private val MouthPink       = Color(0xFFD09090)  // mouth tentacles
 
 object SeaCucumberRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -76,7 +79,7 @@ object SeaCucumberRenderer : CreatureRenderer {
             }
 
             // ── BODY SHADOW ──────────────────────────────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.82f, y + crawlWave * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.7f, y - bodyHDyn * 0.62f,
@@ -93,7 +96,7 @@ object SeaCucumberRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowDark.copy(alpha = 0.20f))
 
             // ── MAIN BODY (plump cylindrical) ────────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.8f, y + crawlWave * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.68f, y - bodyHDyn * 0.6f,
@@ -110,7 +113,7 @@ object SeaCucumberRenderer : CreatureRenderer {
             drawPath(body, BodyMaroon)
 
             // Upper highlight
-            val bodyHL = Path().apply {
+            val bodyHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.6f, y - bodyHDyn * 0.15f)
                 cubicTo(
                     x - bodyLen * 0.4f, y - bodyHDyn * 0.48f,
@@ -127,7 +130,7 @@ object SeaCucumberRenderer : CreatureRenderer {
             drawPath(bodyHL, BodyLight.copy(alpha = 0.35f))
 
             // Belly counter-shading
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.7f, y + bodyHDyn * 0.08f)
                 cubicTo(
                     x - bodyLen * 0.4f, y + bodyHDyn * 0.42f,
@@ -190,7 +193,7 @@ object SeaCucumberRenderer : CreatureRenderer {
                 val tentWave = sin(t * 1.5f * PI.toFloat() + i * 0.6f) * s * 0.6f
                 val tentLen = bodyHDyn * 0.35f
 
-                val tentacle = Path().apply {
+                val tentacle = paths.obtain().apply {
                     moveTo(mouthX, mouthY)
                     cubicTo(
                         mouthX - tentLen * 0.3f + tentWave * 0.3f,
@@ -223,7 +226,7 @@ object SeaCucumberRenderer : CreatureRenderer {
                     val threadWave = sin(t * 1.8f * PI.toFloat() + i * 0.5f) * s * 2.0f
                     val threadLen = bodyLen * 0.3f * (0.6f + evisPhase * 0.4f)
 
-                    val thread = Path().apply {
+                    val thread = paths.obtain().apply {
                         moveTo(rearX, rearY)
                         cubicTo(
                             rearX + threadLen * 0.3f + threadWave * 0.2f,

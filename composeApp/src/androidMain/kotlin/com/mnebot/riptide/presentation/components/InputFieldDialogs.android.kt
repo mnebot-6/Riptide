@@ -108,7 +108,7 @@ actual fun DatePickerDialogWrapper(
 ) {
     val state = rememberDatePickerState(
         initialSelectedDateMillis = run {
-            val days = initial.toEpochDays().toLong()
+            val days = initial.toEpochDays()
             days * 24 * 60 * 60 * 1000L
         }
     )

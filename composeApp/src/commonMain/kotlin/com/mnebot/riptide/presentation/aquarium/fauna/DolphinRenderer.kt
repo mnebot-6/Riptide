@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val DolEye    = Color(0xFF111122)
 private val DolFin    = Color(0xFF2A4A58)  // fins
 
 object DolphinRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -46,7 +49,7 @@ object DolphinRenderer : CreatureRenderer {
             // ── TAIL FLUKES (horizontal, like all cetaceans) ───────────────────
             val tailX = x + bodyLen * 0.48f
             // Upper fluke
-            val upperFluke = Path().apply {
+            val upperFluke = paths.obtain().apply {
                 moveTo(tailX, y + bodyArc * 0.5f)
                 cubicTo(tailX + tailExt * 0.4f, y - bodyH * 0.2f + tailSway,
                     tailX + tailExt * 0.8f, y - bodyH * 0.8f + tailSway,
@@ -59,7 +62,7 @@ object DolphinRenderer : CreatureRenderer {
             drawPath(upperFluke, DolFin)
 
             // Lower fluke
-            val lowerFluke = Path().apply {
+            val lowerFluke = paths.obtain().apply {
                 moveTo(tailX, y + bodyArc * 0.5f)
                 cubicTo(tailX + tailExt * 0.5f, y + bodyH * 0.15f + tailSway * 0.5f,
                     tailX + tailExt * 0.8f, y + bodyH * 0.5f + tailSway,
@@ -73,7 +76,7 @@ object DolphinRenderer : CreatureRenderer {
 
             // ── DORSAL FIN (curved, mid-back) ──────────────────────────────────
             val dorsalSway = tailSway * 0.2f
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.05f, y - bodyH * 0.88f + bodyArc * 0.3f)
                 cubicTo(x + bodyLen * 0.10f + dorsalSway, y - bodyH * 1.80f + bodyArc * 0.3f,
                     x + bodyLen * 0.20f + dorsalSway, y - bodyH * 1.75f + bodyArc * 0.3f,
@@ -87,7 +90,7 @@ object DolphinRenderer : CreatureRenderer {
 
             // ── PECTORAL FINS (paddle-shaped) ──────────────────────────────────
             val pectSway = sin(t * 2.6f * PI.toFloat()) * 1.2f * s
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.15f, y + bodyH * 0.55f + bodyArc * 0.4f)
                 cubicTo(x - bodyLen * 0.05f + pectSway, y + bodyH * 1.40f + bodyArc * 0.2f,
                     x + bodyLen * 0.08f + pectSway, y + bodyH * 1.50f + bodyArc * 0.2f,
@@ -100,7 +103,7 @@ object DolphinRenderer : CreatureRenderer {
             drawPath(pect, DolGrey)
 
             // ── MAIN BODY ──────────────────────────────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f - beakLen, y + bodyArc * 0.5f)  // beak tip
                 cubicTo(x - bodyLen * 0.5f - beakLen * 0.5f, y - bodyH * 0.35f + bodyArc * 0.5f,
                     x - bodyLen * 0.5f + bodyH * 0.3f, y - bodyH * 0.8f + bodyArc * 0.35f,
@@ -120,7 +123,7 @@ object DolphinRenderer : CreatureRenderer {
             drawPath(body, DolGrey2)
 
             // Belly
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f - beakLen * 0.8f, y + bodyArc * 0.5f + bodyH * 0.08f)
                 cubicTo(x - bodyLen * 0.35f, y + bodyH * 0.82f + bodyArc * 0.3f,
                     x + bodyLen * 0.15f, y + bodyH * 0.92f + bodyArc * 0.15f,
@@ -134,7 +137,7 @@ object DolphinRenderer : CreatureRenderer {
 
             // ── LEVEL 3+: Lateral flank stripe (bottlenose melon-yellow marking) ──
             if (level >= 3) {
-                val stripe = Path().apply {
+                val stripe = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.40f, y - bodyH * 0.28f + bodyArc * 0.3f)
                     cubicTo(
                         x - bodyLen * 0.10f, y - bodyH * 0.52f + bodyArc * 0.2f,
@@ -163,7 +166,7 @@ object DolphinRenderer : CreatureRenderer {
             }
 
             // Smile / jaw line
-            val smile = Path().apply {
+            val smile = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f - beakLen, y + bodyArc * 0.5f + bodyH * 0.10f)
                 cubicTo(
                     x - bodyLen * 0.5f - beakLen * 0.7f, y + bodyArc * 0.5f + bodyH * 0.22f,

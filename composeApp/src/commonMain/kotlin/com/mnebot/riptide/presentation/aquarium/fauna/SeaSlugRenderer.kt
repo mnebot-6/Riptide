@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val BioGlowPurple  = Color(0xFFA060FF)  // purple bioluminescence
 private val ShadowNavy     = Color(0xFF0A1840)  // dark shadow
 
 object SeaSlugRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -51,7 +54,7 @@ object SeaSlugRenderer : CreatureRenderer {
             }) {
 
             // ── BODY SHADOW ──────────────────────────────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.95f, y + bodyH * 0.12f)
                 cubicTo(
                     x - bodyLen * 0.7f, y - bodyH * 0.72f,
@@ -68,7 +71,7 @@ object SeaSlugRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowNavy.copy(alpha = 0.18f))
 
             // ── MAIN BODY (elongated slug shape) ─────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.9f, y + bodyH * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.7f, y - bodyH * 0.7f,
@@ -85,7 +88,7 @@ object SeaSlugRenderer : CreatureRenderer {
             drawPath(body, BodyBlue)
 
             // Body highlight (upper)
-            val bodyHL = Path().apply {
+            val bodyHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.7f, y - bodyH * 0.2f)
                 cubicTo(
                     x - bodyLen * 0.5f, y - bodyH * 0.55f,
@@ -102,7 +105,7 @@ object SeaSlugRenderer : CreatureRenderer {
             drawPath(bodyHL, BodyLightBlue.copy(alpha = 0.35f))
 
             // Purple dorsal stripe
-            val dorsalStripe = Path().apply {
+            val dorsalStripe = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.75f, y - bodyH * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.4f, y - bodyH * 0.45f,
@@ -127,7 +130,7 @@ object SeaSlugRenderer : CreatureRenderer {
                 val cerataWave = sin(t * 2.5f * PI.toFloat() + i * 0.5f) * bodyH * 0.15f
                 val cerataLen = bodyH * (0.5f + sin(frac * PI.toFloat()) * 0.3f)
 
-                val cerata = Path().apply {
+                val cerata = paths.obtain().apply {
                     moveTo(baseX, baseY)
                     cubicTo(
                         baseX + cerataWave * 0.3f, baseY - cerataLen * 0.4f,
@@ -185,7 +188,7 @@ object SeaSlugRenderer : CreatureRenderer {
                 val rTipX = headX - rhinoLen * 0.3f + rhinoWave * 0.3f
                 val rTipY = rBaseY - rhinoLen + side * rhinoLen * 0.15f
 
-                val rhino = Path().apply {
+                val rhino = paths.obtain().apply {
                     moveTo(rBaseX, rBaseY)
                     cubicTo(
                         rBaseX + side * s * 0.5f, rBaseY - rhinoLen * 0.3f,
@@ -221,7 +224,7 @@ object SeaSlugRenderer : CreatureRenderer {
             drawCircle(Color.White, eyeR * 0.45f, Offset(headX + s * 0.1f, headY - bodyH * 0.25f))
 
             // ── FOOT FRINGE (bottom edge detail) ─────────────────────────────
-            val footFringe = Path().apply {
+            val footFringe = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.80f, y + bodyH * 0.25f)
                 cubicTo(
                     x - bodyLen * 0.4f, y + bodyH * 0.55f,

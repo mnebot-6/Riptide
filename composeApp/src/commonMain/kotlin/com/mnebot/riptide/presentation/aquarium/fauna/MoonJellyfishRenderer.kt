@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val ShadowNavy    = Color(0xFF042D51)  // navy shadow
 private val DeepBlack     = Color(0xFF021330)  // near-black
 
 object MoonJellyfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -68,7 +71,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 val aSway = sin(t * 1.8f * PI.toFloat() + i * 0.7f - 0.6f) * armLen * 0.50f
                 val aLen = armLen * (0.8f + 0.2f * sin(i.toFloat()))
 
-                val arm = Path().apply {
+                val arm = paths.obtain().apply {
                     moveTo(armX, y + bellRY * 0.85f)
                     cubicTo(
                         armX + aSway * 0.3f, y + bellRY + aLen * 0.3f,
@@ -99,7 +102,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 val tipX = rimX + cos(angle) * tentLen + tSway + tipWhip
                 val tipY = rimY + sin(angle) * tentLen + tipWhip * 0.3f
                 // Curved tentacle path (quadratic bezier for organic look)
-                val tentPath = Path().apply {
+                val tentPath = paths.obtain().apply {
                     moveTo(rimX, rimY)
                     quadraticTo(
                         rimX + cos(angle) * tentLen * 0.5f + tSway * 0.2f,
@@ -116,7 +119,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
             }
 
             // ── BELL SHADOW (beneath, offset) ────────────────────────────────
-            val bellShadow = Path().apply {
+            val bellShadow = paths.obtain().apply {
                 moveTo(x - bellRX * 1.03f, y + bellRY * 0.05f)
                 cubicTo(
                     x - bellRX * 1.03f, y - bellRY * 1.0f,
@@ -133,7 +136,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
             drawPath(bellShadow, ShadowBlue.copy(alpha = 0.20f))
 
             // ── BELL BODY (dome) — asymmetric squash ellipse ─────────────────
-            val bell = Path().apply {
+            val bell = paths.obtain().apply {
                 moveTo(x - bellRX, y)
                 cubicTo(
                     x - bellRX, y - bellRY * 0.95f,
@@ -150,7 +153,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
             drawPath(bell, BellTeal.copy(alpha = 0.40f))
 
             // Bell inner cream layer
-            val bellInner = Path().apply {
+            val bellInner = paths.obtain().apply {
                 moveTo(x - bellRX * 0.85f, y + bellRY * 0.05f)
                 cubicTo(
                     x - bellRX * 0.85f, y - bellRY * 0.85f,
@@ -167,7 +170,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
             drawPath(bellInner, BellCream.copy(alpha = 0.25f))
 
             // Bell upper highlight
-            val bellHighlight = Path().apply {
+            val bellHighlight = paths.obtain().apply {
                 moveTo(x - bellRX * 0.6f, y - bellRY * 0.3f)
                 cubicTo(
                     x - bellRX * 0.5f, y - bellRY * 0.85f,
@@ -188,7 +191,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 Offset(x - bellRX * 0.25f, y - bellRY * 0.55f))
 
             // ── RING CANAL (circular structure at bell margin — SVG anatomical feature) ──
-            val ringCanalPath = Path().apply {
+            val ringCanalPath = paths.obtain().apply {
                 moveTo(x + bellRX * 0.85f, y + bellRY * 0.12f)
                 cubicTo(
                     x + bellRX * 0.85f, y - bellRY * 0.38f,
@@ -207,7 +210,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 val gy = y - bellRBase * 0.20f + sin(ga) * gonadRadius * 0.4f
                 val gr = gonadRadius * 0.4f
 
-                val gonadShadow = Path().apply {
+                val gonadShadow = paths.obtain().apply {
                     moveTo(gx - gr * 1.1f, gy + gr * 0.1f)
                     cubicTo(gx - gr * 1.1f, gy - gr * 1.0f, gx + gr * 1.1f, gy - gr * 1.0f, gx + gr * 1.1f, gy + gr * 0.1f)
                     cubicTo(gx + gr * 0.9f, gy + gr * 0.6f, gx - gr * 0.9f, gy + gr * 0.6f, gx - gr * 1.1f, gy + gr * 0.1f)
@@ -215,7 +218,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 }
                 drawPath(gonadShadow, ShadowMedium.copy(alpha = 0.20f))
 
-                val gonad = Path().apply {
+                val gonad = paths.obtain().apply {
                     moveTo(gx - gr, gy)
                     cubicTo(gx - gr, gy - gr * 1.1f, gx + gr, gy - gr * 1.1f, gx + gr, gy)
                     cubicTo(gx + gr * 0.8f, gy + gr * 0.5f, gx - gr * 0.8f, gy + gr * 0.5f, gx - gr, gy)
@@ -223,7 +226,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
                 }
                 drawPath(gonad, GonadOrange.copy(alpha = 0.60f))
 
-                val gonadHL = Path().apply {
+                val gonadHL = paths.obtain().apply {
                     val hgr = gr * 0.65f
                     moveTo(gx - hgr, gy - gr * 0.1f)
                     cubicTo(gx - hgr, gy - hgr * 1.0f, gx + hgr, gy - hgr * 1.0f, gx + hgr, gy - gr * 0.1f)
@@ -234,7 +237,7 @@ object MoonJellyfishRenderer : CreatureRenderer {
             }
 
             // ── BELL EDGE DETAILS ────────────────────────────────────────────
-            val rim = Path().apply {
+            val rim = paths.obtain().apply {
                 moveTo(x - bellRX, y)
                 cubicTo(
                     x - bellRX * 0.7f, y + bellRY * 0.35f,

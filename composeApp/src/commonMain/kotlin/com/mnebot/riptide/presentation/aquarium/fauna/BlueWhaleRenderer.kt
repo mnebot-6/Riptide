@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val AccentCoral    = Color(0xFFF8825D)  // coral/salmon accent
 private val AccentDustyRose = Color(0xFFCD7D73)  // dusty rose
 
 object BlueWhaleRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -63,7 +66,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             val tailX = x + bodyLen * 0.47f
             val flukeSpan = tailExt * 0.85f
 
-            val flukeShadow = Path().apply {
+            val flukeShadow = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.01f, y + rearArc * 0.3f)
                 lineTo(tailX + flukeSpan * 1.02f, y - upperFlukeH + tailSway)
                 lineTo(tailX + flukeSpan * 0.5f, y + tailSway * 0.3f)
@@ -72,7 +75,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(flukeShadow, ShadowDeepNavy.copy(alpha = 0.15f))
 
-            val upperFluke = Path().apply {
+            val upperFluke = paths.obtain().apply {
                 moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.4f, y - bodyH * 0.3f + tailSway,
                     tailX + flukeSpan * 0.8f, y - bodyH * 1.1f + tailSway,
@@ -84,7 +87,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(upperFluke, ShadowDarkBlue)
 
-            val upperFlukeHL = Path().apply {
+            val upperFlukeHL = paths.obtain().apply {
                 moveTo(tailX + flukeSpan * 0.15f, y - bodyH * 0.10f + tailSway * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.4f, y - bodyH * 0.5f + tailSway * 0.6f,
                     tailX + flukeSpan * 0.65f, y - bodyH * 0.85f + tailSway,
@@ -96,7 +99,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(upperFlukeHL, ShadowMedBlue.copy(alpha = 0.5f))
 
-            val lowerFluke = Path().apply {
+            val lowerFluke = paths.obtain().apply {
                 moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.45f, y + bodyH * 0.2f + tailSway * 0.6f,
                     tailX + flukeSpan * 0.8f, y + bodyH * 0.8f + tailSway,
@@ -110,7 +113,7 @@ object BlueWhaleRenderer : CreatureRenderer {
 
             // ── TINY DORSAL FIN ──────────────────────────────────────────────
             val dorsalX = x + bodyLen * 0.30f
-            val dorsalShadow = Path().apply {
+            val dorsalShadow = paths.obtain().apply {
                 moveTo(dorsalX - bodyLen * 0.045f, y - bodyH * 0.83f + midArc * 0.1f)
                 cubicTo(dorsalX - bodyLen * 0.015f, y - bodyH * 1.33f + midArc * 0.1f,
                     dorsalX + bodyLen * 0.035f, y - bodyH * 1.28f + midArc * 0.1f,
@@ -119,7 +122,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(dorsalShadow, ShadowDeepNavy.copy(alpha = 0.18f))
 
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(dorsalX - bodyLen * 0.04f, y - bodyH * 0.85f + midArc * 0.1f)
                 cubicTo(dorsalX - bodyLen * 0.01f, y - bodyH * 1.30f + midArc * 0.1f,
                     dorsalX + bodyLen * 0.03f, y - bodyH * 1.25f + midArc * 0.1f,
@@ -129,7 +132,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(dorsal, ShadowDarkBlue)
 
             // ── PECTORAL FLIPPERS (sweep with flipperSweep) ──────────────────
-            val pectShadow = Path().apply {
+            val pectShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.14f, y + bodyH * 0.74f + flipperSweep * 0.5f)
                 cubicTo(x - bodyLen * 0.04f, y + bodyH * 1.58f + flipperSweep * 0.35f,
                     x + bodyLen * 0.13f, y + bodyH * 1.65f + flipperSweep * 0.25f,
@@ -141,7 +144,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(pectShadow, ShadowDeepNavy.copy(alpha = 0.18f))
 
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.15f, y + bodyH * 0.72f + flipperSweep * 0.5f)
                 cubicTo(x - bodyLen * 0.05f, y + bodyH * 1.55f + flipperSweep * 0.35f,
                     x + bodyLen * 0.12f, y + bodyH * 1.62f + flipperSweep * 0.25f,
@@ -153,7 +156,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(pect, BodyLightBlue)
 
-            val pectHL = Path().apply {
+            val pectHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.12f, y + bodyH * 0.75f + flipperSweep * 0.5f)
                 cubicTo(x - bodyLen * 0.03f, y + bodyH * 1.25f + flipperSweep * 0.35f,
                     x + bodyLen * 0.06f, y + bodyH * 1.30f + flipperSweep * 0.30f,
@@ -166,7 +169,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(pectHL, BellyPaleBlue.copy(alpha = 0.35f))
 
             // ── MAIN BODY (S-wave: frontArc / midArc / rearArc by segment) ───
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.52f, y + frontArc)
                 cubicTo(x - bodyLen * 0.47f, y - bodyH * 0.80f + frontArc * 0.85f,
                     x - bodyLen * 0.07f, y - bodyH * 1.02f + midArc * 0.5f,
@@ -185,7 +188,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowDarkBlue.copy(alpha = 0.20f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y + frontArc)
                 cubicTo(x - bodyLen * 0.45f, y - bodyH * 0.78f + frontArc * 0.85f,
                     x - bodyLen * 0.05f, y - bodyH + midArc * 0.5f,
@@ -209,7 +212,7 @@ object BlueWhaleRenderer : CreatureRenderer {
                 style = Stroke(width = (0.5f * s).coerceAtLeast(0.2f)))
 
             // Mid-body shadow band (depth layering)
-            val midShadow = Path().apply {
+            val midShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.10f, y - bodyH * 0.30f + midArc * 0.4f)
                 cubicTo(x + bodyLen * 0.05f, y - bodyH * 0.82f + midArc * 0.3f,
                     x + bodyLen * 0.30f, y - bodyH * 0.78f + rearArc * 0.2f,
@@ -222,7 +225,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(midShadow, ShadowMedBlue.copy(alpha = 0.12f))
 
             // Upper body bright blue accent
-            val upperAccent = Path().apply {
+            val upperAccent = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.42f, y - bodyH * 0.30f + frontArc * 0.8f)
                 cubicTo(x - bodyLen * 0.20f, y - bodyH * 0.90f + midArc * 0.5f,
                     x + bodyLen * 0.15f, y - bodyH * 0.88f + midArc * 0.3f,
@@ -235,7 +238,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(upperAccent, BodyBrightBlue.copy(alpha = 0.25f))
 
             // Pale teal highlight near head
-            val headHL = Path().apply {
+            val headHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.45f, y - bodyH * 0.20f + frontArc * 0.85f)
                 cubicTo(x - bodyLen * 0.38f, y - bodyH * 0.60f + frontArc * 0.75f,
                     x - bodyLen * 0.20f, y - bodyH * 0.65f + midArc * 0.6f,
@@ -248,7 +251,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(headHL, BodyPaleTeal.copy(alpha = 0.30f))
 
             // ── ROSTRUM DEFINITION (U-shaped head, darker outline) ───────────
-            val rostrum = Path().apply {
+            val rostrum = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
                 cubicTo(x - bodyLen * 0.49f, y + frontArc + bodyH * 0.45f,
                     x - bodyLen * 0.44f, y + frontArc + bodyH * 0.52f,
@@ -261,7 +264,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             drawPath(rostrum, ShadowDarkBlue.copy(alpha = 0.12f))
 
             // ── BELLY (pale, layered) ────────────────────────────────────────
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.48f, y + frontArc + bodyH * 0.05f)
                 cubicTo(x - bodyLen * 0.35f, y + bodyH * 0.88f + midArc * 0.7f,
                     x + bodyLen * 0.2f, y + bodyH * 0.90f + midArc * 0.2f,
@@ -273,7 +276,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
             drawPath(belly, BellyWhite.copy(alpha = 0.50f))
 
-            val bellyInner = Path().apply {
+            val bellyInner = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.40f, y + frontArc + bodyH * 0.10f)
                 cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.72f + midArc * 0.6f,
                     x + bodyLen * 0.15f, y + bodyH * 0.70f + midArc * 0.2f,
@@ -307,7 +310,7 @@ object BlueWhaleRenderer : CreatureRenderer {
             }
 
             // ── CORAL ACCENT (mouth/jaw area) ────────────────────────────────
-            val mouthAccent = Path().apply {
+            val mouthAccent = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.50f, y + frontArc - bodyH * 0.05f)
                 cubicTo(x - bodyLen * 0.48f, y + frontArc + bodyH * 0.25f,
                     x - bodyLen * 0.42f, y + frontArc + bodyH * 0.30f,

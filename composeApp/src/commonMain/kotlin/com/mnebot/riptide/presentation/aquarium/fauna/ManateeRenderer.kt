@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -18,11 +19,13 @@ private val ManFlip  = Color(0xFF6A7A7A)  // flippers
 private val ManWrink = Color(0xFF5A6A6A)  // wrinkle lines
 
 object ManateeRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -43,7 +46,7 @@ object ManateeRenderer : CreatureRenderer {
             val tailCY = y + tailSway
             val tailW  = (7f + level * 0.4f) * s
             val tailH  = (4f + level * 0.3f) * s
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailCX - tailW * 0.3f, tailCY - tailH * 0.2f)
                 cubicTo(
                     tailCX, tailCY - tailH,
@@ -67,7 +70,7 @@ object ManateeRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // MAIN BODY — big rounded potato
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y + bodyWave * 0.3f)  // blunt front snout
                 cubicTo(
                     x - bodyLen * 0.85f, y - bodyH + bodyWave,
@@ -95,7 +98,7 @@ object ManateeRenderer : CreatureRenderer {
             drawPath(body, ManBody)
 
             // Belly highlight
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.7f, y + bodyH * 0.35f + bodyWave * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.2f, y + bodyH * 0.85f + bodyWave * 0.4f,
@@ -118,7 +121,7 @@ object ManateeRenderer : CreatureRenderer {
             val flipL = (5f + level * 0.3f) * s
             val flipH = (3.5f + level * 0.2f) * s
 
-            val flipper = Path().apply {
+            val flipper = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.4f, y + bodyH * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.25f + flipSway, y + bodyH * 0.6f + flipH,
@@ -143,7 +146,7 @@ object ManateeRenderer : CreatureRenderer {
                 val wy   = y + bodyWave * frac - bodyH * (0.3f - frac * 0.15f)
                 val wx0  = x - bodyLen * (0.65f - frac * 0.15f)
                 val wx1  = x + bodyLen * (0.35f - frac * 0.1f)
-                val wrink = Path().apply {
+                val wrink = paths.obtain().apply {
                     moveTo(wx0, wy)
                     cubicTo(
                         wx0 + (wx1 - wx0) * 0.3f, wy - 0.8f * s,
@@ -183,7 +186,7 @@ object ManateeRenderer : CreatureRenderer {
             // SNOUT — large blunt front with mouth and whiskers
             // ════════════════════════════════════════════════════════════════
             // Mouth hint
-            val mouthPath = Path().apply {
+            val mouthPath = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.95f, y + bodyWave * 0.15f)
                 quadraticTo(
                     x - bodyLen * 0.90f, y + bodyH * 0.12f + bodyWave * 0.2f,

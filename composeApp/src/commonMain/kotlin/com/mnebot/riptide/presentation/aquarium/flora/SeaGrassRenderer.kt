@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
@@ -18,11 +19,13 @@ private val BubbleColor    = Color(0xFFD0F0FF)   // rising bubbles (level 3+)
 private val FishShadow     = Color(0xFF1A3A28)   // fish silhouettes (level 5+)
 
 object SeaGrassRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -132,7 +135,7 @@ object SeaGrassRenderer : CreatureRenderer {
         val cx = fx + sway
 
         // Tiny fish body — simple diamond shape
-        val bodyPath = Path().apply {
+        val bodyPath = paths.obtain().apply {
             moveTo(cx - sz, fy)
             lineTo(cx, fy - sz * 0.4f)
             lineTo(cx + sz * 0.7f, fy)
@@ -142,7 +145,7 @@ object SeaGrassRenderer : CreatureRenderer {
         drawPath(bodyPath, FishShadow.copy(alpha = 0.35f))
 
         // Tail
-        val tailPath = Path().apply {
+        val tailPath = paths.obtain().apply {
             moveTo(cx + sz * 0.6f, fy)
             lineTo(cx + sz * 1.2f, fy - sz * 0.35f)
             lineTo(cx + sz * 1.2f, fy + sz * 0.35f)

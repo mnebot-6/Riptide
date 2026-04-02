@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val MagicGold      = Color(0xFFFFD080)  // magical glow
 private val MagicPink      = Color(0xFFFF90C0)  // magical pink glow
 
 object ConchRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -47,7 +50,7 @@ object ConchRenderer : CreatureRenderer {
         )
 
         // ── OUTER SHELL BODY (main spiral form) ─────────────────────────────
-        val outerShell = Path().apply {
+        val outerShell = paths.obtain().apply {
             moveTo(x - shellW * 0.7f, y - shellH * 0.1f)
             cubicTo(
                 x - shellW * 0.85f, y - shellH * 0.5f,
@@ -74,7 +77,7 @@ object ConchRenderer : CreatureRenderer {
         drawPath(outerShell, ShellCream)
 
         // ── SHELL SHADING (lower half darker) ───────────────────────────────
-        val shellShade = Path().apply {
+        val shellShade = paths.obtain().apply {
             moveTo(x - shellW * 0.65f, y - shellH * 0.1f)
             cubicTo(
                 x - shellW * 0.3f, y + shellH * 0.08f,
@@ -91,7 +94,7 @@ object ConchRenderer : CreatureRenderer {
         drawPath(shellShade, ShellTan.copy(alpha = 0.55f))
 
         // ── UPPER HIGHLIGHT ─────────────────────────────────────────────────
-        val shellHL = Path().apply {
+        val shellHL = paths.obtain().apply {
             moveTo(x - shellW * 0.3f, y - shellH * 0.95f)
             cubicTo(
                 x + shellW * 0.1f, y - shellH * 1.0f,
@@ -114,7 +117,7 @@ object ConchRenderer : CreatureRenderer {
             val ridgeX = x - shellW * 0.5f + shellW * frac * 1.2f
             val ridgeCurve = shellH * 0.15f * sin(frac * PI.toFloat())
 
-            val ridge = Path().apply {
+            val ridge = paths.obtain().apply {
                 moveTo(ridgeX, y - shellH * (0.4f + frac * 0.55f))
                 cubicTo(
                     ridgeX + shellW * 0.08f, y - shellH * (0.6f + frac * 0.3f) + ridgeCurve,
@@ -150,7 +153,7 @@ object ConchRenderer : CreatureRenderer {
         drawCircle(ShellDarkBrown.copy(alpha = 0.50f), apexR * 0.2f, Offset(apexX + s * 1.2f, apexY + s * 0.8f))
 
         // ── SHELL OPENING (lip / interior visible) ──────────────────────────
-        val opening = Path().apply {
+        val opening = paths.obtain().apply {
             moveTo(x - shellW * 0.7f, y - shellH * 0.1f)
             cubicTo(
                 x - shellW * 0.75f, y - shellH * 0.5f,
@@ -172,7 +175,7 @@ object ConchRenderer : CreatureRenderer {
         drawPath(opening, InteriorPink)
 
         // Deeper interior
-        val deepInterior = Path().apply {
+        val deepInterior = paths.obtain().apply {
             moveTo(x - shellW * 0.65f, y - shellH * 0.15f)
             cubicTo(
                 x - shellW * 0.68f, y - shellH * 0.45f,
@@ -189,7 +192,7 @@ object ConchRenderer : CreatureRenderer {
         drawPath(deepInterior, InteriorDeep.copy(alpha = 0.65f))
 
         // Hot pink accent line along lip
-        val lip = Path().apply {
+        val lip = paths.obtain().apply {
             moveTo(x - shellW * 0.72f, y - shellH * 0.08f)
             cubicTo(
                 x - shellW * 0.78f, y - shellH * 0.5f,

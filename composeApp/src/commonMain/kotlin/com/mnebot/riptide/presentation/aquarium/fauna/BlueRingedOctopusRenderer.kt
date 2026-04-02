@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -57,11 +58,13 @@ private val ringPositions = listOf(
 )
 
 object BlueRingedOctopusRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -102,7 +105,7 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
                 val tipX  = x + cos(baseAngle) * armLen        + perpX * cp3Offset
                 val tipY  = y + sin(baseAngle) * armLen        + perpY * cp3Offset + bodyR * 0.8f
 
-                val arm = Path().apply {
+                val arm = paths.obtain().apply {
                     moveTo(armBaseX, armBaseY)
                     cubicTo(cp1X, cp1Y, cp2X, cp2Y, tipX, tipY)
                 }
@@ -149,7 +152,7 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
             }
 
             // Body shading (darker lower half)
-            val mantleLower = Path().apply {
+            val mantleLower = paths.obtain().apply {
                 moveTo(x - bodyRDyn, y)
                 cubicTo(x - bodyRDyn, y + bodyRDyn * 0.5f, x - bodyRDyn * 0.7f, y + bodyRDyn, x, y + bodyRDyn)
                 cubicTo(x + bodyRDyn * 0.7f, y + bodyRDyn, x + bodyRDyn, y + bodyRDyn * 0.5f, x + bodyRDyn, y)
@@ -208,7 +211,7 @@ object BlueRingedOctopusRenderer : CreatureRenderer {
             // Iris (sage-teal)
             drawCircle(AccentTealGrn, eyeR * 0.70f, Offset(eyeX + eyeR * 0.04f, eyeY))
             // Pupil — vertical slit (characteristic of octopuses)
-            val pupilPath = Path().apply {
+            val pupilPath = paths.obtain().apply {
                 val px = eyeX + eyeR * 0.06f
                 val py = eyeY + eyeR * 0.02f
                 moveTo(px, py - eyeR * 0.35f)

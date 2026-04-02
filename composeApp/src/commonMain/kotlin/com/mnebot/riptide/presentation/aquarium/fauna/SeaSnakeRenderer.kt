@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -24,11 +25,13 @@ private val EyeGold         = Color(0xFFD0A830)  // golden eye
 private val VenomYellow     = Color(0xFFE8D040)  // venom aura
 
 object SeaSnakeRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -73,7 +76,7 @@ object SeaSnakeRenderer : CreatureRenderer {
             }
 
             // ── BODY SHADOW ──────────────────────────────────────────────
-            val shadowPath = Path().apply {
+            val shadowPath = paths.obtain().apply {
                 moveTo(spineX[0] + s * 0.3f, spineY[0] + s * 0.4f)
                 for (seg in 1..segments) {
                     lineTo(spineX[seg] + s * 0.3f, spineY[seg] + s * 0.4f)
@@ -83,7 +86,7 @@ object SeaSnakeRenderer : CreatureRenderer {
                 style = Stroke(width = bodyThick * 2.4f, cap = StrokeCap.Round))
 
             // ── MAIN BODY (thick stroke along spine) ─────────────────────
-            val bodyPath = Path().apply {
+            val bodyPath = paths.obtain().apply {
                 moveTo(spineX[0], spineY[0])
                 for (seg in 1..segments) {
                     lineTo(spineX[seg], spineY[seg])
@@ -93,7 +96,7 @@ object SeaSnakeRenderer : CreatureRenderer {
                 style = Stroke(width = bodyThick * 2.0f, cap = StrokeCap.Round))
 
             // ── BELLY HIGHLIGHT (lighter underside) ──────────────────────
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 moveTo(spineX[0], spineY[0] + bodyThick * 0.3f)
                 for (seg in 1..segments) {
                     lineTo(spineX[seg], spineY[seg] + bodyThick * 0.3f)
@@ -157,7 +160,7 @@ object SeaSnakeRenderer : CreatureRenderer {
 
             val paddleW = bodyThick * 1.8f
             val paddleL = bodyThick * 2.0f
-            val paddle = Path().apply {
+            val paddle = paths.obtain().apply {
                 moveTo(tailX, tailY)
                 cubicTo(tailX + tnx * paddleW + tailDx / tailLen2 * paddleL * 0.3f,
                     tailY + tny * paddleW + tailDy / tailLen2 * paddleL * 0.3f,
@@ -182,7 +185,7 @@ object SeaSnakeRenderer : CreatureRenderer {
             val headLen = bodyThick * 2.5f
             val headW = bodyThick * 1.4f
 
-            val headPath = Path().apply {
+            val headPath = paths.obtain().apply {
                 moveTo(headX, headY - headW)
                 cubicTo(headX - headLen * 0.4f, headY - headW * 0.9f,
                     headX - headLen * 0.85f, headY - headW * 0.4f,
@@ -195,7 +198,7 @@ object SeaSnakeRenderer : CreatureRenderer {
             drawPath(headPath, BandDarkBlue)
 
             // Head highlight
-            val headHL = Path().apply {
+            val headHL = paths.obtain().apply {
                 moveTo(headX - headLen * 0.1f, headY - headW * 0.6f)
                 cubicTo(headX - headLen * 0.35f, headY - headW * 0.55f,
                     headX - headLen * 0.6f, headY - headW * 0.3f,
@@ -216,7 +219,7 @@ object SeaSnakeRenderer : CreatureRenderer {
             drawCircle(Color(0xFFF0E8D0), eyeR, Offset(eyeXp, eyeYp))
             drawCircle(EyeGold, eyeR * 0.55f, Offset(eyeXp + eyeR * 0.05f, eyeYp))
             // Vertical slit pupil
-            val pupil = Path().apply {
+            val pupil = paths.obtain().apply {
                 moveTo(eyeXp + eyeR * 0.05f, eyeYp - eyeR * 0.32f)
                 cubicTo(eyeXp + eyeR * 0.12f, eyeYp - eyeR * 0.32f,
                     eyeXp + eyeR * 0.12f, eyeYp + eyeR * 0.32f,

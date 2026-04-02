@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,11 +28,13 @@ private val AccentTeal     = Color(0xFF14A1A0)  // teal accents
 private val EyeNavy        = Color(0xFF097A91)  // eye iris teal
 
 object ClownfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -58,7 +61,7 @@ object ClownfishRenderer : CreatureRenderer {
             val tailH = bodyH * 1.1f
 
             // Shadow layer
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.05f, y - bodyH * 0.20f)
                 cubicTo(
                     tailX + tailExt * 0.45f, y - tailH * 0.55f + tailSway * 0.7f,
@@ -80,7 +83,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(tailShadow, ShadowBlue.copy(alpha = 0.45f))
 
             // Main tail
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.25f)
                 cubicTo(
                     tailX + tailExt * 0.4f, y - tailH * 0.5f + tailSway * 0.7f,
@@ -102,7 +105,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(tail, BodyCoral)
 
             // Tail highlight (upper lobe)
-            val tailHighlight = Path().apply {
+            val tailHighlight = paths.obtain().apply {
                 moveTo(tailX + tailExt * 0.15f, y - bodyH * 0.20f)
                 cubicTo(
                     tailX + tailExt * 0.4f, y - tailH * 0.45f + tailSway * 0.6f,
@@ -125,7 +128,7 @@ object ClownfishRenderer : CreatureRenderer {
             val dorsalSway = sin(t * 3.0f * PI.toFloat()) * 0.4f * s
 
             // Dorsal shadow
-            val dorsalShadow = Path().apply {
+            val dorsalShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.52f, y - bodyH * 0.86f)
                 cubicTo(
                     x - bodyLen * 0.12f + dorsalSway, y - bodyH * 1.58f,
@@ -142,7 +145,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(dorsalShadow, ShadowBlue.copy(alpha = 0.5f))
 
             // Dorsal main
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y - bodyH * 0.88f)
                 cubicTo(
                     x - bodyLen * 0.1f + dorsalSway, y - bodyH * 1.55f,
@@ -159,7 +162,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(dorsal, BodyDeep)
 
             // Dorsal highlight ridge
-            val dorsalRidge = Path().apply {
+            val dorsalRidge = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y - bodyH * 0.90f)
                 cubicTo(
                     x - bodyLen * 0.05f + dorsalSway * 0.7f, y - bodyH * 1.30f,
@@ -176,7 +179,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(dorsalRidge, BodyCoral.copy(alpha = 0.7f))
 
             // ── ANAL FIN (layered) ───────────────────────────────────────────
-            val analShadow = Path().apply {
+            val analShadow = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.03f, y + bodyH * 0.86f)
                 cubicTo(
                     x + bodyLen * 0.18f, y + bodyH * 1.35f,
@@ -187,7 +190,7 @@ object ClownfishRenderer : CreatureRenderer {
             }
             drawPath(analShadow, ShadowBlue.copy(alpha = 0.4f))
 
-            val anal = Path().apply {
+            val anal = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.05f, y + bodyH * 0.88f)
                 cubicTo(
                     x + bodyLen * 0.2f, y + bodyH * 1.3f,
@@ -201,7 +204,7 @@ object ClownfishRenderer : CreatureRenderer {
             // ── MAIN BODY (multi-layered) ────────────────────────────────────
 
             // Body shadow (slightly larger, darker)
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 1.02f, y + bodyWave * 0.2f)
                 cubicTo(
                     x - bodyLen * 0.77f, y - bodyH * 1.02f,
@@ -219,7 +222,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowBlue.copy(alpha = 0.3f))
 
             // Main body
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y + bodyWave * 0.2f)
                 cubicTo(
                     x - bodyLen * 0.75f, y - bodyH,
@@ -237,7 +240,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(body, BodyOrange)
 
             // Belly shadow (lower body, subtle depth)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.85f, y + bodyH * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.6f, y + bodyH * 0.95f,
@@ -254,7 +257,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(belly, BodyDeep.copy(alpha = 0.35f))
 
             // Upper highlight (warm glow on top)
-            val highlight = Path().apply {
+            val highlight = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.7f, y - bodyH * 0.5f)
                 cubicTo(
                     x - bodyLen * 0.5f, y - bodyH * 0.85f,
@@ -271,7 +274,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(highlight, HighlightGold.copy(alpha = 0.30f))
 
             // Small specular highlight near head
-            val specular = Path().apply {
+            val specular = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.65f, y - bodyH * 0.55f)
                 cubicTo(
                     x - bodyLen * 0.55f, y - bodyH * 0.75f,
@@ -314,7 +317,7 @@ object ClownfishRenderer : CreatureRenderer {
 
             for (stripe in stripes) {
                 // Teal base (widest layer)
-                val pathBase = Path().apply {
+                val pathBase = paths.obtain().apply {
                     moveTo(stripe.cx - stripe.halfW, stripe.topY)
                     cubicTo(
                         stripe.cx - stripe.halfW + stripe.curve, stripe.topY + (stripe.botY - stripe.topY) * 0.3f,
@@ -333,7 +336,7 @@ object ClownfishRenderer : CreatureRenderer {
 
                 // Mint middle layer (slightly narrower)
                 val inset = stripe.halfW * 0.25f
-                val pathMid = Path().apply {
+                val pathMid = paths.obtain().apply {
                     moveTo(stripe.cx - stripe.halfW + inset, stripe.topY + (stripe.botY - stripe.topY) * 0.05f)
                     cubicTo(
                         stripe.cx - stripe.halfW + inset + stripe.curve * 0.7f, stripe.topY + (stripe.botY - stripe.topY) * 0.35f,
@@ -352,7 +355,7 @@ object ClownfishRenderer : CreatureRenderer {
 
                 // Pale highlight center
                 val centerInset = stripe.halfW * 0.5f
-                val pathCenter = Path().apply {
+                val pathCenter = paths.obtain().apply {
                     moveTo(stripe.cx - stripe.halfW + centerInset, stripe.topY + (stripe.botY - stripe.topY) * 0.15f)
                     lineTo(stripe.cx + stripe.halfW - centerInset, stripe.topY + (stripe.botY - stripe.topY) * 0.15f)
                     lineTo(stripe.cx + stripe.halfW - centerInset, stripe.botY - (stripe.botY - stripe.topY) * 0.15f)
@@ -381,7 +384,7 @@ object ClownfishRenderer : CreatureRenderer {
                 style = Stroke(width = (0.5f * s).coerceAtLeast(0.2f)))
 
             // ── HEAD PATCH (dark, blended) ───────────────────────────────────
-            val head = Path().apply {
+            val head = paths.obtain().apply {
                 moveTo(x - bodyLen, y + bodyWave * 0.2f)
                 cubicTo(
                     x - bodyLen * 0.75f, y - bodyH * 0.9f,
@@ -399,7 +402,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(head, DarkNavy.copy(alpha = 0.70f))
 
             // Head gradient overlay (softer transition)
-            val headFade = Path().apply {
+            val headFade = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.60f, y - bodyH * 0.6f)
                 cubicTo(
                     x - bodyLen * 0.58f, y - bodyH * 0.80f,
@@ -417,7 +420,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(headFade, DarkNavy.copy(alpha = 0.35f))
 
             // ── GILL PLATE DETAIL ────────────────────────────────────────────
-            val gillPlate = Path().apply {
+            val gillPlate = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.54f, y - bodyH * 0.28f)
                 cubicTo(
                     x - bodyLen * 0.50f, y - bodyH * 0.55f,
@@ -433,7 +436,7 @@ object ClownfishRenderer : CreatureRenderer {
             }
             drawPath(gillPlate, DarkNavy.copy(alpha = 0.20f))
             // Gill plate edge line
-            val gillEdge = Path().apply {
+            val gillEdge = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.54f, y - bodyH * 0.42f)
                 cubicTo(
                     x - bodyLen * 0.50f, y - bodyH * 0.65f,
@@ -448,7 +451,7 @@ object ClownfishRenderer : CreatureRenderer {
             val pectSway = sin(t * 4.5f * PI.toFloat()) * 2.5f * s   // was 1.2s → primary propulsor
 
             // Shadow
-            val pectShadow = Path().apply {
+            val pectShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.28f, y + bodyH * 0.08f)
                 cubicTo(
                     x - bodyLen * 0.08f + pectSway, y + bodyH * 0.75f,
@@ -465,7 +468,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(pectShadow, ShadowBlue.copy(alpha = 0.3f))
 
             // Main pectoral fin
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.3f, y + bodyH * 0.05f)
                 cubicTo(
                     x - bodyLen * 0.1f + pectSway, y + bodyH * 0.7f,
@@ -482,7 +485,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawPath(pect, BodyCoral.copy(alpha = 0.80f))
 
             // Fin highlight
-            val pectHL = Path().apply {
+            val pectHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.25f, y + bodyH * 0.10f)
                 cubicTo(
                     x - bodyLen * 0.12f + pectSway * 0.6f, y + bodyH * 0.45f,
@@ -517,7 +520,7 @@ object ClownfishRenderer : CreatureRenderer {
             drawCircle(Color.White.copy(alpha = 0.6f), eyeR * 0.12f, Offset(eyeX + eyeR * 0.18f, eyeY + eyeR * 0.15f))
 
             // ── MOUTH LINE ───────────────────────────────────────────────────
-            val mouthPath = Path().apply {
+            val mouthPath = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.95f, y + bodyH * 0.05f)
                 cubicTo(
                     x - bodyLen * 0.90f, y + bodyH * 0.15f,
@@ -541,7 +544,7 @@ object ClownfishRenderer : CreatureRenderer {
                     cap = StrokeCap.Round
                 )
                 // Gill slit
-                val gillPath = Path().apply {
+                val gillPath = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.50f, y - bodyH * 0.35f)
                     cubicTo(
                         x - bodyLen * 0.48f, y - bodyH * 0.10f,

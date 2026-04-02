@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val NostrilDark      = Color(0xFF202810)  // nostril dark
 private val ScarGray         = Color(0xFF889078)  // scar tissue
 
 object SaltwaterCrocodileRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -53,7 +56,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             val tailX = x + bodyLen * 0.5f
             val tailEnd = tailX + bodyLen * 0.35f
 
-            val tailPath = Path().apply {
+            val tailPath = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.22f)
                 cubicTo(tailX + bodyLen * 0.1f, y - bodyH * 0.25f + midSway * 0.3f,
                     tailEnd - bodyLen * 0.1f, y - bodyH * 0.10f + tailSway * 0.6f,
@@ -66,7 +69,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             drawPath(tailPath, BodyDarkOlive)
 
             // Tail dorsal ridge
-            val tailRidge = Path().apply {
+            val tailRidge = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.22f)
                 cubicTo(tailX + bodyLen * 0.08f, y - bodyH * 0.35f + midSway * 0.2f,
                     tailEnd - bodyLen * 0.12f, y - bodyH * 0.20f + tailSway * 0.5f,
@@ -91,7 +94,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             val legSway = sin(t * 1.5f * PI.toFloat()) * s * 0.8f
             // Rear legs
             for (side in listOf(-1f, 1f)) {
-                val leg = Path().apply {
+                val leg = paths.obtain().apply {
                     val lx = x + bodyLen * 0.30f
                     val ly = y + side * bodyH * 0.45f
                     moveTo(lx, ly)
@@ -107,7 +110,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             }
             // Front legs
             for (side in listOf(-1f, 1f)) {
-                val leg = Path().apply {
+                val leg = paths.obtain().apply {
                     val lx = x - bodyLen * 0.18f
                     val ly = y + side * bodyH * 0.50f
                     moveTo(lx, ly)
@@ -123,7 +126,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             }
 
             // ── MAIN BODY (armored, torpedo-like) ────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.50f, y)
                 cubicTo(x - bodyLen * 0.40f, y - bodyH * 1.04f,
                     x + bodyLen * 0.30f, y - bodyH * 1.04f,
@@ -135,7 +138,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowDeep.copy(alpha = 0.15f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.48f, y)
                 cubicTo(x - bodyLen * 0.38f, y - bodyH,
                     x + bodyLen * 0.28f, y - bodyH,
@@ -148,7 +151,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             drawPath(body, BodyOlive)
 
             // Belly (lighter underside)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.40f, y + bodyH * 0.1f)
                 cubicTo(x - bodyLen * 0.28f, y + bodyH * 0.85f,
                     x + bodyLen * 0.22f, y + bodyH * 0.85f,
@@ -178,7 +181,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             }
 
             // Upper body highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y - bodyH * 0.30f)
                 cubicTo(x - bodyLen * 0.20f, y - bodyH * 0.80f,
                     x + bodyLen * 0.15f, y - bodyH * 0.78f,
@@ -196,7 +199,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             val snoutX = x - bodyLen * 0.48f
 
             // Upper jaw
-            val upperJaw = Path().apply {
+            val upperJaw = paths.obtain().apply {
                 moveTo(snoutX, y - snoutH)
                 cubicTo(snoutX - snoutLen * 0.4f, y - snoutH * 0.9f,
                     snoutX - snoutLen * 0.85f, y - snoutH * 0.4f,
@@ -210,7 +213,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             drawPath(upperJaw, BodyDarkOlive)
 
             // Lower jaw (opens with jawOpen)
-            val lowerJaw = Path().apply {
+            val lowerJaw = paths.obtain().apply {
                 moveTo(snoutX, y + jawOpen)
                 cubicTo(snoutX - snoutLen * 0.5f, y + snoutH * 0.05f + jawOpen,
                     snoutX - snoutLen * 0.8f, y + snoutH * 0.2f + jawOpen,
@@ -279,7 +282,7 @@ object SaltwaterCrocodileRenderer : CreatureRenderer {
             // Iris
             drawCircle(EyeGreen, eyeR * 0.65f, Offset(eyeX + eyeR * 0.05f, eyeY))
             // Vertical slit pupil
-            val pupil = Path().apply {
+            val pupil = paths.obtain().apply {
                 val px = eyeX + eyeR * 0.06f
                 val py = eyeY
                 moveTo(px, py - eyeR * 0.38f)

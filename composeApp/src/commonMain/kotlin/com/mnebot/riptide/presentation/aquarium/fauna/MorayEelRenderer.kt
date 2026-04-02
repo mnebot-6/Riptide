@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val SpotDark       = Color(0xFF2A3A18)  // spot color (level 3+)
 private val GlowYellow     = Color(0xFFFFE060)  // eye glow (level 5+)
 
 object MorayEelRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -68,7 +71,7 @@ object MorayEelRenderer : CreatureRenderer {
             }
 
             // Body shadow
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(upperPoints[0].x, upperPoints[0].y - s * 0.3f)
                 for (i in 1 until upperPoints.size) {
                     lineTo(upperPoints[i].x, upperPoints[i].y - s * 0.3f)
@@ -81,7 +84,7 @@ object MorayEelRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowGreen.copy(alpha = 0.20f))
 
             // Main body fill
-            val bodyPath = Path().apply {
+            val bodyPath = paths.obtain().apply {
                 moveTo(upperPoints[0].x, upperPoints[0].y)
                 for (i in 1 until upperPoints.size) {
                     lineTo(upperPoints[i].x, upperPoints[i].y)
@@ -94,7 +97,7 @@ object MorayEelRenderer : CreatureRenderer {
             drawPath(bodyPath, BodyGreen)
 
             // Belly lighter zone (lower half)
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 val midIdx = segments / 2
                 moveTo(lowerPoints[0].x, (upperPoints[0].y + lowerPoints[0].y) / 2f)
                 for (i in 1 until lowerPoints.size) {
@@ -108,7 +111,7 @@ object MorayEelRenderer : CreatureRenderer {
             drawPath(bellyPath, BellyYellow.copy(alpha = 0.30f))
 
             // Upper highlight
-            val hlPath = Path().apply {
+            val hlPath = paths.obtain().apply {
                 moveTo(upperPoints[1].x, upperPoints[1].y)
                 for (i in 2 until upperPoints.size - 1) {
                     lineTo(upperPoints[i].x, upperPoints[i].y + bodyW * 0.15f)
@@ -154,7 +157,7 @@ object MorayEelRenderer : CreatureRenderer {
             val headWave = sin(t * waveFreq * PI.toFloat()) * waveAmp * 0f // head is stable
             val headW = bodyW * 1.15f
 
-            val headPath = Path().apply {
+            val headPath = paths.obtain().apply {
                 moveTo(headX, y - headW + headWave)
                 cubicTo(
                     headX - headW * 0.8f, y - headW * 0.7f + headWave,
@@ -176,7 +179,7 @@ object MorayEelRenderer : CreatureRenderer {
             val mouthY = y + headWave
 
             // Upper jaw
-            val upperJaw = Path().apply {
+            val upperJaw = paths.obtain().apply {
                 moveTo(mouthX + headW * 0.3f, mouthY - headW * 0.2f)
                 cubicTo(
                     mouthX - headW * 0.2f, mouthY - headW * 0.3f - jawOpen * 0.3f,
@@ -189,7 +192,7 @@ object MorayEelRenderer : CreatureRenderer {
             drawPath(upperJaw, BodyDarkGreen)
 
             // Lower jaw
-            val lowerJaw = Path().apply {
+            val lowerJaw = paths.obtain().apply {
                 moveTo(mouthX + headW * 0.3f, mouthY + headW * 0.2f)
                 cubicTo(
                     mouthX - headW * 0.2f, mouthY + headW * 0.3f + jawOpen * 0.3f,
@@ -202,7 +205,7 @@ object MorayEelRenderer : CreatureRenderer {
             drawPath(lowerJaw, BodyDarkGreen)
 
             // Mouth interior
-            val mouthInterior = Path().apply {
+            val mouthInterior = paths.obtain().apply {
                 moveTo(mouthX + headW * 0.1f, mouthY - jawOpen * 0.15f)
                 cubicTo(
                     mouthX - headW * 0.3f, mouthY - jawOpen * 0.3f,

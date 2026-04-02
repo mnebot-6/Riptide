@@ -51,6 +51,8 @@ import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.displayNameRes
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
@@ -122,6 +124,7 @@ fun MainScreen(
     onNavigateToHistory: () -> Unit,
     onSignIn: () -> Unit = {}
 ) {
+    val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
     val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
         .collectAsState(initial = LocalTime(23, 30))
@@ -480,7 +483,10 @@ fun MainScreen(
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = { viewModel.openLootbox() }) {
+                        TextButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.openLootbox()
+                        }) {
                             Text(stringResource(Res.string.btn_open_lootbox), color = Color(0xFF7EC8E3))
                         }
                     }
@@ -951,7 +957,9 @@ private fun MainContent(
     onAquariumClick: () -> Unit,
     streaksByBlock: Map<String, Int>,
 ) {
-    val blocksWithTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
+    val blocksWithTasks = remember(blocks, tasksByBlock) {
+        blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
+    }
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color(0x33FFFFFF)))
@@ -1139,6 +1147,7 @@ private fun TaskCard(
     onToggle: () -> Unit,
     onLongPress: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val isCompleted = task.status == TaskStatus.COMPLETED
     val isExpired = task.status == TaskStatus.EXPIRED
     val isPostponed = task.status == TaskStatus.POSTPONED
@@ -1209,7 +1218,10 @@ private fun TaskCard(
                     }
                     Checkbox(
                         checked = isCompleted,
-                        onCheckedChange = { onToggle() },
+                        onCheckedChange = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onToggle()
+                        },
                         colors = CheckboxDefaults.colors(
                             checkedColor = blockColor,
                             uncheckedColor = TextSecondary,

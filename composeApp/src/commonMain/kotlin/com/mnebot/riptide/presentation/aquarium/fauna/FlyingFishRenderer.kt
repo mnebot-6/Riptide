@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val ShadowNavy     = Color(0xFF0A1830)  // dark shadow
 private val DropletBlue    = Color(0xFF80C0F0)  // water droplet
 
 object FlyingFishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -55,7 +58,7 @@ object FlyingFishRenderer : CreatureRenderer {
             // ── TAIL FIN (asymmetric -- lower lobe longer for thrust) ────────
             val tailX = x + bodyLen * 0.48f
 
-            val tailUpper = Path().apply {
+            val tailUpper = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.1f)
                 cubicTo(
                     tailX + bodyLen * 0.12f, y - bodyH * 0.5f + tailSway * 0.5f,
@@ -72,7 +75,7 @@ object FlyingFishRenderer : CreatureRenderer {
             drawPath(tailUpper, TailDark)
 
             // Lower lobe (longer -- characteristic of flying fish)
-            val tailLower = Path().apply {
+            val tailLower = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + bodyLen * 0.10f, y + tailSway * 0.1f,
@@ -93,7 +96,7 @@ object FlyingFishRenderer : CreatureRenderer {
             val wingAngle = -0.3f + wingFlap
 
             // Wing shadow (cast below)
-            val wingShadowPath = Path().apply {
+            val wingShadowPath = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.25f, y - bodyH * 0.2f)
                 cubicTo(
                     x - bodyLen * 0.15f + sin(wingAngle) * wingSpan * 0.1f,
@@ -115,7 +118,7 @@ object FlyingFishRenderer : CreatureRenderer {
             drawPath(wingShadowPath, ShadowNavy.copy(alpha = 0.12f))
 
             // Main wing (upper pectoral)
-            val wing = Path().apply {
+            val wing = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.25f, y - bodyH * 0.25f)
                 cubicTo(
                     x - bodyLen * 0.1f,
@@ -174,7 +177,7 @@ object FlyingFishRenderer : CreatureRenderer {
             val pelvicSpan = wingSpan * 0.45f
             val pelvicFlap = wingFlap * 0.6f
 
-            val pelvic = Path().apply {
+            val pelvic = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.05f, y + bodyH * 0.15f)
                 cubicTo(
                     x + bodyLen * 0.12f,
@@ -198,7 +201,7 @@ object FlyingFishRenderer : CreatureRenderer {
             // ── MAIN BODY (streamlined) ──────────────────────────────────────
             val headX = x - bodyLen * 0.55f
 
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(headX - s * 0.3f, y)
                 cubicTo(
                     headX + bodyLen * 0.15f, y - bodyH * 1.02f,
@@ -214,7 +217,7 @@ object FlyingFishRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowNavy.copy(alpha = 0.12f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(headX, y)
                 cubicTo(
                     headX + bodyLen * 0.15f, y - bodyH,
@@ -231,7 +234,7 @@ object FlyingFishRenderer : CreatureRenderer {
             drawPath(body, BodyBlue)
 
             // Silver sides
-            val silverSide = Path().apply {
+            val silverSide = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.05f, y - bodyH * 0.15f)
                 cubicTo(
                     headX + bodyLen * 0.18f, y - bodyH * 0.5f,
@@ -249,7 +252,7 @@ object FlyingFishRenderer : CreatureRenderer {
             drawPath(silverSide, SideSilver.copy(alpha = 0.55f))
 
             // White belly
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.08f, y + bodyH * 0.05f)
                 cubicTo(
                     headX + bodyLen * 0.15f, y + bodyH * 0.75f,
@@ -266,7 +269,7 @@ object FlyingFishRenderer : CreatureRenderer {
             drawPath(belly, BellyWhite.copy(alpha = 0.50f))
 
             // Upper highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.08f, y - bodyH * 0.35f)
                 cubicTo(
                     headX + bodyLen * 0.18f, y - bodyH * 0.80f,

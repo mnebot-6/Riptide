@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -17,11 +18,13 @@ private val AnchorRust  = Color(0xFF8B4020)  // rust accent
 private val AnchorChain = Color(0xFF5A5A60)  // chain links
 
 object AnchorRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base, draw upward
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -45,7 +48,7 @@ object AnchorRenderer : CreatureRenderer {
         )
 
         // ── CROSSBAR (stock) ────────────────────────────────────────────────────
-        val cross = Path().apply {
+        val cross = paths.obtain().apply {
             moveTo(x - crossW, crossY - shaftW * 0.7f)
             lineTo(x + crossW, crossY - shaftW * 0.7f)
             lineTo(x + crossW, crossY + shaftW * 0.7f)
@@ -70,7 +73,7 @@ object AnchorRenderer : CreatureRenderer {
         )
 
         // ── ARMS (curved arms at bottom) ────────────────────────────────────────
-        val arm = Path().apply {
+        val arm = paths.obtain().apply {
             // Left arm
             moveTo(x, armY)
             cubicTo(x - armW * 0.5f, armY - anchorH * 0.05f,
@@ -79,7 +82,7 @@ object AnchorRenderer : CreatureRenderer {
         }
         drawPath(arm, AnchorIron, style = Stroke(width = (shaftW * 1.8f).coerceAtLeast(1.2f), cap = StrokeCap.Round))
 
-        val armRight = Path().apply {
+        val armRight = paths.obtain().apply {
             moveTo(x, armY)
             cubicTo(x + armW * 0.5f, armY - anchorH * 0.05f,
                 x + armW * 0.85f, armY + anchorH * 0.03f,
@@ -93,7 +96,7 @@ object AnchorRenderer : CreatureRenderer {
             val flukeTipY = armY - anchorH * 0.02f
             val flukeH = anchorH * 0.10f
             val flukeW = armW * 0.22f
-            val fluke = Path().apply {
+            val fluke = paths.obtain().apply {
                 moveTo(flukeTipX, flukeTipY - flukeH)
                 lineTo(flukeTipX + side * flukeW, flukeTipY)
                 lineTo(flukeTipX, flukeTipY + flukeH * 0.5f)

@@ -64,11 +64,9 @@ fun BlockFormScreen(
         mutableStateOf(existingBlock?.recurrence is Recurrence.Weekly)
     }
 
-    val initialSlots = if (existingBlock?.recurrence is Recurrence.Weekly) {
-        (existingBlock.recurrence as Recurrence.Weekly).slots.associate {
-            it.dayOfWeek to Pair(it.startTime, it.endTime)
-        }
-    } else emptyMap()
+    val initialSlots = (existingBlock?.recurrence as? Recurrence.Weekly)?.slots?.associate {
+        it.dayOfWeek to Pair(it.startTime, it.endTime)
+    } ?: emptyMap()
 
     val selectedDays = remember {
         mutableStateMapOf<Int, Pair<LocalTime?, LocalTime?>>().apply { putAll(initialSlots) }

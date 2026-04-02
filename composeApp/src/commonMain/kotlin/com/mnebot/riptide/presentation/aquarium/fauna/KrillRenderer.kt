@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val BioGlow        = Color(0xFF60D0FF)  // bioluminescence (level 3+)
 private val SwarmDot       = Color(0xFFD09898)  // swarm dots (level 5+)
 
 object KrillRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -54,7 +57,7 @@ object KrillRenderer : CreatureRenderer {
             // Long antennae
             for (side in intArrayOf(-1, 1)) {
                 val antSway = sin(t * 5.5f * PI.toFloat() + side * 0.5f) * 1.5f * s
-                val antPath = Path().apply {
+                val antPath = paths.obtain().apply {
                     moveTo(antBaseX, antBaseY + side * bodyH * 0.15f)
                     quadraticTo(
                         antBaseX - bodyLen * 0.35f + antSway * 0.3f,
@@ -98,7 +101,7 @@ object KrillRenderer : CreatureRenderer {
 
             // ── TAIL FAN (uropods at rear) ──────────────────────────────────
             val tailX = x + bodyLen * 0.45f
-            val tailFan = Path().apply {
+            val tailFan = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.05f, y)
                 cubicTo(
                     tailX + bodyLen * 0.08f, y - bodyH * 0.5f + tailFlick * 0.3f,
@@ -118,7 +121,7 @@ object KrillRenderer : CreatureRenderer {
 
             // ── MAIN BODY (segmented, translucent) ──────────────────────────
             // Body shadow
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.48f, y + bodyArch * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.3f, y - bodyH * 1.05f + bodyArch,
@@ -135,7 +138,7 @@ object KrillRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowDark.copy(alpha = 0.10f))
 
             // Main body
-            val bodyPath = Path().apply {
+            val bodyPath = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.46f, y + bodyArch * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.28f, y - bodyH + bodyArch,
@@ -152,7 +155,7 @@ object KrillRenderer : CreatureRenderer {
             drawPath(bodyPath, BodyPink.copy(alpha = 0.65f))
 
             // Upper highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.40f, y - bodyH * 0.30f + bodyArch * 0.5f)
                 cubicTo(
                     x - bodyLen * 0.20f, y - bodyH * 0.80f + bodyArch,

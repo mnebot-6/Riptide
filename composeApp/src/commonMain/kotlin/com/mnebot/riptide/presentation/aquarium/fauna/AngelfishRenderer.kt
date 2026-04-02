@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -30,11 +31,13 @@ private val ShadowDkTeal   = Color(0xFF367881)  // dark teal-green
 private val DeepNavy       = Color(0xFF111253)  // near-black
 
 object AngelfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -58,7 +61,7 @@ object AngelfishRenderer : CreatureRenderer {
             // ── TAIL FIN (golden, layered) ───────────────────────────────────
             val tailX = x + bodyLen * 0.5f
 
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.02f, y - bodyH * 0.13f)
                 cubicTo(
                     tailX + tailExt * 0.52f, y - bodyH * 0.62f + tailSway,
@@ -79,7 +82,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
             drawPath(tailShadow, ShadowBlue.copy(alpha = 0.18f))
 
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.15f)
                 cubicTo(
                     tailX + tailExt * 0.5f, y - bodyH * 0.6f + tailSway,
@@ -100,7 +103,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
             drawPath(tail, GoldenYellow)
             // Tail highlight
-            val tailHL = Path().apply {
+            val tailHL = paths.obtain().apply {
                 moveTo(tailX + tailExt * 0.15f, y - bodyH * 0.10f)
                 cubicTo(
                     tailX + tailExt * 0.45f, y - bodyH * 0.45f + tailSway * 0.8f,
@@ -118,7 +121,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(tail, AccentCoral.copy(alpha = 0.25f), style = Stroke(width = (0.6f * s).coerceAtLeast(0.3f)))
 
             // ── DORSAL FIN (layered) ─────────────────────────────────────────
-            val dorsalShadow = Path().apply {
+            val dorsalShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.62f, y - bodyH * 0.90f)
                 cubicTo(
                     x - bodyLen * 0.22f + finBase, y - bodyH * 1.88f,
@@ -129,7 +132,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
             drawPath(dorsalShadow, ShadowBlue.copy(alpha = 0.18f))
 
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.6f, y - bodyH * 0.92f)
                 cubicTo(
                     x - bodyLen * 0.2f + finBase, y - bodyH * 1.85f,
@@ -145,7 +148,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
             drawPath(dorsal, ShadowDkTeal)
             // Dorsal highlight ridge
-            val dorsalHL = Path().apply {
+            val dorsalHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.45f, y - bodyH * 0.93f)
                 cubicTo(
                     x - bodyLen * 0.15f + finBase * 0.7f, y - bodyH * 1.50f,
@@ -164,7 +167,7 @@ object AngelfishRenderer : CreatureRenderer {
             )
 
             // ── ANAL FIN (layered) ───────────────────────────────────────────
-            val anal = Path().apply {
+            val anal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.4f, y + bodyH * 0.92f)
                 cubicTo(
                     x - bodyLen * 0.1f - finBase, y + bodyH * 1.75f,
@@ -188,7 +191,7 @@ object AngelfishRenderer : CreatureRenderer {
 
             // ── PECTORAL FIN ─────────────────────────────────────────────────
             val pectSway = sin(t * 2.0f * PI.toFloat()) * 2.5f * s   // was 4Hz/1.5s → slow oar rowing
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.4f, y - bodyH * 0.05f)
                 cubicTo(
                     x - bodyLen * 0.15f + pectSway, y + bodyH * 0.6f,
@@ -201,7 +204,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(pect, BodyLightTeal.copy(alpha = 0.6f))
             drawPath(pect, AccentSalmon.copy(alpha = 0.20f))
             // Pectoral fin inner highlight (golden, from SVG)
-            val pectHL = Path().apply {
+            val pectHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.30f, y - bodyH * 0.05f)
                 cubicTo(
                     x - bodyLen * 0.10f + pectSway * 0.5f, y + bodyH * 0.35f,
@@ -213,7 +216,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(pectHL, OliveGold.copy(alpha = 0.25f))
 
             // ── MAIN BODY (multi-layered) ────────────────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 1.02f, y)
                 cubicTo(
                     x - bodyLen * 0.72f, y - bodyH * 1.02f,
@@ -230,7 +233,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowBlue.copy(alpha = 0.18f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y)
                 cubicTo(
                     x - bodyLen * 0.7f, y - bodyH,
@@ -248,7 +251,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(body, BodyTeal)
 
             // Olive mid-tone overlay (body center)
-            val oliveZone = Path().apply {
+            val oliveZone = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.75f, y - bodyH * 0.15f)
                 cubicTo(
                     x - bodyLen * 0.55f, y - bodyH * 0.75f,
@@ -266,7 +269,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(oliveZone, OliveKhaki.copy(alpha = 0.30f))
 
             // Upper highlight
-            val highlight = Path().apply {
+            val highlight = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.65f, y - bodyH * 0.45f)
                 cubicTo(
                     x - bodyLen * 0.45f, y - bodyH * 0.82f,
@@ -283,7 +286,7 @@ object AngelfishRenderer : CreatureRenderer {
             drawPath(highlight, BodyLightTeal.copy(alpha = 0.35f))
 
             // Belly warmth
-            val bellyWarm = Path().apply {
+            val bellyWarm = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.60f, y + bodyH * 0.10f)
                 cubicTo(
                     x - bodyLen * 0.40f, y + bodyH * 0.85f,
@@ -309,7 +312,7 @@ object AngelfishRenderer : CreatureRenderer {
             )
             for (stripe in stripes) {
                 // Cream base
-                val sp = Path().apply {
+                val sp = paths.obtain().apply {
                     moveTo(stripe.cx - stripe.hw, stripe.topY)
                     cubicTo(
                         stripe.cx - stripe.hw + stripe.hw * 0.3f, stripe.topY + (stripe.botY - stripe.topY) * 0.3f,
@@ -326,7 +329,7 @@ object AngelfishRenderer : CreatureRenderer {
                 }
                 drawPath(sp, StripeCream.copy(alpha = 0.75f))
                 // Warm inner
-                val spInner = Path().apply {
+                val spInner = paths.obtain().apply {
                     val inset = stripe.hw * 0.35f
                     moveTo(stripe.cx - stripe.hw + inset, stripe.topY + (stripe.botY - stripe.topY) * 0.08f)
                     lineTo(stripe.cx + stripe.hw - inset, stripe.topY + (stripe.botY - stripe.topY) * 0.08f)
@@ -347,7 +350,7 @@ object AngelfishRenderer : CreatureRenderer {
             }
 
             // ── CORAL ACCENT BAND (horizontal, mid-body) ────────────────────
-            val coralBand = Path().apply {
+            val coralBand = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.80f, y + bodyH * 0.02f)
                 cubicTo(
                     x - bodyLen * 0.40f, y - bodyH * 0.20f,
@@ -368,7 +371,7 @@ object AngelfishRenderer : CreatureRenderer {
                 style = Stroke(width = (0.8f * s).coerceAtLeast(0.4f)))
 
             // ── GILL DETAIL ──────────────────────────────────────────────────
-            val gillLine = Path().apply {
+            val gillLine = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.65f, y - bodyH * 0.18f)
                 cubicTo(
                     x - bodyLen * 0.58f, y - bodyH * 0.45f,
@@ -400,7 +403,7 @@ object AngelfishRenderer : CreatureRenderer {
                 val threadLen = (6f + level * 0.5f) * s
                 val threadLag = sin(t * 2.0f * PI.toFloat() + 1.2f) * threadLen * 0.3f
                 // Upper thread — curves away from dorsal tip with extra lag
-                val upperThread = Path().apply {
+                val upperThread = paths.obtain().apply {
                     moveTo(x + bodyLen * 0.1f + finBase, y - bodyH * 1.78f)
                     cubicTo(
                         x + bodyLen * 0.2f + finTip,               y - bodyH * 1.78f,
@@ -411,7 +414,7 @@ object AngelfishRenderer : CreatureRenderer {
                 drawPath(upperThread, LightGold.copy(alpha = 0.55f),
                     style = Stroke(width = (0.7f * s).coerceAtLeast(0.3f), cap = StrokeCap.Round))
                 // Lower thread fin — symmetric
-                val lowerThread = Path().apply {
+                val lowerThread = paths.obtain().apply {
                     moveTo(x + bodyLen * 0.1f - finBase, y + bodyH * 1.68f)
                     cubicTo(
                         x + bodyLen * 0.2f - finTip,               y + bodyH * 1.68f,

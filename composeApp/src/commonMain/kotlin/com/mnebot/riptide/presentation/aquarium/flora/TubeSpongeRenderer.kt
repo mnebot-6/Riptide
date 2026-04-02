@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -24,11 +25,13 @@ private val ParticleColor  = Color(0xFFFFE8B0)   // particles (level 3+)
 private val GlowCyan       = Color(0xFF80E0FF)   // bioluminescent glow (level 5+)
 
 object TubeSpongeRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -119,7 +122,7 @@ object TubeSpongeRenderer : CreatureRenderer {
         val topY = y - tubeH
 
         // Shadow side
-        val shadowPath = Path().apply {
+        val shadowPath = paths.obtain().apply {
             moveTo(tubeCx - taperBottom, y)
             lineTo(tubeCx - taperTop + sway, topY)
             lineTo(tubeCx + sway, topY)
@@ -129,7 +132,7 @@ object TubeSpongeRenderer : CreatureRenderer {
         drawPath(shadowPath, baseShadow)
 
         // Lit side
-        val litPath = Path().apply {
+        val litPath = paths.obtain().apply {
             moveTo(tubeCx, y)
             lineTo(tubeCx + sway, topY)
             lineTo(tubeCx + taperTop + sway, topY)
@@ -139,7 +142,7 @@ object TubeSpongeRenderer : CreatureRenderer {
         drawPath(litPath, baseBody)
 
         // Highlight stripe on lit side
-        val highlightPath = Path().apply {
+        val highlightPath = paths.obtain().apply {
             moveTo(tubeCx + taperBottom * 0.3f, y)
             lineTo(tubeCx + taperTop * 0.3f + sway, topY)
             lineTo(tubeCx + taperTop * 0.65f + sway, topY)
@@ -183,7 +186,7 @@ object TubeSpongeRenderer : CreatureRenderer {
         )
 
         // Rim ring
-        val rimPath = Path()
+        val rimPath = paths.obtain()
         val rimSteps = 20
         for (step in 0..rimSteps) {
             val angle = step.toFloat() / rimSteps * 2f * PI.toFloat()

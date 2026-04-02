@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val SealEye    = Color(0xFF111122)
 private val SealWhisker= Color(0xFFCCCCBB)  // whisker lines
 
 object SealRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -41,7 +44,7 @@ object SealRenderer : CreatureRenderer {
 
             // ── HIND FLIPPERS (merged, spread like fish tail) ─────────────────
             val hfX = x + bodyLen * 0.45f
-            val leftFlip = Path().apply {
+            val leftFlip = paths.obtain().apply {
                 moveTo(hfX, y + bodyH * 0.2f + bodyWave)
                 cubicTo(hfX + flipLen * 0.4f, y + bodyH * 0.1f + tailSway,
                     hfX + flipLen * 0.8f, y - bodyH * 0.3f + tailSway,
@@ -53,7 +56,7 @@ object SealRenderer : CreatureRenderer {
             }
             drawPath(leftFlip, SealGrey)
 
-            val rightFlip = Path().apply {
+            val rightFlip = paths.obtain().apply {
                 moveTo(hfX, y - bodyH * 0.2f + bodyWave)
                 cubicTo(hfX + flipLen * 0.4f, y - bodyH * 0.1f + tailSway,
                     hfX + flipLen * 0.8f, y + bodyH * 0.4f + tailSway,
@@ -67,7 +70,7 @@ object SealRenderer : CreatureRenderer {
 
             // ── FRONT FLIPPERS (paddle-shaped, flipper stroke) ────────────────
             val flipSweep = sin(t * 2.8f * PI.toFloat()) * flipLen * 0.5f
-            val frontFlip = Path().apply {
+            val frontFlip = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.10f, y + bodyH * 0.65f + bodyWave * 0.4f)
                 cubicTo(x + flipLen * 0.2f + flipSweep * 0.3f, y + bodyH * 1.30f + bodyWave * 0.3f,
                     x + flipLen * 0.5f + flipSweep * 0.6f, y + bodyH * 1.40f + bodyWave * 0.2f,
@@ -80,7 +83,7 @@ object SealRenderer : CreatureRenderer {
             drawPath(frontFlip, SealGrey2)
 
             // ── MAIN BODY (torpedo, thicker at shoulders) ─────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y + bodyWave)  // nose
                 cubicTo(x - bodyLen * 0.35f, y - bodyH + bodyWave * 0.8f,
                     x + bodyLen * 0.1f, y - bodyH * 1.02f + bodyWave * 0.4f,
@@ -94,7 +97,7 @@ object SealRenderer : CreatureRenderer {
             drawPath(body, SealGrey2)
 
             // Belly
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.45f, y + bodyWave + bodyH * 0.08f)
                 cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.88f + bodyWave * 0.55f,
                     x + bodyLen * 0.1f, y + bodyH * 0.95f + bodyWave * 0.35f,
@@ -123,7 +126,7 @@ object SealRenderer : CreatureRenderer {
 
             // ── LEVEL 5+: Darker saddle marking on back ───────────────────────────
             if (level >= 5) {
-                val saddle = Path().apply {
+                val saddle = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.04f, y - bodyH * 0.82f + bodyWave * 0.3f)
                     cubicTo(
                         x + bodyLen * 0.06f, y - bodyH * 1.01f + bodyWave * 0.2f,
@@ -143,7 +146,7 @@ object SealRenderer : CreatureRenderer {
             // ── HEAD (rounded, short snout) ────────────────────────────────────
             val headR = (4.0f + level * 0.22f) * s
             val headX = x - bodyLen * 0.5f
-            val head  = Path().apply {
+            val head  = paths.obtain().apply {
                 moveTo(headX - headR * 1.0f, y + bodyWave)
                 cubicTo(headX - headR * 0.85f, y - headR * 0.9f + bodyWave * 0.9f,
                     headX + headR * 0.4f, y - headR * 0.92f + bodyWave * 0.9f,

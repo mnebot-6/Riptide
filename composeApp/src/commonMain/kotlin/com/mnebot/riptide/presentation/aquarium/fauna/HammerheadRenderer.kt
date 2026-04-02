@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val HamEdge    = Color(0xFF1A2A3A)  // outline
 private val HamEye     = Color(0xFF111111)  // eye
 
 object HammerheadRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -40,7 +43,7 @@ object HammerheadRenderer : CreatureRenderer {
             // TAIL FIN — crescent shape
             // ════════════════════════════════════════════════════════════════
             val tailX = x + bodyLen * 0.45f
-            val tailTop = Path().apply {
+            val tailTop = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.35f)
                 cubicTo(
                     tailX + bodyLen * 0.12f, y - bodyH * 0.2f + tailSway * 0.3f,
@@ -55,7 +58,7 @@ object HammerheadRenderer : CreatureRenderer {
                 close()
             }
             drawPath(tailTop, HamFin)
-            val tailBot = Path().apply {
+            val tailBot = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + bodyLen * 0.1f,  y + tailSway * 0.1f,
@@ -75,7 +78,7 @@ object HammerheadRenderer : CreatureRenderer {
             // DORSAL FIN
             // ════════════════════════════════════════════════════════════════
             val dorsalSway = sin(t * 2f * PI.toFloat()) * 0.8f * s
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.05f, y - bodyH * 0.9f)
                 cubicTo(
                     x + bodyLen * 0.05f + dorsalSway, y - bodyH * 2.0f,
@@ -93,7 +96,7 @@ object HammerheadRenderer : CreatureRenderer {
 
             // Level 5+: second smaller dorsal fin
             if (level >= 5) {
-                val dorsal2 = Path().apply {
+                val dorsal2 = paths.obtain().apply {
                     moveTo(x + bodyLen * 0.28f, y - bodyH * 0.82f)
                     cubicTo(
                         x + bodyLen * 0.32f + dorsalSway * 0.5f, y - bodyH * 1.3f,
@@ -113,7 +116,7 @@ object HammerheadRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // PECTORAL FINS
             // ════════════════════════════════════════════════════════════════
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.15f, y + bodyH * 0.55f)
                 cubicTo(
                     x + bodyLen * 0.0f,  y + bodyH * 1.5f,
@@ -132,7 +135,7 @@ object HammerheadRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // MAIN BODY — torpedo shape
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 // From hammer junction to tail
                 moveTo(x - bodyLen * 0.1f, y - bodyH)
                 cubicTo(
@@ -151,7 +154,7 @@ object HammerheadRenderer : CreatureRenderer {
             drawPath(body, HamDorsal)
 
             // Belly counter-shading
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.1f, y + bodyH * 0.1f)
                 cubicTo(
                     x + bodyLen * 0.15f, y + bodyH * 0.9f,
@@ -171,7 +174,7 @@ object HammerheadRenderer : CreatureRenderer {
             // HAMMER HEAD — the key feature!
             // ════════════════════════════════════════════════════════════════
             val headX = x - bodyLen * 0.15f  // center of hammer
-            val hammer = Path().apply {
+            val hammer = paths.obtain().apply {
                 // Top lobe
                 moveTo(headX - hammerW, y - bodyH * 0.12f)
                 quadraticTo(headX - hammerW * 1.1f, y - bodyH * 1.05f,
@@ -194,7 +197,7 @@ object HammerheadRenderer : CreatureRenderer {
             drawPath(hammer, HamDorsal)
 
             // Counter-shading on underside of hammer
-            val hammerBelly = Path().apply {
+            val hammerBelly = paths.obtain().apply {
                 moveTo(headX - hammerW * 0.9f, y + bodyH * 0.10f)
                 cubicTo(
                     headX - hammerW * 0.5f, y + bodyH * 0.52f,
@@ -227,7 +230,7 @@ object HammerheadRenderer : CreatureRenderer {
             drawCircle(HamEye, eyeR * 0.55f, Offset(headX + hammerW * 0.88f, eyeYPos))
 
             // Small mouth on underside of hammer
-            val mouthPath = Path().apply {
+            val mouthPath = paths.obtain().apply {
                 moveTo(headX - 2f * s, y + bodyH * 0.42f)
                 quadraticTo(headX, y + bodyH * 0.50f, headX + 2f * s, y + bodyH * 0.42f)
             }

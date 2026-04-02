@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val LionEye    = Color(0xFFFFCE40)  // yellow eye
 private val LionWeb    = Color(0x559B3825)  // translucent webbing between spines
 
 object LionfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -46,7 +49,7 @@ object LionfishRenderer : CreatureRenderer {
             val pectH    = (8f  + level * 0.6f) * s
 
             // Top pectoral
-            val pectTop = Path().apply {
+            val pectTop = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.2f, y - bodyH * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.1f + pectSway * 0.3f, y - bodyH * 0.5f - pectH * 0.4f,
@@ -78,7 +81,7 @@ object LionfishRenderer : CreatureRenderer {
             }
 
             // Bottom pectoral (mirror)
-            val pectBot = Path().apply {
+            val pectBot = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.2f, y + bodyH * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.1f + pectSway * 0.3f, y + bodyH * 0.5f + pectH * 0.4f,
@@ -121,7 +124,7 @@ object LionfishRenderer : CreatureRenderer {
                     val midX      = baseX     + sin(angle)     * thisSpineLen    * 0.55f + spineSway * (1f - frac)
                     val midY      = baseY     - cos(angle)     * thisSpineLen    * 0.55f
 
-                    val web = Path().apply {
+                    val web = paths.obtain().apply {
                         moveTo(baseX, baseY)
                         lineTo(midX, midY)
                         lineTo(prevTipX, prevTipY)
@@ -144,7 +147,7 @@ object LionfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // MAIN BODY
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y)
                 cubicTo(
                     x - bodyLen * 0.75f, y - bodyH,
@@ -166,7 +169,7 @@ object LionfishRenderer : CreatureRenderer {
             for (i in 1..stripeCount) {
                 val sx = x - bodyLen + i * bodyLen * 1.4f / (stripeCount + 1)
                 val stripeH = bodyH * (0.5f + sin(i.toFloat() / stripeCount * PI.toFloat()) * 0.4f)
-                val stripePath = Path().apply {
+                val stripePath = paths.obtain().apply {
                     moveTo(sx - 1.2f * s, y - stripeH * 0.85f)
                     cubicTo(
                         sx - 0.6f * s, y - stripeH,
@@ -215,7 +218,7 @@ object LionfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // VENTRAL / PELVIC FINS — small below
             // ════════════════════════════════════════════════════════════════
-            val ventral = Path().apply {
+            val ventral = paths.obtain().apply {
                 moveTo(x, y + bodyH * 0.85f)
                 cubicTo(
                     x + bodyLen * 0.05f, y + bodyH * 1.35f,

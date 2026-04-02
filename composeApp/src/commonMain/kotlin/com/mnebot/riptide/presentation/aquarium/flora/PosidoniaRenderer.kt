@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -18,11 +19,13 @@ private val PosMatte  = Color(0xFF4A3010)  // dead fibers (level 5+)
 private val PosYellow = Color(0xFF90B020)  // yellow-green tips
 
 object PosidoniaRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // y = base (floor). Draw upward.
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -64,8 +67,8 @@ object PosidoniaRenderer : CreatureRenderer {
         var prevX = baseX
         var prevY = baseY
 
-        val pathLeft  = Path()
-        val pathRight = Path()
+        val pathLeft  = paths.obtain()
+        val pathRight = paths.obtain()
         pathLeft.moveTo(prevX, prevY)
         pathRight.moveTo(prevX, prevY)
 
@@ -98,7 +101,7 @@ object PosidoniaRenderer : CreatureRenderer {
         val tipY = yPositions[segments]
 
         // Combine into one blade path
-        val bladePath = Path().apply {
+        val bladePath = paths.obtain().apply {
             moveTo(baseX - bladeW0, baseY)
             // Left edge going up
             for (seg in 1..segments) {

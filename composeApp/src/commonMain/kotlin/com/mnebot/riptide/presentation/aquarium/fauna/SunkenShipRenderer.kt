@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -22,11 +23,13 @@ private val ShipKelp   = Color(0xFF3A6A20)  // seaweed
 private val ShipPort   = Color(0xFF112233)  // porthole glass
 
 object SunkenShipRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base, draw upward
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -48,7 +51,7 @@ object SunkenShipRenderer : CreatureRenderer {
                 val swx  = x - hullW * 0.7f + hullW * 1.4f * swf
                 val swH  = (5f + sw * 2f + level * 0.3f) * s
                 val swSway = sin(t * 1.5f * PI.toFloat() + sw * 0.8f) * swH * 0.3f
-                val weed = Path().apply {
+                val weed = paths.obtain().apply {
                     moveTo(swx, hullBaseY)
                     cubicTo(swx + swSway * 0.3f, hullBaseY - swH * 0.4f,
                         swx + swSway * 0.7f, hullBaseY - swH * 0.7f,
@@ -60,7 +63,7 @@ object SunkenShipRenderer : CreatureRenderer {
         }
 
         // ── HULL ──────────────────────────────────────────────────────────────
-        val hull = Path().apply {
+        val hull = paths.obtain().apply {
             // Keel (pointed at ends, widest amidships)
             moveTo(x - hullW, hullBaseY - hullH * 0.15f)  // stern bow
             cubicTo(x - hullW * 0.8f, hullBaseY,
@@ -103,7 +106,7 @@ object SunkenShipRenderer : CreatureRenderer {
         // ── BROKEN MAST ───────────────────────────────────────────────────────
         val mastBreakY = deckY - mastH * 0.55f  // where the mast snaps
         // Lower mast section (still standing, slightly tilted)
-        val mastPath = Path().apply {
+        val mastPath = paths.obtain().apply {
             moveTo(mastBaseX, deckY)
             lineTo(mastBaseX - mastH * 0.04f, mastBreakY)
         }
@@ -111,7 +114,7 @@ object SunkenShipRenderer : CreatureRenderer {
             style = Stroke(width = (3.5f * s).coerceAtLeast(2.0f), cap = StrokeCap.Round))
 
         // Upper mast section (fallen, angled to one side)
-        val fallMast = Path().apply {
+        val fallMast = paths.obtain().apply {
             moveTo(mastBaseX - mastH * 0.04f, mastBreakY)
             cubicTo(
                 mastBaseX - mastH * 0.04f + hullW * 0.15f, mastBreakY - mastH * 0.10f,
@@ -173,7 +176,7 @@ object SunkenShipRenderer : CreatureRenderer {
                 val (cx2, cy2) = cp
                 val coralR = (1.5f + i * 0.3f + level * 0.1f) * s
                 val pulseCoral = (sin(t * (0.6f + i * 0.1f) * PI.toFloat()) * 0.5f + 0.5f) * 0.2f
-                drawCircle(ShipCoral.copy(alpha = 0.75f + pulseCoral.toFloat()),
+                drawCircle(ShipCoral.copy(alpha = 0.75f + pulseCoral),
                     coralR, Offset(cx2, cy2))
                 drawCircle(ShipCoral2.copy(alpha = 0.45f), coralR * 0.6f, Offset(cx2, cy2))
             }

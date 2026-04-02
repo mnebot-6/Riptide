@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val barnacleLayout = listOf(
 )
 
 object BarnacleRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // y = base (floor). Draw upward.
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -59,7 +62,7 @@ object BarnacleRenderer : CreatureRenderer {
         val topY = baseY - height
         val openingW = halfW * 0.55f
 
-        val shell = Path().apply {
+        val shell = paths.obtain().apply {
             moveTo(cx - halfW, baseY)
             cubicTo(
                 cx - halfW * 0.8f, baseY - height * 0.3f,
@@ -93,7 +96,7 @@ object BarnacleRenderer : CreatureRenderer {
         }
 
         // Interior (dark opening at top)
-        val interior = Path().apply {
+        val interior = paths.obtain().apply {
             moveTo(cx - openingW, topY)
             lineTo(cx + openingW, topY)
             lineTo(cx + openingW * 0.7f, topY + height * 0.12f)
@@ -116,7 +119,7 @@ object BarnacleRenderer : CreatureRenderer {
                 val cBaseX  = cx + cFrac * openingW * 1.3f
                 val cSway   = sin(t * 2f * PI.toFloat() + c * 0.8f) * halfW * 0.4f
                 val cirriLen = height * (0.22f + c % 2 * 0.10f)
-                val cirri = Path().apply {
+                val cirri = paths.obtain().apply {
                     moveTo(cBaseX, topY)
                     quadraticTo(
                         cBaseX + cSway * 0.5f, topY - cirriLen * 0.5f,

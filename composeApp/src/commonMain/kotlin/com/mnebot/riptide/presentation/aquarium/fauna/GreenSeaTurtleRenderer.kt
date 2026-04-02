@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val EyeDark          = Color(0xFF182810)  // eye dark
 private val GoldGlow         = Color(0xFFFFD050)  // golden outline glow
 
 object GreenSeaTurtleRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -62,7 +65,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                     withTransform({
                         rotate(degrees = angle, pivot = Offset(flipX, flipY))
                     }) {
-                        val flipper = Path().apply {
+                        val flipper = paths.obtain().apply {
                             moveTo(flipX, flipY)
                             cubicTo(flipX + flipLen * 0.3f, flipY + side * flipLen * 0.15f,
                                 flipX + flipLen * 0.7f, flipY + side * flipLen * 0.25f,
@@ -89,7 +92,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                         rotate(degrees = angle, pivot = Offset(flipX, flipY))
                     }) {
                         // Flipper shadow
-                        val flipShadow = Path().apply {
+                        val flipShadow = paths.obtain().apply {
                             moveTo(flipX, flipY)
                             cubicTo(flipX - flipLen * 0.35f, flipY + side * flipLen * 0.55f,
                                 flipX - flipLen * 0.75f, flipY + side * flipLen * 0.5f,
@@ -101,7 +104,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                         }
                         drawPath(flipShadow, SkinDark.copy(alpha = 0.15f))
 
-                        val flipper = Path().apply {
+                        val flipper = paths.obtain().apply {
                             moveTo(flipX, flipY)
                             cubicTo(flipX - flipLen * 0.3f, flipY + side * flipLen * 0.5f,
                                 flipX - flipLen * 0.7f, flipY + side * flipLen * 0.45f,
@@ -120,7 +123,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
 
                 // ── TAIL ─────────────────────────────────────────────────────
                 val tailSway = sin(t * 1.2f * PI.toFloat()) * s * 0.8f
-                val tail = Path().apply {
+                val tail = paths.obtain().apply {
                     moveTo(x + bodyLen * 0.42f, y)
                     cubicTo(x + bodyLen * 0.55f, y - s * 1.2f + tailSway,
                         x + bodyLen * 0.65f, y - s * 0.5f + tailSway,
@@ -133,7 +136,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                 drawPath(tail, SkinOlive)
 
                 // ── HEAD ─────────────────────────────────────────────────────
-                val headPath = Path().apply {
+                val headPath = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.38f, y - bodyH * 0.18f)
                     cubicTo(x - bodyLen * 0.55f, y - bodyH * 0.25f,
                         x - bodyLen * 0.72f, y - bodyH * 0.12f,
@@ -147,7 +150,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                 drawPath(headPath, SkinLight.copy(alpha = 0.25f))
 
                 // ── CARAPACE (shell, oval) ───────────────────────────────────
-                val shellShadow = Path().apply {
+                val shellShadow = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.38f, y)
                     cubicTo(x - bodyLen * 0.35f, y - bodyH * 0.72f,
                         x + bodyLen * 0.3f, y - bodyH * 0.72f,
@@ -159,7 +162,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                 }
                 drawPath(shellShadow, ShadowDeep.copy(alpha = 0.15f))
 
-                val shell = Path().apply {
+                val shell = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.36f, y)
                     cubicTo(x - bodyLen * 0.33f, y - bodyH * 0.68f,
                         x + bodyLen * 0.28f, y - bodyH * 0.68f,
@@ -172,7 +175,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                 drawPath(shell, CarapaceOlive)
 
                 // Shell upper highlight
-                val shellHL = Path().apply {
+                val shellHL = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.28f, y - bodyH * 0.15f)
                     cubicTo(x - bodyLen * 0.22f, y - bodyH * 0.55f,
                         x + bodyLen * 0.15f, y - bodyH * 0.55f,
@@ -243,7 +246,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                 }
 
                 // ── PLASTRON (belly, lighter) ────────────────────────────────
-                val plastron = Path().apply {
+                val plastron = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.32f, y)
                     cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.45f,
                         x + bodyLen * 0.20f, y + bodyH * 0.45f,
@@ -268,7 +271,7 @@ object GreenSeaTurtleRenderer : CreatureRenderer {
                     Offset(eyeX - eyeR * 0.15f, eyeY - eyeR * 0.15f))
 
                 // ── BEAK (mouth) ─────────────────────────────────────────────
-                val beakPath = Path().apply {
+                val beakPath = paths.obtain().apply {
                     moveTo(x - bodyLen * 0.75f, y - s * 0.3f)
                     cubicTo(x - bodyLen * 0.80f, y,
                         x - bodyLen * 0.80f, y,

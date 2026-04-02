@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -32,11 +33,13 @@ private val ShadowRed      = Color(0xFF3A0808)  // red shadow
 private val PowerGlow      = Color(0xFF200818)  // dark glow (level 5+)
 
 object CoconutCrabRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -96,7 +99,7 @@ object CoconutCrabRenderer : CreatureRenderer {
 
             // ── ABDOMEN (segmented, tucked under but visible) ───────────────
             val abdX = x + bodyW * 0.35f
-            val abdPath = Path().apply {
+            val abdPath = paths.obtain().apply {
                 moveTo(abdX, y - bodyH * 0.25f)
                 cubicTo(
                     abdX + bodyW * 0.25f, y - bodyH * 0.20f,
@@ -123,7 +126,7 @@ object CoconutCrabRenderer : CreatureRenderer {
             }
 
             // ── MAIN CARAPACE (large, rounded) ──────────────────────────────
-            val carapaceShadow = Path().apply {
+            val carapaceShadow = paths.obtain().apply {
                 moveTo(x - bodyW * 0.52f, y)
                 cubicTo(x - bodyW * 0.52f, y - bodyH * 0.57f, x + bodyW * 0.42f, y - bodyH * 0.57f, x + bodyW * 0.42f, y)
                 cubicTo(x + bodyW * 0.42f, y + bodyH * 0.57f, x - bodyW * 0.52f, y + bodyH * 0.57f, x - bodyW * 0.52f, y)
@@ -131,7 +134,7 @@ object CoconutCrabRenderer : CreatureRenderer {
             }
             drawPath(carapaceShadow, ShadowRed.copy(alpha = 0.22f))
 
-            val carapace = Path().apply {
+            val carapace = paths.obtain().apply {
                 moveTo(x - bodyW * 0.50f, y)
                 cubicTo(x - bodyW * 0.50f, y - bodyH * 0.55f, x + bodyW * 0.40f, y - bodyH * 0.55f, x + bodyW * 0.40f, y)
                 cubicTo(x + bodyW * 0.40f, y + bodyH * 0.55f, x - bodyW * 0.50f, y + bodyH * 0.55f, x - bodyW * 0.50f, y)
@@ -142,7 +145,7 @@ object CoconutCrabRenderer : CreatureRenderer {
             drawPath(carapace, mainColor)
 
             // Purple shading (lower half, characteristic of coconut crab)
-            val purpleZone = Path().apply {
+            val purpleZone = paths.obtain().apply {
                 moveTo(x - bodyW * 0.45f, y + bodyH * 0.05f)
                 cubicTo(
                     x - bodyW * 0.40f, y + bodyH * 0.48f,
@@ -159,7 +162,7 @@ object CoconutCrabRenderer : CreatureRenderer {
             drawPath(purpleZone, BodyPurple.copy(alpha = 0.35f + satBoost))
 
             // Upper highlight
-            val hlPath = Path().apply {
+            val hlPath = paths.obtain().apply {
                 moveTo(x - bodyW * 0.35f, y - bodyH * 0.20f)
                 cubicTo(
                     x - bodyW * 0.25f, y - bodyH * 0.45f,
@@ -210,7 +213,7 @@ object CoconutCrabRenderer : CreatureRenderer {
                 val clawW = clawLen * 0.40f
                 val clawH = clawLen * 0.28f
 
-                val propodus = Path().apply {
+                val propodus = paths.obtain().apply {
                     moveTo(armElbowX, clawCy - clawH)
                     cubicTo(
                         armElbowX - clawW * 0.3f, clawCy - clawH * 1.15f,
@@ -229,7 +232,7 @@ object CoconutCrabRenderer : CreatureRenderer {
                 drawPath(propodus, ClawDark.copy(alpha = 0.30f))
                 drawPath(propodus, ClawRed)
                 // Claw highlight
-                val clawHL = Path().apply {
+                val clawHL = paths.obtain().apply {
                     moveTo(armElbowX - clawW * 0.1f, clawCy - clawH * 0.6f)
                     cubicTo(
                         armElbowX - clawW * 0.2f, clawCy - clawH * 0.85f,
@@ -246,7 +249,7 @@ object CoconutCrabRenderer : CreatureRenderer {
                 drawPath(clawHL, ClawHighlight.copy(alpha = 0.35f))
 
                 // Dactylus (upper pincer finger)
-                val upperFinger = Path().apply {
+                val upperFinger = paths.obtain().apply {
                     moveTo(clawCx - clawW * 0.8f, clawCy - clawH * 0.2f)
                     cubicTo(
                         clawCx - clawW * 1.3f, clawCy - clawH * 0.6f,
@@ -263,7 +266,7 @@ object CoconutCrabRenderer : CreatureRenderer {
                     Offset(clawCx - clawW * 1.4f, clawCy - clawH * 0.08f))
 
                 // Pollex (lower pincer finger)
-                val lowerFinger = Path().apply {
+                val lowerFinger = paths.obtain().apply {
                     moveTo(clawCx - clawW * 0.8f, clawCy + clawH * 0.2f)
                     cubicTo(
                         clawCx - clawW * 1.3f, clawCy + clawH * 0.5f,

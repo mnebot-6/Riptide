@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
@@ -20,11 +21,13 @@ private val GlowRed        = Color(0xFFFF4020)   // pulse glow
 private val AuraRed        = Color(0xFFFF2010)   // warning aura (level 5+)
 
 object FireCoralRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -50,7 +53,7 @@ object FireCoralRenderer : CreatureRenderer {
         // Base stalk — thick trunk from ground
         val stalkW = baseW * 0.6f
         val stalkH = baseH * 0.25f
-        val stalkPath = Path().apply {
+        val stalkPath = paths.obtain().apply {
             moveTo(x - stalkW, y)
             cubicTo(
                 x - stalkW * 0.9f, y - stalkH * 0.5f,

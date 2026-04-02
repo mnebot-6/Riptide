@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val ChestRed   = Color(0xFFCC2222)  // red gem accent
 private val ChestDark  = Color(0xFF3A1A08)  // deep shadow
 
 object TreasureChestRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base (floor), draw upward
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -54,7 +57,7 @@ object TreasureChestRenderer : CreatureRenderer {
         }
 
         // ── MAIN CHEST BOX ────────────────────────────────────────────────────
-        val box = Path().apply {
+        val box = paths.obtain().apply {
             moveTo(x - chestW, baseY)
             lineTo(x - chestW, baseY - chestH)
             lineTo(x + chestW, baseY - chestH)
@@ -81,7 +84,7 @@ object TreasureChestRenderer : CreatureRenderer {
 
         // ── GOLD BANDS (horizontal metal straps) ──────────────────────────────
         for (bandY in listOf(baseY - chestH * 0.25f, baseY - chestH * 0.70f)) {
-            val band = Path().apply {
+            val band = paths.obtain().apply {
                 moveTo(x - chestW, bandY - 1.2f * s)
                 lineTo(x + chestW, bandY - 1.2f * s)
                 lineTo(x + chestW, bandY + 1.2f * s)
@@ -110,7 +113,7 @@ object TreasureChestRenderer : CreatureRenderer {
 
         // ── LID (rounded top) ─────────────────────────────────────────────────
         val lidBaseY = baseY - chestH
-        val lid = Path().apply {
+        val lid = paths.obtain().apply {
             moveTo(x - chestW, lidBaseY - lidOpen)
             cubicTo(x - chestW * 0.8f, lidBaseY - lidH - lidOpen,
                 x + chestW * 0.8f, lidBaseY - lidH - lidOpen,
@@ -143,7 +146,7 @@ object TreasureChestRenderer : CreatureRenderer {
         val lockW = 2.8f * s
         val lockH = 2.2f * s
         // Lock body (rectangle)
-        val lockBody = Path().apply {
+        val lockBody = paths.obtain().apply {
             moveTo(lockX - lockW, lockY)
             lineTo(lockX + lockW, lockY)
             lineTo(lockX + lockW, lockY + lockH)
@@ -154,7 +157,7 @@ object TreasureChestRenderer : CreatureRenderer {
         drawPath(lockBody, ChestGold.copy(alpha = 0.60f),
             style = Stroke(width = (0.6f * s).coerceAtLeast(0.3f)))
         // Lock shackle (arch above)
-        val shackle = Path().apply {
+        val shackle = paths.obtain().apply {
             moveTo(lockX - lockW * 0.5f, lockY)
             cubicTo(lockX - lockW * 0.5f, lockY - lockH * 1.2f,
                 lockX + lockW * 0.5f, lockY - lockH * 1.2f,

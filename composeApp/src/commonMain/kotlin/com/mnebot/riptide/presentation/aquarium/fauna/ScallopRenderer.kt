@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val PearlWhite     = Color(0xFFFFF5F8)  // pearl highlight
 private val ShadowBrown    = Color(0xFF6B5040)  // warm shadow
 
 object ScallopRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -65,7 +68,7 @@ object ScallopRenderer : CreatureRenderer {
             withTransform({
                 rotate(degrees = openAngle * 180f / PI.toFloat(), pivot = Offset(x, y))
             }) {
-                val bottomShell = Path().apply {
+                val bottomShell = paths.obtain().apply {
                     moveTo(x - shellR, y)
                     cubicTo(
                         x - shellR * 0.95f, y + shellR * 0.55f,
@@ -105,7 +108,7 @@ object ScallopRenderer : CreatureRenderer {
             // ── INTERIOR (visible when open) ─────────────────────────────────
             if (openAngle > 0.05f) {
                 val interiorH = shellR * openAngle * 2.5f
-                val interior = Path().apply {
+                val interior = paths.obtain().apply {
                     moveTo(x - shellR * 0.8f, y)
                     cubicTo(
                         x - shellR * 0.5f, y - interiorH,
@@ -133,7 +136,7 @@ object ScallopRenderer : CreatureRenderer {
                 rotate(degrees = -openAngle * 180f / PI.toFloat(), pivot = Offset(x, y))
             }) {
                 // Shell shadow
-                val topShadow = Path().apply {
+                val topShadow = paths.obtain().apply {
                     moveTo(x - shellR * 1.02f, y + 0.5f * s)
                     cubicTo(
                         x - shellR * 0.97f, y - shellR * 0.53f,
@@ -150,7 +153,7 @@ object ScallopRenderer : CreatureRenderer {
                 drawPath(topShadow, ShadowBrown.copy(alpha = 0.15f))
 
                 // Main top shell
-                val topShell = Path().apply {
+                val topShell = paths.obtain().apply {
                     moveTo(x - shellR, y)
                     cubicTo(
                         x - shellR * 0.95f, y - shellR * 0.55f,
@@ -193,7 +196,7 @@ object ScallopRenderer : CreatureRenderer {
                 }
 
                 // Upper highlight
-                val topHL = Path().apply {
+                val topHL = paths.obtain().apply {
                     moveTo(x - shellR * 0.5f, y - shellR * 0.4f)
                     cubicTo(
                         x - shellR * 0.3f, y - shellR * 0.85f,
@@ -216,7 +219,7 @@ object ScallopRenderer : CreatureRenderer {
                 )
 
                 // ── HINGE EARS (small wing-like flaps at hinge) ──────────────
-                val earL = Path().apply {
+                val earL = paths.obtain().apply {
                     moveTo(x - shellR * 0.05f, y)
                     lineTo(x - shellR * 0.35f, y - shellR * 0.15f)
                     lineTo(x - shellR * 0.30f, y + shellR * 0.03f)
@@ -226,7 +229,7 @@ object ScallopRenderer : CreatureRenderer {
                 drawPath(earL, HingeDark.copy(alpha = 0.25f),
                     style = Stroke(width = (0.4f * s).coerceAtLeast(0.2f)))
 
-                val earR = Path().apply {
+                val earR = paths.obtain().apply {
                     moveTo(x + shellR * 0.05f, y)
                     lineTo(x + shellR * 0.35f, y - shellR * 0.15f)
                     lineTo(x + shellR * 0.30f, y + shellR * 0.03f)

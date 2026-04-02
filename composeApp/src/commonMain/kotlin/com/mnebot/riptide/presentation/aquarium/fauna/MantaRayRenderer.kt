@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -31,11 +32,13 @@ private val MantaEdge      = Color(0xFF3A3A6E)
  * Cuando mirrored=true la escala se invierte en X → nada hacia la derecha.
  */
 object MantaRayRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f   // factor de escala base
 
         // ── Dimensiones ──
@@ -65,7 +68,7 @@ object MantaRayRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // ALA SUPERIOR (arriba del cuerpo, punta va hacia arriba)
             // ════════════════════════════════════════════════════════════════
-            val topWing = Path().apply {
+            val topWing = paths.obtain().apply {
                 // Raíz delantera (pegada al cuerpo, lado cabeza)
                 moveTo(x - bodyLen * 0.5f, y - bodyHalf * 0.6f)
                 // Borde delantero del ala → hacia la punta
@@ -84,7 +87,7 @@ object MantaRayRenderer : CreatureRenderer {
             }
             drawPath(topWing, MantaWingOuter)
             // Detalle interior del ala
-            val topInner = Path().apply {
+            val topInner = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y - bodyHalf * 0.7f)
                 cubicTo(
                     x - bodyLen * 0.15f + rootDx * 0.7f, y - wingSpan * 0.28f,
@@ -98,7 +101,7 @@ object MantaRayRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // ALA INFERIOR (espejo del ala superior)
             // ════════════════════════════════════════════════════════════════
-            val botWing = Path().apply {
+            val botWing = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y + bodyHalf * 0.6f)
                 cubicTo(
                     x - bodyLen * 0.3f - rootDx, y + wingSpan * 0.35f,
@@ -113,7 +116,7 @@ object MantaRayRenderer : CreatureRenderer {
                 close()
             }
             drawPath(botWing, MantaWingOuter)
-            val botInner = Path().apply {
+            val botInner = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y + bodyHalf * 0.7f)
                 cubicTo(
                     x - bodyLen * 0.15f - rootDx * 0.7f, y + wingSpan * 0.28f,
@@ -127,7 +130,7 @@ object MantaRayRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // CUERPO CENTRAL (forma de torpedo aplanado, horizontal)
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 // Desde la cabeza (izq) hasta la cola (der)
                 moveTo(x - bodyLen, y)                                // punta de la cabeza
                 // Borde superior del cuerpo
@@ -161,7 +164,7 @@ object MantaRayRenderer : CreatureRenderer {
             // COLA (línea fina ondulante hacia la derecha)
             // ════════════════════════════════════════════════════════════════
             val tailSway = sin(t * 3f) * 2.5f * s
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.5f, y)
                 cubicTo(
                     x + bodyLen * 0.5f + tailLen * 0.3f, y + tailSway * 0.4f,
@@ -180,7 +183,7 @@ object MantaRayRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             val cephSway = sin(t * 2f) * 0.8f * s
             // Superior
-            val cephTop = Path().apply {
+            val cephTop = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.85f, y - bodyHalf * 0.35f)
                 quadraticTo(
                     x - bodyLen - cephLen * 0.4f, y - bodyHalf * 0.6f + cephSway,
@@ -188,7 +191,7 @@ object MantaRayRenderer : CreatureRenderer {
                 )
             }
             // Inferior
-            val cephBot = Path().apply {
+            val cephBot = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.85f, y + bodyHalf * 0.35f)
                 quadraticTo(
                     x - bodyLen - cephLen * 0.4f, y + bodyHalf * 0.6f - cephSway,

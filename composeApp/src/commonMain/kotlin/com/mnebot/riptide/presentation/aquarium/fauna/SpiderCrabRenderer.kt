@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val SpidEye  = Color(0xFF000000)  // eye
 private val SpidSpot = Color(0xFFCC8040)  // lighter spots on carapace
 
 object SpiderCrabRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -110,12 +113,12 @@ object SpiderCrabRenderer : CreatureRenderer {
                     strokeWidth = (1.2f * s).coerceAtLeast(0.6f), cap = StrokeCap.Round)
 
                 // Claw tip (small pincer)
-                val pincer1 = Path().apply {
+                val pincer1 = paths.obtain().apply {
                     val pAngle = clawAngle2 - sideSign * 0.4f
                     moveTo(tipX, tipY)
                     lineTo(tipX + cos(pAngle) * 2.5f * s, tipY + sin(pAngle) * 2.5f * s)
                 }
-                val pincer2 = Path().apply {
+                val pincer2 = paths.obtain().apply {
                     val pAngle = clawAngle2 + sideSign * 0.15f
                     moveTo(tipX, tipY)
                     lineTo(tipX + cos(pAngle) * 2.0f * s, tipY + sin(pAngle) * 2.0f * s)
@@ -129,7 +132,7 @@ object SpiderCrabRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // CARAPACE — small oval body
             // ════════════════════════════════════════════════════════════════
-            val carapace = Path().apply {
+            val carapace = paths.obtain().apply {
                 moveTo(x, y - bodyH)
                 cubicTo(
                     x + bodyW, y - bodyH * 0.6f,

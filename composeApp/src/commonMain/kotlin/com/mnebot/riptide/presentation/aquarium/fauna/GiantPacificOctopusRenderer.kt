@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,11 +28,13 @@ private val EyeOrange       = Color(0xFFE0A060)  // iris color
 private val MantleHighlight = Color(0xFFF0B888)  // mantle top highlight
 
 object GiantPacificOctopusRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -89,7 +92,7 @@ object GiantPacificOctopusRenderer : CreatureRenderer {
                 val tipX = x + cos(baseAngle) * armLen + perpX * wave3
                 val tipY = y + sin(baseAngle) * armLen + perpY * wave3 + mantleR * 0.7f
 
-                val arm = Path().apply {
+                val arm = paths.obtain().apply {
                     moveTo(bx, by)
                     cubicTo(cp1x, cp1y, cp2x, cp2y, tipX, tipY)
                 }
@@ -126,7 +129,7 @@ object GiantPacificOctopusRenderer : CreatureRenderer {
                 Offset(x + mantleR * 0.03f, y + mantleR * 0.04f))
 
             // ── MANTLE (large dome) ──────────────────────────────────────
-            val mantlePath = Path().apply {
+            val mantlePath = paths.obtain().apply {
                 moveTo(x - mantleRDyn * 0.9f, y + mantleR * 0.2f)
                 cubicTo(x - mantleRDyn * 0.9f, y - mantleRDyn * 0.9f,
                     x + mantleRDyn * 0.9f, y - mantleRDyn * 0.9f,
@@ -139,7 +142,7 @@ object GiantPacificOctopusRenderer : CreatureRenderer {
             drawPath(mantlePath, BodyRust)
 
             // Lower mantle shading
-            val mantleLower = Path().apply {
+            val mantleLower = paths.obtain().apply {
                 moveTo(x - mantleRDyn * 0.85f, y)
                 cubicTo(x - mantleRDyn * 0.6f, y + mantleR * 0.45f,
                     x + mantleRDyn * 0.6f, y + mantleR * 0.45f,
@@ -186,7 +189,7 @@ object GiantPacificOctopusRenderer : CreatureRenderer {
             }
 
             // ── WEB BETWEEN ARMS (inter-arm membrane) ────────────────────
-            val webPath = Path().apply {
+            val webPath = paths.obtain().apply {
                 val wbx1 = x - mantleRDyn * 0.5f
                 val wby  = y + mantleR * 0.55f
                 val wbx2 = x + mantleRDyn * 0.5f
@@ -216,7 +219,7 @@ object GiantPacificOctopusRenderer : CreatureRenderer {
                 // Iris
                 drawCircle(EyeOrange, eyeR * 0.65f, Offset(eyeX + eyeR * 0.05f * side, eyeY))
                 // Pupil (horizontal bar, octopus-style)
-                val pupilPath = Path().apply {
+                val pupilPath = paths.obtain().apply {
                     val px = eyeX + eyeR * 0.06f * side
                     val py = eyeY
                     moveTo(px - eyeR * 0.30f, py)

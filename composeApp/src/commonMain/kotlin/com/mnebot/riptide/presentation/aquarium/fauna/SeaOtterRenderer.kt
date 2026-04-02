@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val OtterEye    = Color(0xFF1A1010)
 private val OtterWhisk  = Color(0xFFE0D0C0)  // pale whiskers
 
 object SeaOtterRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -43,7 +46,7 @@ object SeaOtterRenderer : CreatureRenderer {
             // ── TAIL (tapered, slightly flattened) ─────────────────────────────
             val tailX = x + bodyLen * 0.5f
             val tailSway = sin(t * 2.0f * PI.toFloat()) * 1.8f * s
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.18f + bodyRoll)
                 cubicTo(tailX + tailLen * 0.5f, y - bodyH * 0.1f + tailSway * 0.5f,
                     tailX + tailLen * 0.85f, y - bodyH * 0.05f + tailSway,
@@ -59,7 +62,7 @@ object SeaOtterRenderer : CreatureRenderer {
             val hindX = x + bodyLen * 0.30f
             val hindY = y + bodyH * 0.70f + bodyRoll * 0.6f
             val footSway = sin(t * 1.4f * PI.toFloat()) * 1.2f * s
-            val hindFoot = Path().apply {
+            val hindFoot = paths.obtain().apply {
                 moveTo(hindX, hindY)
                 cubicTo(hindX + tailLen * 0.3f + footSway, hindY + bodyH * 0.8f,
                     hindX + tailLen * 0.5f + footSway, hindY + bodyH * 1.0f,
@@ -72,7 +75,7 @@ object SeaOtterRenderer : CreatureRenderer {
             drawPath(hindFoot, OtterBrown)
 
             // ── MAIN BODY (plump, rounded) ────────────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y + bodyRoll)
                 cubicTo(x - bodyLen * 0.4f, y - bodyH + bodyRoll * 0.8f,
                     x + bodyLen * 0.2f, y - bodyH * 0.92f + bodyRoll * 0.4f,
@@ -104,7 +107,7 @@ object SeaOtterRenderer : CreatureRenderer {
             }
 
             // Belly (lighter underside)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.38f, y + bodyH * 0.15f + bodyRoll)
                 cubicTo(x - bodyLen * 0.2f, y + bodyH * 0.90f + bodyRoll * 0.6f,
                     x + bodyLen * 0.15f, y + bodyH * 0.90f + bodyRoll * 0.4f,

@@ -35,12 +35,8 @@ class SyncManager(
         if (userPrefs.getAccessToken() == null) return SyncResult.NotLoggedIn
 
         _status.value = SyncStatus.SYNCING
-        Log.d(TAG, "Starting sync...")
         return try {
             val lastSync = userPrefs.getLastSyncTime()
-            Log.d(TAG, "Last sync time: $lastSync")
-
-            // -- PUSH: Gather locally dirty entities --
             val since = lastSync ?: ""
             val request = SyncRequest(
                 lastSyncTime = lastSync,
@@ -54,23 +50,14 @@ class SyncManager(
                 marineCreatures = db.marineCreatureDao().getModifiedSince(since).map { it.toDto() }
             )
 
-            Log.d(TAG, "PUSH: ${request.workBlocks.size} blocks, ${request.dayTasks.size} tasks, ${request.marineCreatures.size} creatures")
-
-            // -- Single network call --
             val response = api.sync(request)
-            Log.d(TAG, "PULL: ${response.workBlocks.size} blocks, ${response.dayTasks.size} tasks, ${response.marineCreatures.size} creatures")
-
-            // -- PULL: Apply server changes locally --
             applyServerChanges(response)
-
-            // -- Update sync timestamp --
             userPrefs.setLastSyncTime(response.serverTime)
 
             _status.value = SyncStatus.SUCCESS
-            Log.d(TAG, "Sync completed successfully, serverTime=${response.serverTime}")
             SyncResult.Success
         } catch (e: Exception) {
-            Log.e(TAG, "Sync FAILED", e)
+            Log.e(TAG, "Sync failed", e)
             _status.value = SyncStatus.ERROR
             SyncResult.Error(e.message ?: "Sync failed")
         }

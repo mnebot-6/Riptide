@@ -147,7 +147,7 @@ private fun DayCell(
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = date.dayOfMonth.toString(),
+            text = date.day.toString(),
             color = if (isSelected) TextPrimary else TextSecondary,
             fontSize = 16.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
@@ -204,7 +204,6 @@ private fun dayInitial(dayOfWeek: DayOfWeek): String {
         DayOfWeek.FRIDAY -> "V"
         DayOfWeek.SATURDAY -> "S"
         DayOfWeek.SUNDAY -> "D"
-        else -> ""
     }
 }
 

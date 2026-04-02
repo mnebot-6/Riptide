@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -18,11 +19,13 @@ private val AnemoneTip = Color(0xFFDA70D6)
 private val AnemoneBright = Color(0xFFEE99E8)
 
 object AnemoneRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val scale = size / 28f
 
         // Base (disco)
@@ -60,7 +63,7 @@ object AnemoneRenderer : CreatureRenderer {
             val tentacleColor = if (i % 3 == 0) AnemoneBase else AnemoneDark
             val tipColor = if (level >= 4) AnemoneBright else AnemoneTip
 
-            val path = Path().apply {
+            val path = paths.obtain().apply {
                 moveTo(x + sin(angle) * baseRadius * 0.4f, y - baseRadius * 0.2f)
                 quadraticTo(ctrlX, ctrlY, tipX, tipY)
             }

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val LobBlack  = Color(0xFF1A1010)  // outlines
 private val LobWhite  = Color(0xFFF0D0C0)  // underbelly, eye
 
 object LobsterRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -54,7 +57,7 @@ object LobsterRenderer : CreatureRenderer {
             val fanAngles = listOf(-0.7f, -0.35f, 0f, 0.35f, 0.7f)
             for (fa in fanAngles) {
                 val fanLen = (5f + level * 0.4f) * s * (1f - 0.1f * kotlin.math.abs(fa))
-                val fan = Path().apply {
+                val fan = paths.obtain().apply {
                     moveTo(tailX, y + fa * fanH * 0.3f)
                     cubicTo(
                         tailX + fanLen * 0.5f, y + fa * fanH * 0.5f + tailSway * 0.4f,
@@ -71,7 +74,7 @@ object LobsterRenderer : CreatureRenderer {
             // ── ABDOMEN SEGMENTS ──────────────────────────────────────────────
             for (i in (0 until segCount).reversed()) {
                 val sx = startX + headW * 0.3f + i * segLen
-                val segPath = Path().apply {
+                val segPath = paths.obtain().apply {
                     moveTo(sx, y - segH * 0.5f)
                     cubicTo(sx + segLen * 0.3f, y - segH * 0.55f,
                         sx + segLen * 0.7f, y - segH * 0.55f,
@@ -93,7 +96,7 @@ object LobsterRenderer : CreatureRenderer {
             // ── CEPHALOTHORAX (HEAD+THORAX) ───────────────────────────────────
             val hx = startX
             val hy = y
-            val head = Path().apply {
+            val head = paths.obtain().apply {
                 moveTo(hx - headW, hy)
                 cubicTo(hx - headW * 0.8f, hy - headH,
                     hx, hy - headH * 0.95f,
@@ -131,7 +134,7 @@ object LobsterRenderer : CreatureRenderer {
 
             // ── LARGE CLAW (chela) — dominant, extends forward ─────────────────
             val clawBaseX = hx - headW * 0.75f
-            val clawArm = Path().apply {
+            val clawArm = paths.obtain().apply {
                 moveTo(clawBaseX, hy - headH * 0.3f)
                 lineTo(clawBaseX - headW * 0.9f, hy - headH * 0.2f)
             }

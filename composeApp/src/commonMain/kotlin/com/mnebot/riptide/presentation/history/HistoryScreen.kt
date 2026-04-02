@@ -464,7 +464,7 @@ private fun HistoryTaskRow(task: DayTask, block: WorkBlock?) {
 }
 
 private fun LocalDate.formatDisplay(months: Array<String>): String =
-    "$dayOfMonth ${months[monthNumber - 1]} $year"
+    "$day ${months[month.ordinal]} $year"
 
 private fun summaryColor(pct: Float): Color = when {
     pct <= 0f  -> Color(0x66FFFFFF)

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -22,11 +23,13 @@ private val HermBlack      = Color(0xFF1A1A1A)  // outlines
 private val HermWhite      = Color(0xFFF0E8D8)  // eye & belly
 
 object HermitCrabRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -45,7 +48,7 @@ object HermitCrabRenderer : CreatureRenderer {
 
             // ── SHELL — asymmetric spiral (main visual mass) ───────────────────
             // Outer shell oval
-            val shellOuter = Path().apply {
+            val shellOuter = paths.obtain().apply {
                 moveTo(shellX - shellR * 1.1f, shellY)
                 cubicTo(shellX - shellR * 1.1f, shellY - shellR * 0.85f,
                     shellX + shellR * 0.3f,    shellY - shellR * 1.0f,
@@ -73,7 +76,7 @@ object HermitCrabRenderer : CreatureRenderer {
             }
 
             // Shell highlight
-            val shellHighlight = Path().apply {
+            val shellHighlight = paths.obtain().apply {
                 moveTo(shellX - shellR * 0.7f, shellY - shellR * 0.5f)
                 cubicTo(shellX - shellR * 0.3f, shellY - shellR * 0.85f,
                     shellX + shellR * 0.2f, shellY - shellR * 0.80f,

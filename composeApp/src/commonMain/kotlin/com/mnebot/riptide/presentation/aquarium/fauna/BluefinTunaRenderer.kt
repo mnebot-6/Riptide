@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,11 +28,13 @@ private val MetallicSheen   = Color(0xFF80A0D0)  // metallic sheen
 private val SpeedBlue       = Color(0xFF4080D0)  // speed line effect
 
 object BluefinTunaRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -53,7 +56,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             // ── CRESCENT TAIL FIN ────────────────────────────────────────────
             val tailX = x + bodyLen * 0.45f
 
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + bodyLen * 0.10f, y - bodyH * 0.3f + tailSway * 0.3f,
@@ -75,7 +78,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(tailShadow, ShadowNavy.copy(alpha = 0.20f))
 
             // Upper crescent
-            val tailUpper = Path().apply {
+            val tailUpper = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.15f)
                 cubicTo(
                     tailX + bodyLen * 0.08f, y - bodyH * 0.4f + tailSway * 0.4f,
@@ -92,7 +95,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(tailUpper, FinDarkBlue)
 
             // Lower crescent
-            val tailLower = Path().apply {
+            val tailLower = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + bodyLen * 0.06f, y + bodyH * 0.1f + tailSway * 0.2f,
@@ -132,7 +135,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             }
 
             // ── FIRST DORSAL FIN ─────────────────────────────────────────────
-            val dorsal1 = Path().apply {
+            val dorsal1 = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.15f, y - bodyH * 0.88f)
                 cubicTo(
                     x - bodyLen * 0.05f, y - bodyH * 1.45f,
@@ -150,7 +153,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(dorsal1, BackMidBlue.copy(alpha = 0.4f))
 
             // ── SECOND DORSAL FIN (smaller) ──────────────────────────────────
-            val dorsal2 = Path().apply {
+            val dorsal2 = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.15f, y - bodyH * 0.75f)
                 cubicTo(
                     x + bodyLen * 0.20f, y - bodyH * 1.05f,
@@ -162,7 +165,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(dorsal2, FinDarkBlue)
 
             // ── ANAL FIN ─────────────────────────────────────────────────────
-            val anal = Path().apply {
+            val anal = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.12f, y + bodyH * 0.72f)
                 cubicTo(
                     x + bodyLen * 0.18f, y + bodyH * 1.05f,
@@ -175,7 +178,7 @@ object BluefinTunaRenderer : CreatureRenderer {
 
             // ── PECTORAL FIN ─────────────────────────────────────────────────
             val pectSway = sin(t * 2.0f * PI.toFloat()) * s * 0.4f
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y + bodyH * 0.1f)
                 cubicTo(
                     x - bodyLen * 0.25f + pectSway, y + bodyH * 0.55f,
@@ -194,7 +197,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             // ── MAIN BODY (torpedo shape) ────────────────────────────────────
             val headX = x - bodyLen * 0.55f
 
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(headX - s * 0.5f, y)
                 cubicTo(
                     headX + bodyLen * 0.1f, y - bodyH * 1.02f,
@@ -210,7 +213,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowNavy.copy(alpha = 0.15f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(headX, y)
                 cubicTo(
                     headX + bodyLen * 0.1f, y - bodyH,
@@ -229,7 +232,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(body, BackDarkBlue)
 
             // Silver side band
-            val silverBand = Path().apply {
+            val silverBand = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.03f, y - bodyH * 0.15f)
                 cubicTo(
                     headX + bodyLen * 0.15f, y - bodyH * 0.45f,
@@ -247,7 +250,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(silverBand, SideSilver)
 
             // White belly
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.05f, y + bodyH * 0.08f)
                 cubicTo(
                     headX + bodyLen * 0.12f, y + bodyH * 0.85f,
@@ -265,7 +268,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawPath(bellyPath, BellyPure.copy(alpha = 0.25f))
 
             // Bright silver upper accent
-            val silverHL = Path().apply {
+            val silverHL = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.08f, y - bodyH * 0.35f)
                 cubicTo(
                     headX + bodyLen * 0.18f, y - bodyH * 0.75f,
@@ -314,7 +317,7 @@ object BluefinTunaRenderer : CreatureRenderer {
             drawCircle(Color.White, eyeR * 0.18f, Offset(eyeX - eyeR * 0.18f, eyeY - eyeR * 0.18f))
 
             // ── GILL COVER ──────────────────────────────────────────────────
-            val gill = Path().apply {
+            val gill = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.06f, y - bodyH * 0.15f)
                 cubicTo(
                     headX + bodyLen * 0.12f, y - bodyH * 0.42f,

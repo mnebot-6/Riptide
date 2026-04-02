@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val RippleBlue     = Color(0xFF80C0E0)   // water ripple (level 3+)
 private val AuraGold       = Color(0xFFE8C040)   // golden aura (level 5+)
 
 object GoldenTridentRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -57,7 +60,7 @@ object GoldenTridentRenderer : CreatureRenderer {
         val moundW = (8f + level * 0.5f) * s
         val moundH = (3f + level * 0.3f) * s
 
-        val moundPath = Path().apply {
+        val moundPath = paths.obtain().apply {
             moveTo(x - moundW, y)
             cubicTo(
                 x - moundW * 0.6f, y - moundH,
@@ -69,7 +72,7 @@ object GoldenTridentRenderer : CreatureRenderer {
         drawPath(moundPath, SandColor)
 
         // Sand shadow
-        val moundShadow = Path().apply {
+        val moundShadow = paths.obtain().apply {
             moveTo(x, y)
             cubicTo(
                 x + moundW * 0.3f, y - moundH * 0.7f,
@@ -81,7 +84,7 @@ object GoldenTridentRenderer : CreatureRenderer {
         drawPath(moundShadow, SandDark.copy(alpha = 0.35f))
 
         // Sand highlight
-        val moundHL = Path().apply {
+        val moundHL = paths.obtain().apply {
             moveTo(x - moundW * 0.6f, y - moundH * 0.2f)
             cubicTo(
                 x - moundW * 0.3f, y - moundH * 0.85f,
@@ -159,7 +162,7 @@ object GoldenTridentRenderer : CreatureRenderer {
             // Cross guard
             val guardW = prongSpacing * 1.4f
             val guardH = 2f * s
-            val guardPath = Path().apply {
+            val guardPath = paths.obtain().apply {
                 moveTo(x - guardW, headBase)
                 cubicTo(
                     x - guardW * 0.5f, headBase - guardH,
@@ -186,7 +189,7 @@ object GoldenTridentRenderer : CreatureRenderer {
                 val curve = dir * prongSpacing * 0.3f
 
                 // Prong shaft
-                val pPath = Path().apply {
+                val pPath = paths.obtain().apply {
                     moveTo(prongX - prongW, headBase)
                     cubicTo(
                         prongX - prongW + curve * 0.3f, headBase - prongH * 0.4f,
@@ -203,7 +206,7 @@ object GoldenTridentRenderer : CreatureRenderer {
                 drawPath(pPath, GoldMain)
 
                 // Prong tip (pointed)
-                val tipPath = Path().apply {
+                val tipPath = paths.obtain().apply {
                     moveTo(prongX + curve * 0.3f - prongW * 1.3f, prongTop + prongH * 0.08f)
                     lineTo(prongX + curve * 0.3f, prongTop - prongH * 0.06f)
                     lineTo(prongX + curve * 0.3f + prongW * 1.3f, prongTop + prongH * 0.08f)

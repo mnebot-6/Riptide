@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val SunEdge   = Color(0xFF5A6F88)  // outline
 private val SunMouth  = Color(0xFF4A5F78)  // mouth
 
 object SunfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -40,7 +43,7 @@ object SunfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // DORSAL FIN — tall, triangular, extending upward
             // ════════════════════════════════════════════════════════════════
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyR * 0.2f, y - bodyR * 0.85f)
                 cubicTo(
                     x - bodyR * 0.3f + finSway * 0.3f, y - bodyR - finH * 0.5f,
@@ -59,7 +62,7 @@ object SunfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // VENTRAL FIN — mirror of dorsal, extending downward
             // ════════════════════════════════════════════════════════════════
-            val ventral = Path().apply {
+            val ventral = paths.obtain().apply {
                 moveTo(x - bodyR * 0.2f, y + bodyR * 0.85f)
                 cubicTo(
                     x - bodyR * 0.3f - finSway * 0.3f, y + bodyR + finH * 0.5f,
@@ -81,7 +84,7 @@ object SunfishRenderer : CreatureRenderer {
             drawCircle(SunBody, bodyR, Offset(x, y))
 
             // Belly highlight — lighter oval on sides
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 moveTo(x - bodyR * 0.6f, y)
                 cubicTo(
                     x - bodyR * 0.6f, y - bodyR * 0.7f,
@@ -116,7 +119,7 @@ object SunfishRenderer : CreatureRenderer {
                 )
             }
             // Clavus fill area
-            val clavius = Path().apply {
+            val clavius = paths.obtain().apply {
                 moveTo(x + bodyR * 0.75f, y - bodyR * 0.65f)
                 for (b in 0..numBumps) {
                     val by   = y - bodyR * 0.65f + b * (bodyR * 1.3f / numBumps)

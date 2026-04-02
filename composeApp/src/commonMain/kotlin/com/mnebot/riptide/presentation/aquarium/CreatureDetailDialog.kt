@@ -133,8 +133,8 @@ fun CreatureDetailDialog(
             Spacer(Modifier.height(16.dp))
 
             val date = creature.unlockedAt.date
-            val day = date.dayOfMonth.toString().padStart(2, '0')
-            val month = date.monthNumber.toString().padStart(2, '0')
+            val day = date.day.toString().padStart(2, '0')
+            val month = (date.month.ordinal + 1).toString().padStart(2, '0')
             val year = date.year
             Text(
                 text = stringResource(Res.string.msg_in_tank_since, "$day/$month/$year"),

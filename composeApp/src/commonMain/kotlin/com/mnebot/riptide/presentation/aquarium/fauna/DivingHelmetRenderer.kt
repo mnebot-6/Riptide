@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,11 +29,13 @@ private val GlowBlue       = Color(0xFF40A0E0)   // viewport glow (level 3+)
 private val FishReflect    = Color(0xFF88C8E0)   // fish reflection (level 5+)
 
 object DivingHelmetRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -76,7 +79,7 @@ object DivingHelmetRenderer : CreatureRenderer {
 
         // ── Main dome ───────────────────────────────────────────────────────
         // Dome shape — semicircle from neck ring upward
-        val domePath = Path().apply {
+        val domePath = paths.obtain().apply {
             moveTo(x - domeR, ringY - ringH * 0.1f)
             cubicTo(
                 x - domeR, domeCy - domeR * 0.7f,
@@ -93,7 +96,7 @@ object DivingHelmetRenderer : CreatureRenderer {
         drawPath(domePath, BrassBody)
 
         // Dome shadow (lower right)
-        val shadowPath = Path().apply {
+        val shadowPath = paths.obtain().apply {
             moveTo(x + domeR * 0.2f, ringY - ringH * 0.1f)
             cubicTo(
                 x + domeR * 0.9f, domeCy - domeR * 0.3f,
@@ -132,7 +135,7 @@ object DivingHelmetRenderer : CreatureRenderer {
         val vpCy = domeCy - domeR * 0.15f
 
         // Viewport frame
-        val vpFrame = Path().apply {
+        val vpFrame = paths.obtain().apply {
             val r = vpW * 0.2f
             moveTo(x - vpW + r, vpCy - vpH)
             lineTo(x + vpW - r, vpCy - vpH)
@@ -149,7 +152,7 @@ object DivingHelmetRenderer : CreatureRenderer {
         drawPath(vpFrame, ViewportBlue)
 
         // Glass reflection — diagonal highlight
-        val reflPath = Path().apply {
+        val reflPath = paths.obtain().apply {
             moveTo(x - vpW * 0.6f, vpCy - vpH * 0.8f)
             lineTo(x - vpW * 0.2f, vpCy - vpH * 0.8f)
             lineTo(x + vpW * 0.3f, vpCy + vpH * 0.2f)
@@ -189,7 +192,7 @@ object DivingHelmetRenderer : CreatureRenderer {
             val fishY = vpCy + cos(fishPhase * 0.7f) * vpH * 0.3f
             val fishSz = 1.8f * s
             // Tiny reflected fish shape
-            val fishPath = Path().apply {
+            val fishPath = paths.obtain().apply {
                 moveTo(fishX - fishSz, fishY)
                 lineTo(fishX, fishY - fishSz * 0.35f)
                 lineTo(fishX + fishSz * 0.8f, fishY)
@@ -198,7 +201,7 @@ object DivingHelmetRenderer : CreatureRenderer {
             }
             drawPath(fishPath, FishReflect.copy(alpha = 0.35f))
             // Tiny tail
-            val tailPath = Path().apply {
+            val tailPath = paths.obtain().apply {
                 moveTo(fishX + fishSz * 0.6f, fishY)
                 lineTo(fishX + fishSz * 1.1f, fishY - fishSz * 0.3f)
                 lineTo(fishX + fishSz * 1.1f, fishY + fishSz * 0.3f)

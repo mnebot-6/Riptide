@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val CoralHighlight = Color(0xFFF8CCAA)   // specular highlight
 private val GrooveColor    = Color(0xFF8A4020)   // maze groove lines
 
 object BrainCoralRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val lobeCount = when {
             level <= 2 -> 1
@@ -53,7 +56,7 @@ object BrainCoralRenderer : CreatureRenderer {
         val k   = 0.552f             // Bézier circle constant
 
         // ── Dome shape (half-circle via Bézier) ───────────────────────────────
-        val domePath = Path().apply {
+        val domePath = paths.obtain().apply {
             moveTo(cx - r, baseY)
             cubicTo(cx - r, baseY - r * k,  cx - r * k, topY,  cx,      topY)
             cubicTo(cx + r * k, topY,       cx + r, baseY - r * k,  cx + r, baseY)
@@ -93,7 +96,7 @@ object BrainCoralRenderer : CreatureRenderer {
             val waveAmp   = halfChord * 0.10f
 
             val steps = 22
-            val path  = Path()
+            val path  = paths.obtain()
             for (step in 0..steps) {
                 val t  = step.toFloat() / steps
                 val px = cx - halfChord + t * 2f * halfChord

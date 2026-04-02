@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val WSharkEye   = Color(0xFF111122)
 private val WSharkGill  = Color(0xFF1A2A38)  // gill slits
 
 object WhaleSharkRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -42,7 +45,7 @@ object WhaleSharkRenderer : CreatureRenderer {
 
             // ── TAIL — large asymmetric (upper lobe longer) ────────────────────
             val tailX = x + bodyLen * 0.48f
-            val upperLobe = Path().apply {
+            val upperLobe = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.15f)
                 cubicTo(tailX + tailExt * 0.4f, y - bodyH * 0.6f + tailSway,
                     tailX + tailExt * 0.8f, y - bodyH * 1.4f + tailSway,
@@ -54,7 +57,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             }
             drawPath(upperLobe, WSharkFin)
 
-            val lowerLobe = Path().apply {
+            val lowerLobe = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(tailX + tailExt * 0.4f, y + bodyH * 0.3f + tailSway * 0.8f,
                     tailX + tailExt * 0.7f, y + bodyH * 0.8f + tailSway,
@@ -68,7 +71,7 @@ object WhaleSharkRenderer : CreatureRenderer {
 
             // ── FIRST DORSAL FIN ──────────────────────────────────────────────
             val dorsalSway = sin(t * 1.2f * PI.toFloat()) * 0.8f * s
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.05f, y - bodyH * 0.92f)
                 cubicTo(x + bodyLen * 0.12f + dorsalSway, y - bodyH * 1.80f,
                     x + bodyLen * 0.22f + dorsalSway, y - bodyH * 1.75f,
@@ -81,7 +84,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             drawPath(dorsal, WSharkFin)
 
             // Second (smaller) dorsal fin
-            val dorsal2 = Path().apply {
+            val dorsal2 = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.35f, y - bodyH * 0.88f)
                 cubicTo(x + bodyLen * 0.38f + dorsalSway * 0.5f, y - bodyH * 1.25f,
                     x + bodyLen * 0.42f + dorsalSway * 0.5f, y - bodyH * 1.22f,
@@ -91,7 +94,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             drawPath(dorsal2, WSharkFin)
 
             // ── PECTORAL FINS (large, wide) ────────────────────────────────────
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.1f, y + bodyH * 0.70f)
                 cubicTo(x - bodyLen * 0.0f, y + bodyH * 1.60f,
                     x + bodyLen * 0.18f, y + bodyH * 1.65f,
@@ -104,7 +107,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             drawPath(pect, WSharkBody)
 
             // ── MAIN BODY — very elongated ─────────────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y)  // snout (wide, flat)
                 cubicTo(x - bodyLen * 0.85f, y - bodyH * 0.85f,
                     x - bodyLen * 0.1f, y - bodyH,
@@ -118,7 +121,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             drawPath(body, WSharkBody2)
 
             // Belly (pale underside)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.6f, y + bodyH * 0.18f)
                 cubicTo(x - bodyLen * 0.3f, y + bodyH * 0.88f,
                     x + bodyLen * 0.2f, y + bodyH * 0.90f,
@@ -167,7 +170,7 @@ object WhaleSharkRenderer : CreatureRenderer {
                 val remY = y - bodyH * 1.08f
                 val rLen = bodyLen * 0.13f
                 val rH   = bodyH * 0.17f
-                val remora = Path().apply {
+                val remora = paths.obtain().apply {
                     moveTo(remX - rLen * 0.5f, remY)
                     cubicTo(remX - rLen * 0.3f, remY - rH, remX + rLen * 0.3f, remY - rH, remX + rLen * 0.5f, remY)
                     cubicTo(remX + rLen * 0.3f, remY + rH, remX - rLen * 0.3f, remY + rH, remX - rLen * 0.5f, remY)
@@ -183,7 +186,7 @@ object WhaleSharkRenderer : CreatureRenderer {
                     )
                 }
                 // Tail
-                val remTail = Path().apply {
+                val remTail = paths.obtain().apply {
                     moveTo(remX + rLen * 0.5f, remY)
                     lineTo(remX + rLen * 0.75f, remY - rH)
                     lineTo(remX + rLen * 0.75f, remY + rH)
@@ -203,7 +206,7 @@ object WhaleSharkRenderer : CreatureRenderer {
             }
 
             // Wide flat head / terminal mouth
-            val mouth = Path().apply {
+            val mouth = paths.obtain().apply {
                 moveTo(x - bodyLen, y - bodyH * 0.15f)
                 cubicTo(x - bodyLen * 0.98f, y - bodyH * 0.35f,
                     x - bodyLen * 0.88f, y - bodyH * 0.45f,

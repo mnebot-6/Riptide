@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val LeafColor = Color(0xFF45A065)
 private val LeafLight = Color(0xFF60C080)
 
 object KelpRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val scale = size / 28f
         val stalkCount = when {
             level <= 2 -> 1
@@ -112,7 +115,7 @@ object KelpRenderer : CreatureRenderer {
         val tipX = x + (leafLen + sway) * side
         val tipY = y - leafLen * 0.3f
 
-        val path = Path().apply {
+        val path = paths.obtain().apply {
             moveTo(x, y)
             quadraticTo(
                 x + leafLen * 0.5f * side + sway * 0.5f,

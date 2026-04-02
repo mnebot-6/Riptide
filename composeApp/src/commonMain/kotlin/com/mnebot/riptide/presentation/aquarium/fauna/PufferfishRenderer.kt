@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val PuffBlack   = Color(0xFF1A1A1A)  // outline & eye
 private val PuffWhite   = Color(0xFFF5F5F5)  // eye white
 
 object PufferfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -44,7 +47,7 @@ object PufferfishRenderer : CreatureRenderer {
 
             // ── TAIL FIN — small rounded ──────────────────────────────────────
             val tailX = x + baseR * 0.85f
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailX, y - baseR * 0.2f)
                 cubicTo(
                     tailX + tailLen * 0.4f, y - tailLen * 0.6f + tailSway,
@@ -66,7 +69,7 @@ object PufferfishRenderer : CreatureRenderer {
             drawPath(tail, PuffFin)
 
             // ── DORSAL FIN — tiny ─────────────────────────────────────────────
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - baseR * 0.1f, y - baseR * 0.9f)
                 cubicTo(
                     x + baseR * 0.1f, y - baseR * 1.35f,
@@ -79,7 +82,7 @@ object PufferfishRenderer : CreatureRenderer {
 
             // ── PECTORAL FIN ──────────────────────────────────────────────────
             val pectSway = sin(t * 5f * PI.toFloat()) * 1.5f * s
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - baseR * 0.2f, y + baseR * 0.1f)
                 cubicTo(
                     x + baseR * 0.1f + pectSway, y + baseR * 0.7f,
@@ -142,7 +145,7 @@ object PufferfishRenderer : CreatureRenderer {
             drawCircle(PuffWhite, eyeR * 0.22f, Offset(eyeX - eyeR * 0.22f, eyeY - eyeR * 0.22f))
 
             // Tiny mouth (downturned)
-            val mouthPath = Path().apply {
+            val mouthPath = paths.obtain().apply {
                 moveTo(x - baseR * 0.1f, y + baseR * 0.2f)
                 cubicTo(
                     x - baseR * 0.05f, y + baseR * 0.32f,

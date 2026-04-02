@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -22,11 +23,13 @@ private val SqChrom = Color(0xFFEE4477)  // chromatophore stripes
 private val SqEye   = Color(0xFF112233)
 
 object SquidRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -65,7 +68,7 @@ object SquidRenderer : CreatureRenderer {
             for (sign in listOf(-1f, 1f)) {
                 val tentSway = sin(t * 3.5f * PI.toFloat() + sign * 0.5f) * tentLen * 0.3f
                 val tentBase = x - mantleLen * 0.5f
-                val tent = Path().apply {
+                val tent = paths.obtain().apply {
                     moveTo(tentBase, y + sign * mantleH * 0.2f)
                     cubicTo(
                         tentBase - tentLen * 0.3f, y + sign * mantleH * 0.15f + tentSway * 0.3f,
@@ -87,7 +90,7 @@ object SquidRenderer : CreatureRenderer {
             val finX = x + mantleLen * 0.25f
             val finW = mantleLen * 0.30f
             val finH = mantleH * 1.4f
-            val finL = Path().apply {
+            val finL = paths.obtain().apply {
                 moveTo(finX - finW * 0.3f, y)
                 lineTo(finX + finW * 0.5f, y - finH)
                 lineTo(finX + finW, y)
@@ -99,7 +102,7 @@ object SquidRenderer : CreatureRenderer {
                 style = Stroke(width = (0.6f * s).coerceAtLeast(0.3f)))
 
             // ── MANTLE (torpedo, pointed at tail) ─────────────────────────────
-            val mantlePath = Path().apply {
+            val mantlePath = paths.obtain().apply {
                 moveTo(x - mantleLen * 0.5f, y - mantleH * 0.05f)  // head end
                 cubicTo(x - mantleLen * 0.3f, y - mantleH,
                     x + mantleLen * 0.2f, y - mantleH * 0.85f,
@@ -113,7 +116,7 @@ object SquidRenderer : CreatureRenderer {
             drawPath(mantlePath, SqBody)
 
             // Belly highlight
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - mantleLen * 0.45f, y - mantleH * 0.02f)
                 cubicTo(x - mantleLen * 0.2f, y - mantleH * 0.85f,
                     x + mantleLen * 0.15f, y - mantleH * 0.72f,

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -20,11 +21,13 @@ private val TurtBelly  = Color(0xFFAABB88)  // plastron (belly)
 private val TurtEye    = Color(0xFF1A1A22)
 
 object SeaTurtleRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -41,7 +44,7 @@ object SeaTurtleRenderer : CreatureRenderer {
         }) {
 
             // ── REAR FLIPPERS ─────────────────────────────────────────────────
-            val rearFlip = Path().apply {
+            val rearFlip = paths.obtain().apply {
                 moveTo(x + shellW * 0.5f, y + shellH * 0.3f)
                 cubicTo(
                     x + shellW * 0.7f + flipSweep * 0.2f, y + shellH * 0.6f,
@@ -59,7 +62,7 @@ object SeaTurtleRenderer : CreatureRenderer {
 
             // ── FRONT FLIPPERS (large, powerful) ─────────────────────────────
             // Front flipper extends forward and upward during power stroke
-            val frontFlip = Path().apply {
+            val frontFlip = paths.obtain().apply {
                 moveTo(x - shellW * 0.3f, y - shellH * 0.25f)
                 cubicTo(
                     x - shellW * 0.6f, y - shellH * 0.5f - flipSweep * 0.5f,
@@ -83,7 +86,7 @@ object SeaTurtleRenderer : CreatureRenderer {
             )
 
             // ── CARAPACE (shell) ──────────────────────────────────────────────
-            val shell = Path().apply {
+            val shell = paths.obtain().apply {
                 moveTo(x - shellW * 0.5f, y)  // head end (narrower)
                 cubicTo(x - shellW * 0.5f, y - shellH,
                     x + shellW * 0.5f, y - shellH,
@@ -104,7 +107,7 @@ object SeaTurtleRenderer : CreatureRenderer {
                 val vy = y - shellH * 0.05f
                 val vw = shellW * 0.14f
                 val vh = shellH * 0.65f
-                val scute = Path().apply {
+                val scute = paths.obtain().apply {
                     moveTo(vx, vy - vh)
                     lineTo(vx + vw, vy - vh * 0.6f)
                     lineTo(vx + vw, vy + vh * 0.6f)
@@ -127,7 +130,7 @@ object SeaTurtleRenderer : CreatureRenderer {
                     val cy2 = y + side * shellH * 0.42f
                     val cw  = shellW * 0.14f
                     val ch  = shellH * 0.35f
-                    val costal = Path().apply {
+                    val costal = paths.obtain().apply {
                         moveTo(cx2 - cw, cy2 - ch * 0.4f)
                         cubicTo(cx2 - cw * 0.5f, cy2 - ch,
                             cx2 + cw * 0.5f, cy2 - ch,
@@ -178,7 +181,7 @@ object SeaTurtleRenderer : CreatureRenderer {
             // ── HEAD ──────────────────────────────────────────────────────────
             val headR = (3.5f + level * 0.2f) * s
             val headX = x - shellW * 0.55f - headR * 0.7f
-            val head  = Path().apply {
+            val head  = paths.obtain().apply {
                 moveTo(headX - headR * 0.8f, y)
                 cubicTo(headX - headR * 0.7f, y - headR * 0.9f,
                     headX + headR * 0.5f, y - headR * 0.85f,

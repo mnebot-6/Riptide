@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val PatternTan     = Color(0xFF7A6A48)  // shell pattern (level 3+)
 private val AmberGlow      = Color(0xFFFFB040)  // amber glow (level 5+)
 
 object HorseshoeCrabRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -58,7 +61,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
             val telsonBaseX = x + shellH * 0.2f + abdH * 0.8f
             val telsonSway  = sin(t * 0.8f * PI.toFloat()) * s * 0.5f
 
-            val telsonPath = Path().apply {
+            val telsonPath = paths.obtain().apply {
                 moveTo(telsonBaseX, y - abdW * 0.08f)
                 cubicTo(
                     telsonBaseX + telsonL * 0.3f, y - s * 0.5f + telsonSway * 0.2f,
@@ -115,7 +118,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
 
             // ── OPISTHOSOMA (rear section, trapezoidal + marginal spines) ───
             val abdBaseX = x + shellH * 0.15f
-            val abdPath = Path().apply {
+            val abdPath = paths.obtain().apply {
                 moveTo(abdBaseX, y - abdW * 0.5f)
                 cubicTo(
                     abdBaseX + abdH * 0.3f, y - abdW * 0.48f,
@@ -158,7 +161,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
             )
 
             // ── PROSOMA (front dome-shaped carapace) ────────────────────────
-            val prosomaPath = Path().apply {
+            val prosomaPath = paths.obtain().apply {
                 moveTo(x - shellH * 0.5f, y)
                 cubicTo(
                     x - shellH * 0.5f, y - shellW * 0.6f,
@@ -181,7 +184,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
             drawPath(prosomaPath, ShellBrown)
 
             // Central dome highlight
-            val domeHL = Path().apply {
+            val domeHL = paths.obtain().apply {
                 moveTo(x - shellH * 0.35f, y - shellW * 0.15f)
                 cubicTo(
                     x - shellH * 0.30f, y - shellW * 0.40f,
@@ -198,7 +201,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
             drawPath(domeHL, ShellLight.copy(alpha = 0.35f))
 
             // Lower dome highlight (symmetric)
-            val domeLowHL = Path().apply {
+            val domeLowHL = paths.obtain().apply {
                 moveTo(x - shellH * 0.35f, y + shellW * 0.15f)
                 cubicTo(
                     x - shellH * 0.30f, y + shellW * 0.40f,
@@ -225,7 +228,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
 
             // Lateral ridges
             for (side in intArrayOf(-1, 1)) {
-                val ridgePath = Path().apply {
+                val ridgePath = paths.obtain().apply {
                     moveTo(x - shellH * 0.30f, y + side * shellW * 0.15f)
                     cubicTo(
                         x - shellH * 0.15f, y + side * shellW * 0.30f,
@@ -264,7 +267,7 @@ object HorseshoeCrabRenderer : CreatureRenderer {
                 // Concentric growth rings on prosoma
                 for (i in 1..3) {
                     val ringScale = 0.3f + i * 0.18f
-                    val ringPath = Path().apply {
+                    val ringPath = paths.obtain().apply {
                         moveTo(x - shellH * 0.5f * ringScale, y)
                         cubicTo(
                             x - shellH * 0.5f * ringScale, y - shellW * 0.6f * ringScale,

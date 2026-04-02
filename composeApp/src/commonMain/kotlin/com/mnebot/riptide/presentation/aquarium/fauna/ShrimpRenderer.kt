@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val ShrBlack = Color(0xFF2A1A1A)  // eye & outline
 private val ShrWhite = Color(0xFFF8F0E8)  // eye white, belly
 
 object ShrimpRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -46,7 +49,7 @@ object ShrimpRenderer : CreatureRenderer {
             val fanLen = (4f + level * 0.35f) * s
             val fanBlades = listOf(-0.8f, -0.4f, 0f, 0.4f, 0.8f)
             for (fb in fanBlades) {
-                val fan = Path().apply {
+                val fan = paths.obtain().apply {
                     moveTo(tailX, tailY + fb * fanW * 0.3f)
                     cubicTo(
                         tailX + fanLen * 0.5f, tailY + fb * fanW * 0.7f + tailSway * 0.5f,
@@ -69,7 +72,7 @@ object ShrimpRenderer : CreatureRenderer {
                 val archY = y - archAnim * sin(progress * PI.toFloat()) * 2.0f
                 val segH = bodyH * (1.0f - progress * 0.3f)  // taper toward tail
 
-                val seg = Path().apply {
+                val seg = paths.obtain().apply {
                     moveTo(sx, archY - segH)
                     cubicTo(sx + segLen * 0.3f, archY - segH * 1.05f,
                         sx + segLen * 0.7f, archY - segH * 1.05f,
@@ -105,7 +108,7 @@ object ShrimpRenderer : CreatureRenderer {
             // ── HEAD / CARAPACE ────────────────────────────────────────────────
             val headX = x - bodyLen * 0.5f
             val headH2 = bodyH * 1.3f
-            val head = Path().apply {
+            val head = paths.obtain().apply {
                 moveTo(headX - headH2 * 0.8f, y)
                 cubicTo(headX - headH2 * 0.6f, y - headH2,
                     headX + headH2 * 0.4f, y - headH2 * 0.9f,

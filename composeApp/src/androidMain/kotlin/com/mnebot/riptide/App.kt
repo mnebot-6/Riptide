@@ -1,5 +1,8 @@
 package com.mnebot.riptide
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,7 +39,11 @@ fun App(
 
     NavHost(
         navController = navController,
-        startDestination = if (completed) ROUTE_MAIN else ROUTE_ONBOARDING
+        startDestination = if (completed) ROUTE_MAIN else ROUTE_ONBOARDING,
+        enterTransition  = { slideInHorizontally(tween(300)) { it } },
+        exitTransition   = { slideOutHorizontally(tween(300)) { -it / 3 } },
+        popEnterTransition  = { slideInHorizontally(tween(300)) { -it / 3 } },
+        popExitTransition   = { slideOutHorizontally(tween(300)) { it } }
     ) {
         onboardingGraph(
             userPreferencesRepository = userPreferencesRepository,

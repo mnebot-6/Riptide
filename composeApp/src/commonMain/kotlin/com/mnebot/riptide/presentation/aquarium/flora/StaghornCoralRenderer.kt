@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.flora
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.mnebot.riptide.presentation.aquarium.CreatureRenderer
@@ -21,11 +22,13 @@ private val IridescentA    = Color(0xFFB0D8F0)   // iridescent blue (level 5+)
 private val IridescentB    = Color(0xFFD0B0E8)   // iridescent purple (level 5+)
 
 object StaghornCoralRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -34,7 +37,7 @@ object StaghornCoralRenderer : CreatureRenderer {
         // Base mound
         val baseW = (6f + level * 0.5f) * s
         val baseH = totalH * 0.12f
-        val basePath = Path().apply {
+        val basePath = paths.obtain().apply {
             moveTo(x - baseW, y)
             cubicTo(
                 x - baseW * 0.8f, y - baseH,

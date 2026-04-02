@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -30,11 +31,13 @@ private val ElectricBlue    = Color(0xFF40A0FF)  // electric blue glow (level 5+
 private val ElectricCyan    = Color(0xFF60D0FF)  // cyan highlight
 
 object SwordfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -57,7 +60,7 @@ object SwordfishRenderer : CreatureRenderer {
             // ── CRESCENT TAIL FIN ────────────────────────────────────────────
             val tailX = x + bodyLen * 0.45f
 
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.02f, y)
                 lineTo(tailX + bodyLen * 0.18f, y - bodyH * 1.1f + tailSway)
                 lineTo(tailX + bodyLen * 0.08f, y + tailSway * 0.3f)
@@ -67,7 +70,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(tailShadow, ShadowNavy.copy(alpha = 0.15f))
 
             // Upper tail lobe
-            val tailUp = Path().apply {
+            val tailUp = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.12f)
                 cubicTo(
                     tailX + bodyLen * 0.06f, y - bodyH * 0.4f + tailSway * 0.4f,
@@ -84,7 +87,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(tailUp, FinDark)
 
             // Lower tail lobe
-            val tailDown = Path().apply {
+            val tailDown = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + bodyLen * 0.05f, y + bodyH * 0.08f + tailSway * 0.15f,
@@ -103,7 +106,7 @@ object SwordfishRenderer : CreatureRenderer {
             // ── TALL DORSAL FIN (signature) ──────────────────────────────────
             val dorsalSway = sin(t * 2.5f * PI.toFloat()) * s * 0.3f
 
-            val dorsalShadow = Path().apply {
+            val dorsalShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.25f, y - bodyH * 0.88f)
                 cubicTo(
                     x - bodyLen * 0.18f + dorsalSway, y - bodyH * 1.95f,
@@ -114,7 +117,7 @@ object SwordfishRenderer : CreatureRenderer {
             }
             drawPath(dorsalShadow, ShadowNavy.copy(alpha = 0.15f))
 
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.23f, y - bodyH * 0.90f)
                 cubicTo(
                     x - bodyLen * 0.16f + dorsalSway, y - bodyH * 1.90f,
@@ -131,7 +134,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(dorsal, DorsalPurple)
 
             // Dorsal highlight
-            val dorsalHL = Path().apply {
+            val dorsalHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.18f, y - bodyH * 0.92f)
                 cubicTo(
                     x - bodyLen * 0.12f + dorsalSway * 0.6f, y - bodyH * 1.55f,
@@ -143,7 +146,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(dorsalHL, DorsalBlue.copy(alpha = 0.45f))
 
             // ── ANAL FIN ─────────────────────────────────────────────────────
-            val analFin = Path().apply {
+            val analFin = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.12f, y + bodyH * 0.72f)
                 cubicTo(
                     x + bodyLen * 0.18f, y + bodyH * 1.10f,
@@ -161,7 +164,7 @@ object SwordfishRenderer : CreatureRenderer {
 
             // ── PECTORAL FIN ─────────────────────────────────────────────────
             val pectSway = sin(t * 1.8f * PI.toFloat()) * s * 0.5f
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.22f, y + bodyH * 0.08f)
                 cubicTo(
                     x - bodyLen * 0.12f + pectSway, y + bodyH * 0.55f,
@@ -180,7 +183,7 @@ object SwordfishRenderer : CreatureRenderer {
             // ── MAIN BODY (elongated, robust) ────────────────────────────────
             val bodyFrontX = x - bodyLen * 0.48f
 
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(bodyFrontX - s * 0.3f, y)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.08f, y - bodyH * 1.02f,
@@ -196,7 +199,7 @@ object SwordfishRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowNavy.copy(alpha = 0.15f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(bodyFrontX, y)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.08f, y - bodyH,
@@ -215,7 +218,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(body, BackDarkPurple)
 
             // Mid-body blue band
-            val midBand = Path().apply {
+            val midBand = paths.obtain().apply {
                 moveTo(bodyFrontX + bodyLen * 0.03f, y - bodyH * 0.30f)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.10f, y - bodyH * 0.75f,
@@ -233,7 +236,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(midBand, BackMidPurple.copy(alpha = 0.60f))
 
             // Silver sides
-            val silverSide = Path().apply {
+            val silverSide = paths.obtain().apply {
                 moveTo(bodyFrontX + bodyLen * 0.05f, y - bodyH * 0.12f)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.12f, y - bodyH * 0.48f,
@@ -251,7 +254,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(silverSide, SideSilver.copy(alpha = 0.50f))
 
             // White belly
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 moveTo(bodyFrontX + bodyLen * 0.06f, y + bodyH * 0.05f)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.10f, y + bodyH * 0.78f,
@@ -269,7 +272,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(bellyPath, BellyWhite.copy(alpha = 0.20f))
 
             // Upper highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(bodyFrontX + bodyLen * 0.06f, y - bodyH * 0.40f)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.12f, y - bodyH * 0.82f,
@@ -296,7 +299,7 @@ object SwordfishRenderer : CreatureRenderer {
             val billHalfW = bodyH * 0.08f
 
             // Bill shadow
-            val billShadow = Path().apply {
+            val billShadow = paths.obtain().apply {
                 moveTo(bodyFrontX, y - billHalfW * 1.5f)
                 lineTo(billTip - s * 0.3f, y)
                 lineTo(bodyFrontX, y + billHalfW * 1.5f)
@@ -305,7 +308,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(billShadow, ShadowNavy.copy(alpha = 0.10f))
 
             // Main bill
-            val bill = Path().apply {
+            val bill = paths.obtain().apply {
                 moveTo(bodyFrontX, y - billHalfW)
                 cubicTo(
                     bodyFrontX - billLen * 0.3f, y - billHalfW * 0.8f,
@@ -322,7 +325,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawPath(bill, BillGray)
 
             // Bill upper highlight
-            val billHL = Path().apply {
+            val billHL = paths.obtain().apply {
                 moveTo(bodyFrontX - billLen * 0.05f, y - billHalfW * 0.5f)
                 cubicTo(
                     bodyFrontX - billLen * 0.35f, y - billHalfW * 0.45f,
@@ -382,7 +385,7 @@ object SwordfishRenderer : CreatureRenderer {
             drawCircle(Color.White, eyeR * 0.18f, Offset(eyeX - eyeR * 0.18f, eyeY - eyeR * 0.18f))
 
             // ── GILL COVER ──────────────────────────────────────────────────
-            val gill = Path().apply {
+            val gill = paths.obtain().apply {
                 moveTo(bodyFrontX + bodyLen * 0.05f, y - bodyH * 0.12f)
                 cubicTo(
                     bodyFrontX + bodyLen * 0.10f, y - bodyH * 0.38f,

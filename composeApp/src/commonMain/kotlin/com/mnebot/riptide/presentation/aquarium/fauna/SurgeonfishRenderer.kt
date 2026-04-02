@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -22,11 +23,13 @@ private val SurgFin     = Color(0xFF1251A0)  // darker fin
 private val SurgElectric = Color(0xFF40C8FF) // electric blue lateral line
 
 object SurgeonfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -47,7 +50,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             val tailX = x + bodyLen * 0.45f
             val crescentOpen = (tailExt + finTailExtra) * 0.7f
 
-            val tailTop = Path().apply {
+            val tailTop = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.3f)
                 cubicTo(
                     tailX + tailExt * 0.3f, y - bodyH * 0.3f + tailSway * 0.3f,
@@ -63,7 +66,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             }
             drawPath(tailTop, SurgTail)
 
-            val tailBot = Path().apply {
+            val tailBot = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + tailExt * 0.5f, y + tailSway * 0.2f,
@@ -83,7 +86,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // DORSAL FIN — along top of body
             // ════════════════════════════════════════════════════════════════
             val dorsalSway = sin(t * 2.8f * PI.toFloat()) * 0.5f * s
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.3f, y - bodyH * 0.85f)
                 cubicTo(
                     x - bodyLen * 0.05f + dorsalSway, y - bodyH * 1.5f,
@@ -102,7 +105,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // ANAL FIN — along bottom
             // ════════════════════════════════════════════════════════════════
-            val anal = Path().apply {
+            val anal = paths.obtain().apply {
                 moveTo(x, y + bodyH * 0.82f)
                 cubicTo(
                     x + bodyLen * 0.15f, y + bodyH * 1.3f,
@@ -121,7 +124,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // MAIN BODY — oval, cobalt blue, widest near head
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen, y)
                 cubicTo(
                     x - bodyLen * 0.8f, y - bodyH,
@@ -139,7 +142,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             drawPath(body, SurgBody)
 
             // Belly highlight — pale strip along the lower body
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y + bodyH * 0.3f)
                 cubicTo(
                     x - bodyLen * 0.2f, y + bodyH * 0.85f,
@@ -163,7 +166,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // PECTORAL FINS — sides
             // ════════════════════════════════════════════════════════════════
             val pectSway = sin(t * 4f * PI.toFloat()) * 1.5f * s
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.25f, y)
                 cubicTo(
                     x - bodyLen * 0.1f + pectSway, y + bodyH * 0.6f,
@@ -182,7 +185,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // BLACK MASK — through eye to mouth corner
             // ════════════════════════════════════════════════════════════════
-            val mask = Path().apply {
+            val mask = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.82f, y - bodyH * 0.55f)
                 cubicTo(
                     x - bodyLen * 0.7f, y - bodyH * 0.75f,
@@ -212,7 +215,7 @@ object SurgeonfishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             val scalpelX = tailX - 1.5f * s
             val scalpelY = y + bodyH * 0.18f
-            val scalpel = Path().apply {
+            val scalpel = paths.obtain().apply {
                 moveTo(scalpelX, scalpelY)
                 lineTo(scalpelX + 2.5f * s, scalpelY + 1.2f * s)
                 lineTo(scalpelX, scalpelY + 2.5f * s)

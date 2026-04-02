@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -32,11 +33,13 @@ private val ShadowGreen    = Color(0xFF0A3A18)  // green shadow
 private val RainbowShimmer = Color(0xFFFF60FF)  // rainbow pulse (level 5+)
 
 object MantisShrimpRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -67,7 +70,7 @@ object MantisShrimpRenderer : CreatureRenderer {
             val tailX = x + bodyLen * 0.45f
             val tailSway = sin(t * 2.0f * PI.toFloat()) * s * 0.5f
 
-            val tailFan = Path().apply {
+            val tailFan = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.05f, y)
                 cubicTo(
                     tailX + bodyLen * 0.1f, y - bodyH * 1.1f + tailSway,
@@ -121,7 +124,7 @@ object MantisShrimpRenderer : CreatureRenderer {
                 val taper = (1f - (segFrac - 0.4f) * (segFrac - 0.4f) * 2.2f).coerceIn(0.5f, 1f)
                 val halfH = bodyH * taper
 
-                val seg = Path().apply {
+                val seg = paths.obtain().apply {
                     moveTo(segStartX, y - halfH)
                     lineTo(segEndX, y - halfH * 0.98f)
                     lineTo(segEndX, y + halfH * 0.98f)
@@ -154,7 +157,7 @@ object MantisShrimpRenderer : CreatureRenderer {
             // ── CARAPACE / HEAD ─────────────────────────────────────────────
             val headX = x - bodyLen * 0.35f
             val headW = bodyLen * 0.25f
-            val headPath = Path().apply {
+            val headPath = paths.obtain().apply {
                 moveTo(headX, y - bodyH * 0.85f)
                 cubicTo(
                     headX - headW * 0.7f, y - bodyH * 0.75f,
@@ -172,7 +175,7 @@ object MantisShrimpRenderer : CreatureRenderer {
             drawPath(headPath, HeadDarkGreen.copy(alpha = 0.25f))
 
             // Head highlight
-            val headHL = Path().apply {
+            val headHL = paths.obtain().apply {
                 moveTo(headX - headW * 0.3f, y - bodyH * 0.40f)
                 cubicTo(
                     headX - headW * 0.45f, y - bodyH * 0.60f,
@@ -189,7 +192,7 @@ object MantisShrimpRenderer : CreatureRenderer {
                 val clubBaseY = y + side * bodyH * 0.25f
 
                 // Folded arm segment
-                val armElbow = Path().apply {
+                val armElbow = paths.obtain().apply {
                     moveTo(clubBaseX, clubBaseY)
                     cubicTo(
                         clubBaseX - clubLen * 0.3f, clubBaseY + side * clubLen * 0.15f,
@@ -256,7 +259,7 @@ object MantisShrimpRenderer : CreatureRenderer {
             // ── ANTENNAE ────────────────────────────────────────────────────
             for (side in intArrayOf(-1, 1)) {
                 val antSway = sin(t * 4.0f * PI.toFloat() + side * 0.6f) * s * 1.2f
-                val antPath = Path().apply {
+                val antPath = paths.obtain().apply {
                     moveTo(headX - headW * 0.5f, y + side * bodyH * 0.3f)
                     quadraticTo(
                         headX - headW * 1.0f + antSway * 0.5f,

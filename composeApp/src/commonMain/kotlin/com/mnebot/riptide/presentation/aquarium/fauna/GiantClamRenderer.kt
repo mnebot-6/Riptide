@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val ClamMantle = Color(0xFF005580)  // dark mantle edge
 private val ClamHinge  = Color(0xFF666655)  // hinge color
 
 object GiantClamRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base (floor), draw upward
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -39,7 +42,7 @@ object GiantClamRenderer : CreatureRenderer {
         val gapY      = clamH * gapFrac
 
         // ── LOWER VALVE ───────────────────────────────────────────────────────
-        val lower = Path().apply {
+        val lower = paths.obtain().apply {
             moveTo(x - clamW, centerY + clamH * 0.2f)
             cubicTo(x - clamW * 0.7f, centerY + clamH * 0.85f,
                 x + clamW * 0.7f, centerY + clamH * 0.85f,
@@ -66,7 +69,7 @@ object GiantClamRenderer : CreatureRenderer {
             style = Stroke(width = (1.0f * s).coerceAtLeast(0.5f)))
 
         // ── BLUE INTERIOR (mantle tissue) ─────────────────────────────────────
-        val inner = Path().apply {
+        val inner = paths.obtain().apply {
             moveTo(x - clamW * 0.8f, centerY + gapY + clamH * 0.18f)
             cubicTo(x - clamW * 0.6f, centerY + gapY + clamH * 0.70f,
                 x + clamW * 0.6f, centerY + gapY + clamH * 0.70f,
@@ -81,7 +84,7 @@ object GiantClamRenderer : CreatureRenderer {
         drawCircle(ClamInner2.copy(alpha = 0.40f), clamW * 0.35f, Offset(x, centerY + gapY + clamH * 0.40f))
 
         // Mantle edge (wavy, blue-dark)
-        val mantleEdge = Path().apply {
+        val mantleEdge = paths.obtain().apply {
             val edgeY = centerY + gapY
             moveTo(x - clamW * 0.85f, edgeY + clamH * 0.15f)
             val steps = 10
@@ -96,7 +99,7 @@ object GiantClamRenderer : CreatureRenderer {
             style = Stroke(width = (1.2f * s).coerceAtLeast(0.5f), cap = StrokeCap.Round))
 
         // ── UPPER VALVE (slightly open) ───────────────────────────────────────
-        val upper = Path().apply {
+        val upper = paths.obtain().apply {
             val topY = centerY - gapY
             moveTo(x - clamW, topY + clamH * 0.12f)
             cubicTo(x - clamW * 0.6f, topY - clamH * 0.6f,

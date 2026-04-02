@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,11 +20,13 @@ private val OystPearl  = Color(0xFFF8F5F0)  // pearl white
 private val OystPink   = Color(0xFFDDAACC)  // pearl lustre
 
 object OysterRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         // Fixed floor creature — y is base, draw upward
         val s = size / 28f
         val t = animTimeMs / 1000f
@@ -38,7 +41,7 @@ object OysterRenderer : CreatureRenderer {
         val gapY      = shellH * openFrac
 
         // ── LOWER SHELL (flat) ─────────────────────────────────────────────────
-        val lowerShell = Path().apply {
+        val lowerShell = paths.obtain().apply {
             moveTo(x - shellW, centerY)
             cubicTo(x - shellW * 0.8f, centerY + shellH * 0.55f,
                 x + shellW * 0.3f, centerY + shellH * 0.60f,
@@ -53,7 +56,7 @@ object OysterRenderer : CreatureRenderer {
             style = Stroke(width = (0.9f * s).coerceAtLeast(0.4f)))
 
         // ── NACRE INTERIOR (visible when open) ────────────────────────────────
-        val nacreOuter = Path().apply {
+        val nacreOuter = paths.obtain().apply {
             moveTo(x - shellW * 0.85f, centerY + gapY)
             cubicTo(x - shellW * 0.7f, centerY + shellH * 0.42f + gapY * 0.5f,
                 x + shellW * 0.2f, centerY + shellH * 0.45f + gapY * 0.5f,
@@ -66,7 +69,7 @@ object OysterRenderer : CreatureRenderer {
         drawPath(nacreOuter, OystNacre.copy(alpha = (openFrac * 5f).coerceIn(0.4f, 1.0f)))
 
         // ── UPPER SHELL (hinged, slightly open) ───────────────────────────────
-        val upperShell = Path().apply {
+        val upperShell = paths.obtain().apply {
             val openY = centerY - gapY
             moveTo(x - shellW, openY + shellH * 0.05f)
             cubicTo(x - shellW * 0.5f, openY - shellH * 0.6f,

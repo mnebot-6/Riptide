@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val NautTent   = Color(0xFFCCAA88)  // tentacles
 private val NautEye    = Color(0xFF333322)  // eye
 
 object NautilusRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -48,7 +51,7 @@ object NautilusRenderer : CreatureRenderer {
             for (i in 0 until stripeCount) {
                 val startAngle = i.toFloat() / stripeCount * 2f * PI.toFloat()
                 val endAngle   = startAngle + PI.toFloat() / stripeCount
-                val stripe = Path().apply {
+                val stripe = paths.obtain().apply {
                     moveTo(x, y)
                     lineTo(x + cos(startAngle) * shellR, y + sin(startAngle) * shellR)
                     cubicTo(
@@ -102,7 +105,7 @@ object NautilusRenderer : CreatureRenderer {
             val apertureX = x - shellR * 0.75f
             val apertureW = shellR * 0.45f
             val apertureH = shellR * 0.55f
-            val aperture = Path().apply {
+            val aperture = paths.obtain().apply {
                 moveTo(apertureX - apertureW * 0.2f, y - apertureH * 0.9f)
                 cubicTo(apertureX - apertureW, y - apertureH * 0.5f,
                     apertureX - apertureW, y + apertureH * 0.5f,

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,11 +28,13 @@ private val CoronetGold    = Color(0xFFFFD740)  // coronet gold (level 3+)
 private val BioGlow        = Color(0xFF80E0C0)  // bioluminescent glow (level 5+)
 
 object SeahorseRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -56,7 +59,7 @@ object SeahorseRenderer : CreatureRenderer {
             val tailBaseY = y + bodyH * 0.35f
             val tailCurl  = sin(t * 1.2f * PI.toFloat()) * 0.4f * s
 
-            val tailPath = Path().apply {
+            val tailPath = paths.obtain().apply {
                 moveTo(x, tailBaseY)
                 cubicTo(
                     x + bodyW * 0.3f + tailCurl, tailBaseY + tailLen * 0.25f,
@@ -99,7 +102,7 @@ object SeahorseRenderer : CreatureRenderer {
 
             // ── DORSAL FIN (rapid flutter) ──────────────────────────────────
             val dorsalY = y - bodyH * 0.1f
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x + bodyW * 0.35f, dorsalY - bodyH * 0.12f)
                 cubicTo(
                     x + bodyW * 0.75f + dorsalFlut, dorsalY - bodyH * 0.08f,
@@ -126,7 +129,7 @@ object SeahorseRenderer : CreatureRenderer {
             }
 
             // ── MAIN BODY (S-curved torso) ──────────────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyW * 0.42f, y - bodyH * 0.42f)
                 cubicTo(
                     x - bodyW * 0.55f, y - bodyH * 0.15f,
@@ -143,7 +146,7 @@ object SeahorseRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowBrown.copy(alpha = 0.20f))
 
-            val bodyPath = Path().apply {
+            val bodyPath = paths.obtain().apply {
                 moveTo(x - bodyW * 0.40f, y - bodyH * 0.40f)
                 cubicTo(
                     x - bodyW * 0.52f, y - bodyH * 0.12f,
@@ -161,7 +164,7 @@ object SeahorseRenderer : CreatureRenderer {
             drawPath(bodyPath, BodyOrange)
 
             // Belly lighter zone
-            val bellyPath = Path().apply {
+            val bellyPath = paths.obtain().apply {
                 moveTo(x - bodyW * 0.30f, y - bodyH * 0.10f)
                 cubicTo(
                     x - bodyW * 0.35f, y + bodyH * 0.10f,
@@ -190,7 +193,7 @@ object SeahorseRenderer : CreatureRenderer {
             }
 
             // Upper body highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(x - bodyW * 0.25f, y - bodyH * 0.38f)
                 cubicTo(
                     x - bodyW * 0.15f, y - bodyH * 0.30f,
@@ -220,7 +223,7 @@ object SeahorseRenderer : CreatureRenderer {
                 Offset(headCx - headR * 0.15f, headCy - headR * 0.20f))
 
             // ── SNOUT (elongated tubular mouth) ─────────────────────────────
-            val snoutPath = Path().apply {
+            val snoutPath = paths.obtain().apply {
                 moveTo(headCx - headR * 0.75f, headCy + headR * 0.05f)
                 cubicTo(
                     headCx - headR * 0.85f - snoutL * 0.3f, headCy - headR * 0.15f,
@@ -246,7 +249,7 @@ object SeahorseRenderer : CreatureRenderer {
             if (level >= 3) {
                 val crownBase = headCy - headR * 0.85f
                 val crownH = headR * 0.65f
-                val crown = Path().apply {
+                val crown = paths.obtain().apply {
                     moveTo(headCx - headR * 0.3f, crownBase)
                     // Five crown points
                     lineTo(headCx - headR * 0.25f, crownBase - crownH * 0.5f)

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val IgEye    = Color(0xFF111111)
 private val IgEyeRim = Color(0xFF8B8B00)  // yellow eye ring
 
 object MarineIguanaRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -50,7 +53,7 @@ object MarineIguanaRenderer : CreatureRenderer {
             val tailBaseX = headX + bodyLen
 
             // ── TAIL (long, laterally flattened) ─────────────────────────────
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailBaseX, y - bodyH * 0.5f + wave3)
                 cubicTo(
                     tailBaseX + tailLen * 0.3f, y - bodyH * 0.2f + tailWave * 0.5f,
@@ -105,7 +108,7 @@ object MarineIguanaRenderer : CreatureRenderer {
 
             // ── BODY (3 sections, sinuating) ──────────────────────────────────
             // Section 1: head-shoulder
-            val body1 = Path().apply {
+            val body1 = paths.obtain().apply {
                 moveTo(headX + bodyH * 0.5f, y + wave1 * 0.2f - bodyH)
                 cubicTo(body1X * 0.6f + headX * 0.4f, y + wave1 * 0.4f - bodyH * 0.9f,
                     body1X * 0.8f + headX * 0.2f, y + wave1 * 0.7f - bodyH * 0.85f,
@@ -119,7 +122,7 @@ object MarineIguanaRenderer : CreatureRenderer {
             drawPath(body1, IgBody)
 
             // Section 2: mid-body
-            val body2 = Path().apply {
+            val body2 = paths.obtain().apply {
                 moveTo(body1X, y + wave1 - bodyH * 0.8f)
                 cubicTo(body1X * 0.5f + body2X * 0.5f, y + wave2 * 0.5f - bodyH * 0.9f,
                     body1X * 0.2f + body2X * 0.8f, y + wave2 * 0.8f - bodyH * 0.85f,
@@ -133,7 +136,7 @@ object MarineIguanaRenderer : CreatureRenderer {
             drawPath(body2, IgBody)
 
             // Section 3: tail-base
-            val body3 = Path().apply {
+            val body3 = paths.obtain().apply {
                 moveTo(body2X, y + wave2 - bodyH * 0.75f)
                 cubicTo(body2X * 0.5f + tailBaseX * 0.5f, y + wave3 * 0.5f - bodyH * 0.65f,
                     body2X * 0.2f + tailBaseX * 0.8f, y + wave3 * 0.8f - bodyH * 0.55f,
@@ -170,7 +173,7 @@ object MarineIguanaRenderer : CreatureRenderer {
 
             // ── HEAD ──────────────────────────────────────────────────────────
             val headW = (4f + level * 0.25f) * s
-            val head  = Path().apply {
+            val head  = paths.obtain().apply {
                 moveTo(headX - headW * 1.2f, y + wave1 * 0.1f)
                 cubicTo(headX - headW, y + wave1 * 0.1f - bodyH * 0.9f,
                     headX + headW * 0.2f, y + wave1 * 0.05f - bodyH * 0.92f,

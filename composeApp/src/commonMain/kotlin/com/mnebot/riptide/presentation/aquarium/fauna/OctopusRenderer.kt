@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -22,11 +23,13 @@ private val OctPupil = Color(0xFFFFAA00)  // W-shaped pupil hint
 private val OctChrom = Color(0xFFCC6622)  // chromatophore spots
 
 object OctopusRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -52,7 +55,7 @@ object OctopusRenderer : CreatureRenderer {
                 val armBaseX = x + cos(baseAngle) * mantleR * 0.7f
                 val armBaseY = y + sin(baseAngle) * mantleR * 0.7f
 
-                val arm = Path().apply {
+                val arm = paths.obtain().apply {
                     moveTo(armBaseX, armBaseY)
                     cubicTo(
                         armBaseX + cos(baseAngle) * aLen * 0.4f + armSway * 0.3f,
@@ -83,7 +86,7 @@ object OctopusRenderer : CreatureRenderer {
             }
 
             // ── MANTLE (rounded, slightly pointed at top) ─────────────────────
-            val mantle = Path().apply {
+            val mantle = paths.obtain().apply {
                 moveTo(x, y - mantleR * 1.35f)  // pointed top
                 cubicTo(x + mantleR * 0.8f, y - mantleR * 1.30f,
                     x + mantleR * 1.1f, y - mantleR * 0.4f,

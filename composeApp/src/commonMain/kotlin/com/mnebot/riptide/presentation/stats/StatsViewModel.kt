@@ -174,13 +174,13 @@ class StatsViewModel(
     }
 
     private fun yearMonthKey(date: LocalDate): String {
-        val m = date.monthNumber.toString().padStart(2, '0')
+        val m = (date.month.ordinal + 1).toString().padStart(2, '0')
         return "${date.year}-$m"
     }
 
     private fun formatDateShort(date: LocalDate): String {
-        val monthLabel = MONTH_LABELS[date.monthNumber - 1]
-        return "$monthLabel ${date.dayOfMonth}"
+        val monthLabel = MONTH_LABELS[date.month.ordinal]
+        return "$monthLabel ${date.day}"
     }
 
     companion object {

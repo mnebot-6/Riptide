@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val DarkGray       = Color(0xFF323D44)  // dark gray accent
 private val MediumTeal     = Color(0xFF057E8E)  // medium teal
 
 object BarracudaRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -57,7 +60,7 @@ object BarracudaRenderer : CreatureRenderer {
             val forkLen = 4.0f * s
 
             // Tail shadow
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX - bodyLen * 0.02f, y)
                 lineTo(tailX + forkLen * 1.05f, y - forkLen * 1.25f + tailSway)
                 lineTo(tailX + forkLen * 0.5f, y + tailSway * 0.3f)
@@ -67,7 +70,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(tailShadow, ShadowDeepBlue.copy(alpha = 0.20f))
 
             // Upper fork
-            val tailTopFork = Path().apply {
+            val tailTopFork = paths.obtain().apply {
                 moveTo(tailX, y - bodyH * 0.2f)
                 cubicTo(
                     tailX + forkLen * 0.3f, y - bodyH * 0.3f + tailSway * 0.3f,
@@ -84,7 +87,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(tailTopFork, ShadowDarkTeal)
 
             // Upper fork highlight
-            val tailTopHL = Path().apply {
+            val tailTopHL = paths.obtain().apply {
                 moveTo(tailX + forkLen * 0.1f, y - bodyH * 0.18f)
                 cubicTo(
                     tailX + forkLen * 0.35f, y - bodyH * 0.25f + tailSway * 0.3f,
@@ -101,7 +104,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(tailTopHL, BodyTealGray.copy(alpha = 0.5f))
 
             // Lower fork
-            val tailBotFork = Path().apply {
+            val tailBotFork = paths.obtain().apply {
                 moveTo(tailX, y)
                 cubicTo(
                     tailX + forkLen * 0.4f, y + bodyH * 0.1f + tailSway * 0.2f,
@@ -121,7 +124,7 @@ object BarracudaRenderer : CreatureRenderer {
             val dorsalSway = sin(t * 3f * PI.toFloat()) * 0.4f * s * (1f - burstBlend * 0.8f)
 
             // First dorsal shadow
-            val dorsal1Shadow = Path().apply {
+            val dorsal1Shadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.12f, y - bodyH * 0.83f)
                 cubicTo(
                     x - bodyLen * 0.02f + dorsalSway, y - bodyH * 1.75f,
@@ -133,7 +136,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(dorsal1Shadow, ShadowDeepBlue.copy(alpha = 0.18f))
 
             // First dorsal
-            val dorsal1 = Path().apply {
+            val dorsal1 = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.1f, y - bodyH * 0.85f)
                 cubicTo(
                     x - bodyLen * 0.0f + dorsalSway, y - bodyH * 1.7f,
@@ -149,7 +152,7 @@ object BarracudaRenderer : CreatureRenderer {
             }
             drawPath(dorsal1, AccentDeepRed)
             // Dorsal highlight
-            val dorsal1HL = Path().apply {
+            val dorsal1HL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.06f, y - bodyH * 0.87f)
                 cubicTo(
                     x + dorsalSway * 0.6f, y - bodyH * 1.40f,
@@ -161,7 +164,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(dorsal1HL, AccentCoral.copy(alpha = 0.6f))
 
             // Second dorsal
-            val dorsal2 = Path().apply {
+            val dorsal2 = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.22f, y - bodyH * 0.78f)
                 cubicTo(
                     x + bodyLen * 0.27f + dorsalSway * 0.5f, y - bodyH * 1.2f,
@@ -177,7 +180,7 @@ object BarracudaRenderer : CreatureRenderer {
             }
             drawPath(dorsal2, AccentDeepRed)
             // Dorsal 2 highlight
-            val dorsal2HL = Path().apply {
+            val dorsal2HL = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.24f, y - bodyH * 0.75f)
                 cubicTo(
                     x + bodyLen * 0.28f + dorsalSway * 0.3f, y - bodyH * 1.0f,
@@ -189,7 +192,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(dorsal2HL, AccentCoral.copy(alpha = 0.45f))
 
             // Anal fin
-            val anal = Path().apply {
+            val anal = paths.obtain().apply {
                 moveTo(x + bodyLen * 0.22f, y + bodyH * 0.78f)
                 cubicTo(
                     x + bodyLen * 0.27f, y + bodyH * 1.2f,
@@ -209,7 +212,7 @@ object BarracudaRenderer : CreatureRenderer {
             val headX = x - bodyLen
 
             // Body shadow
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(headX - 0.5f * s, y)
                 cubicTo(
                     headX + bodyLen * 0.05f, y - bodyH * 1.05f,
@@ -228,7 +231,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(bodyShadow, ShadowDeepBlue.copy(alpha = 0.18f))
 
             // Main body
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(headX, y)
                 cubicTo(
                     headX + bodyLen * 0.05f, y - bodyH * 0.45f,
@@ -247,7 +250,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(body, BodySage)
 
             // Upper body highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.03f, y - bodyH * 0.15f)
                 cubicTo(
                     headX + bodyLen * 0.08f, y - bodyH * 0.40f,
@@ -264,7 +267,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(upperHL, BodyLightSage.copy(alpha = 0.5f))
 
             // Belly counter-shading (cream)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.05f, y + bodyH * 0.05f)
                 cubicTo(
                     x - bodyLen * 0.2f, y + bodyH * 0.85f,
@@ -281,7 +284,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(belly, BellyCream.copy(alpha = 0.50f))
 
             // Belly bright center
-            val bellyCenter = Path().apply {
+            val bellyCenter = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.08f, y + bodyH * 0.10f)
                 cubicTo(
                     x - bodyLen * 0.15f, y + bodyH * 0.65f,
@@ -298,7 +301,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(bellyCenter, BellyWhite.copy(alpha = 0.30f))
 
             // ── UPPER JAW RIDGE ──────────────────────────────────────────────
-            val upperJaw = Path().apply {
+            val upperJaw = paths.obtain().apply {
                 moveTo(headX - 1.5f * s, y - bodyH * 0.08f)
                 cubicTo(
                     headX + bodyLen * 0.02f, y - bodyH * 0.22f,
@@ -315,7 +318,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(upperJaw, DarkGray.copy(alpha = 0.45f))
 
             // ── LOWER JAW ────────────────────────────────────────────────────
-            val lowerJaw = Path().apply {
+            val lowerJaw = paths.obtain().apply {
                 moveTo(headX - 1.5f * s, y + bodyH * 0.08f + jawOpen)
                 cubicTo(
                     headX + bodyLen * 0.02f, y + bodyH * 0.35f + jawOpen,
@@ -367,7 +370,7 @@ object BarracudaRenderer : CreatureRenderer {
             // ── PECTORAL FIN (small, coral-tinted) ───────────────────────────
             val pectAmp  = (1f - burstBlend) * 0.5f * s
             val pectSway = sin(t * 3.5f * PI.toFloat()) * pectAmp
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.55f, y + bodyH * 0.15f)
                 cubicTo(
                     x - bodyLen * 0.48f + pectSway, y + bodyH * 0.65f,
@@ -384,7 +387,7 @@ object BarracudaRenderer : CreatureRenderer {
             drawPath(pect, AccentCoral.copy(alpha = 0.55f))
 
             // ── PELVIC FINS (ventral pair, small) ────────────────────────────
-            val pelv = Path().apply {
+            val pelv = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.30f, y + bodyH * 0.35f)
                 cubicTo(
                     x - bodyLen * 0.25f + pectSway * 0.3f, y + bodyH * 0.72f,
@@ -453,7 +456,7 @@ object BarracudaRenderer : CreatureRenderer {
                 Offset(eyeX + eyeR * 0.15f, eyeY + eyeR * 0.12f))
 
             // ── GILL COVER SHADOW ────────────────────────────────────────────
-            val gillCover = Path().apply {
+            val gillCover = paths.obtain().apply {
                 moveTo(headX + bodyLen * 0.08f, y - bodyH * 0.10f)
                 cubicTo(
                     headX + bodyLen * 0.18f, y - bodyH * 0.45f,

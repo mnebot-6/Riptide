@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val CrownGold      = Color(0xFFD0B040)   // seaweed crown (level 5+)
 private val CrownGoldLight = Color(0xFFE8D060)   // crown highlight
 
 object CoralThroneRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -44,7 +47,7 @@ object CoralThroneRenderer : CreatureRenderer {
 
         // ── Seat base (wide, flat) ──────────────────────────────────────────
         val seatTop = y - seatH
-        val seatPath = Path().apply {
+        val seatPath = paths.obtain().apply {
             moveTo(x - throneW, y)
             cubicTo(
                 x - throneW * 0.9f, seatTop + seatH * 0.3f,
@@ -61,7 +64,7 @@ object CoralThroneRenderer : CreatureRenderer {
         drawPath(seatPath, SeatDark)
 
         // Seat top surface
-        val seatSurf = Path().apply {
+        val seatSurf = paths.obtain().apply {
             moveTo(x - throneW * 0.85f, seatTop + seatH * 0.15f)
             cubicTo(
                 x - throneW * 0.5f, seatTop - seatH * 0.05f,
@@ -86,7 +89,7 @@ object CoralThroneRenderer : CreatureRenderer {
         val backW = throneW * 0.85f
 
         // Main backrest shape
-        val backPath = Path().apply {
+        val backPath = paths.obtain().apply {
             moveTo(x - backW, seatTop)
             cubicTo(
                 x - backW * 1.1f, seatTop - backH * 0.3f,
@@ -109,7 +112,7 @@ object CoralThroneRenderer : CreatureRenderer {
         drawPath(backPath, CoralPink)
 
         // Backrest shadow
-        val backShadow = Path().apply {
+        val backShadow = paths.obtain().apply {
             moveTo(x - backW * 0.2f, seatTop)
             cubicTo(
                 x + backW * 0.3f, seatTop - backH * 0.2f,
@@ -172,7 +175,7 @@ object CoralThroneRenderer : CreatureRenderer {
         mainColor: Color, shadowColor: Color, pulse: Float
     ) {
         val legW = 2.5f * s
-        val legPath = Path().apply {
+        val legPath = paths.obtain().apply {
             moveTo(cx - legW, baseY)
             cubicTo(
                 cx - legW * 1.2f, baseY - height * 0.4f,
@@ -188,7 +191,7 @@ object CoralThroneRenderer : CreatureRenderer {
         }
         drawPath(legPath, mainColor)
         // Shadow
-        val shadowP = Path().apply {
+        val shadowP = paths.obtain().apply {
             moveTo(cx, baseY)
             cubicTo(
                 cx + legW * 0.5f, baseY - height * 0.3f,
@@ -217,7 +220,7 @@ object CoralThroneRenderer : CreatureRenderer {
         val tipX = ax + dir * armLen
         val tipY = ay - armH + sway
 
-        val armPath = Path().apply {
+        val armPath = paths.obtain().apply {
             moveTo(ax, ay)
             cubicTo(
                 ax + dir * armLen * 0.3f, ay - armH * 1.5f,
@@ -249,7 +252,7 @@ object CoralThroneRenderer : CreatureRenderer {
         val outerR = sz
         val wobble = sin(t * 0.4f * PI.toFloat()) * 0.1f
 
-        val starPath = Path()
+        val starPath = paths.obtain()
         for (i in 0 until arms * 2) {
             val angle = i.toFloat() / (arms * 2) * 2f * PI.toFloat() - PI.toFloat() / 2f + wobble
             val r = if (i % 2 == 0) outerR else innerR

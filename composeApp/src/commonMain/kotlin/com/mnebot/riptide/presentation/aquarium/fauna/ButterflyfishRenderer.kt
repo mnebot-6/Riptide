@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +27,13 @@ private val ShadowNavy     = Color(0xFF08082A)  // dark shadow
 private val ShadowBlue     = Color(0xFF0A3060)  // blue shadow
 
 object ButterflyfishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -52,7 +55,7 @@ object ButterflyfishRenderer : CreatureRenderer {
 
             // ── TAIL FIN ────────────────────────────────────────────────────
             val tailX = x + bodyRX * 0.85f
-            val tailShadow = Path().apply {
+            val tailShadow = paths.obtain().apply {
                 moveTo(tailX - bodyRX * 0.05f, y - bodyRY * 0.15f)
                 cubicTo(
                     tailX + tailExt * 0.5f, y - tailExt * 0.65f + tailSway,
@@ -68,7 +71,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             }
             drawPath(tailShadow, ShadowBlue.copy(alpha = 0.18f))
 
-            val tail = Path().apply {
+            val tail = paths.obtain().apply {
                 moveTo(tailX, y - bodyRY * 0.12f)
                 cubicTo(
                     tailX + tailExt * 0.45f, y - tailExt * 0.6f + tailSway,
@@ -87,7 +90,7 @@ object ButterflyfishRenderer : CreatureRenderer {
 
             // ── DORSAL FIN (thin, spiny) ────────────────────────────────────
             val dorsalSway = sin(t * 2.5f * PI.toFloat()) * 0.3f * s
-            val dorsal = Path().apply {
+            val dorsal = paths.obtain().apply {
                 moveTo(x - bodyRX * 0.3f, y - bodyRY * 0.92f)
                 cubicTo(
                     x - bodyRX * 0.05f + dorsalSway, y - bodyRY * 1.55f,
@@ -116,7 +119,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             }
 
             // ── PELVIC FIN (thin, yellow) ───────────────────────────────────
-            val pelvic = Path().apply {
+            val pelvic = paths.obtain().apply {
                 moveTo(x - bodyRX * 0.25f, y + bodyRY * 0.88f)
                 cubicTo(
                     x - bodyRX * 0.10f, y + bodyRY * 1.35f,
@@ -128,7 +131,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             drawPath(pelvic, FinYellow.copy(alpha = 0.7f))
 
             // ── MAIN BODY (disc shape) ──────────────────────────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyRX * 1.03f, y)
                 cubicTo(x - bodyRX * 1.03f, y - bodyRY * 1.03f, x + bodyRX * 1.03f, y - bodyRY * 1.03f, x + bodyRX * 1.03f, y)
                 cubicTo(x + bodyRX * 1.03f, y + bodyRY * 1.03f, x - bodyRX * 1.03f, y + bodyRY * 1.03f, x - bodyRX * 1.03f, y)
@@ -136,7 +139,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowBlue.copy(alpha = 0.15f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyRX, y)
                 cubicTo(x - bodyRX, y - bodyRY, x + bodyRX, y - bodyRY, x + bodyRX, y)
                 cubicTo(x + bodyRX, y + bodyRY, x - bodyRX, y + bodyRY, x - bodyRX, y)
@@ -145,7 +148,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             drawPath(body, BodyYellow)
 
             // Upper highlight
-            val highlight = Path().apply {
+            val highlight = paths.obtain().apply {
                 moveTo(x - bodyRX * 0.6f, y - bodyRY * 0.35f)
                 cubicTo(
                     x - bodyRX * 0.4f, y - bodyRY * 0.82f,
@@ -176,7 +179,7 @@ object ButterflyfishRenderer : CreatureRenderer {
                 val isBlack = idx % 2 == 0
                 val stripeColor = if (isBlack) StripBlack.copy(alpha = 0.70f)
                                   else BandWhite.copy(alpha = 0.80f)
-                val stripePath = Path().apply {
+                val stripePath = paths.obtain().apply {
                     moveTo(stripe.cx - stripe.hw, stripe.topY)
                     cubicTo(
                         stripe.cx - stripe.hw + stripe.hw * 0.4f, stripe.topY + (stripe.botY - stripe.topY) * 0.3f,
@@ -195,7 +198,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             }
 
             // ── EYE BAR (black diagonal stripe over eye) ────────────────────
-            val eyeBarPath = Path().apply {
+            val eyeBarPath = paths.obtain().apply {
                 moveTo(x - bodyRX * 0.72f, y - bodyRY * 0.75f)
                 cubicTo(
                     x - bodyRX * 0.62f, y - bodyRY * 0.90f,
@@ -214,7 +217,7 @@ object ButterflyfishRenderer : CreatureRenderer {
 
             // Level 3+: eye stripe wider and more prominent
             if (level >= 3) {
-                val eyeBarWide = Path().apply {
+                val eyeBarWide = paths.obtain().apply {
                     moveTo(x - bodyRX * 0.75f, y - bodyRY * 0.78f)
                     cubicTo(
                         x - bodyRX * 0.66f, y - bodyRY * 0.95f,
@@ -237,7 +240,7 @@ object ButterflyfishRenderer : CreatureRenderer {
                 style = Stroke(width = (0.5f * s).coerceAtLeast(0.25f)))
 
             // ── SNOUT (pointed nose, characteristic) ────────────────────────
-            val snout = Path().apply {
+            val snout = paths.obtain().apply {
                 moveTo(x - bodyRX * 0.98f, y - bodyRY * 0.10f)
                 cubicTo(
                     x - bodyRX * 1.25f, y - bodyRY * 0.05f,
@@ -265,7 +268,7 @@ object ButterflyfishRenderer : CreatureRenderer {
             // ── LEVEL 5+: Iridescent shimmer on body ────────────────────────
             if (level >= 5) {
                 val shimmerAlpha = (sin(t * 1.8f * PI.toFloat()) * 0.5f + 0.5f) * 0.18f
-                val shimmer = Path().apply {
+                val shimmer = paths.obtain().apply {
                     moveTo(x - bodyRX * 0.5f, y - bodyRY * 0.6f)
                     cubicTo(
                         x - bodyRX * 0.2f, y - bodyRY * 0.85f,

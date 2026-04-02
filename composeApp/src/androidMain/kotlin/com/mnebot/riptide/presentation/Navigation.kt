@@ -1,5 +1,8 @@
 package com.mnebot.riptide.presentation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
@@ -78,19 +81,13 @@ fun NavGraphBuilder.mainGraph(
         val signInLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
-            android.util.Log.d("RiptideAuth", "Sign-in result: resultCode=${result.resultCode}, data=${result.data}")
             scope.launch {
                 authManager?.let { am ->
                     val loginResult = am.handleSignInResult(result.data)
                     loginResult.onSuccess { user ->
-                        android.util.Log.d("RiptideAuth", "Sign-in SUCCESS: ${user.email}")
                         mainViewModel.onSignInCompleted(user)
-                        // Stamp pre-existing data and trigger initial sync
                         initialSyncPreparer?.stampAllEntities()
                         syncManager?.sync()
-                    }
-                    loginResult.onFailure { e ->
-                        android.util.Log.e("RiptideAuth", "Sign-in FAILED", e)
                     }
                 }
             }
@@ -123,7 +120,13 @@ fun NavGraphBuilder.mainGraph(
         )
     }
 
-    composable(ROUTE_BLOCK_CREATE) {
+    composable(
+        ROUTE_BLOCK_CREATE,
+        enterTransition  = { slideInVertically(tween(300)) { it } },
+        exitTransition   = { slideOutVertically(tween(300)) { it } },
+        popEnterTransition  = { slideInVertically(tween(300)) { it } },
+        popExitTransition   = { slideOutVertically(tween(300)) { it } }
+    ) {
         val context = LocalContext.current
         val database = DatabaseProvider.getDatabase(context)
         val factory = BlockFormViewModelFactory(database)
@@ -144,7 +147,13 @@ fun NavGraphBuilder.mainGraph(
         )
     }
 
-    composable(ROUTE_BLOCK_EDIT) { backStackEntry ->
+    composable(
+        ROUTE_BLOCK_EDIT,
+        enterTransition  = { slideInVertically(tween(300)) { it } },
+        exitTransition   = { slideOutVertically(tween(300)) { it } },
+        popEnterTransition  = { slideInVertically(tween(300)) { it } },
+        popExitTransition   = { slideOutVertically(tween(300)) { it } }
+    ) { backStackEntry ->
         val blockId = backStackEntry.arguments?.getString("blockId") ?: return@composable
         val block = mainViewModel.uiState.collectAsState().value.blocks.firstOrNull { it.id == blockId }
 

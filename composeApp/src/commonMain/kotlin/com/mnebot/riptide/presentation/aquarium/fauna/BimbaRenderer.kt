@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val WaterWhite   = Color(0xAAFFFFFF)   // estela en la superficie
  * La posición Y ya está fijada en la superficie por SwimZone.SURFACE en AquariumCreature.kt.
  */
 object BimbaRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -64,7 +67,7 @@ object BimbaRenderer : CreatureRenderer {
 
             // ── COLA (rabo muy movido — labrador feliz) ───────────────────────
             val tailBase = Offset(x + bodyLen * 0.45f, y - bodyH * 0.3f + bodyBob * 0.3f)
-            val tailPath = Path().apply {
+            val tailPath = paths.obtain().apply {
                 moveTo(tailBase.x, tailBase.y)
                 cubicTo(
                     tailBase.x + 2.5f * s, tailBase.y - 2.5f * s + tailWag * 0.4f,
@@ -77,7 +80,7 @@ object BimbaRenderer : CreatureRenderer {
             drawPath(tailPath, LabGold.copy(alpha = 0.6f), style = Stroke(width = (1.2f * s).coerceAtLeast(0.8f), cap = StrokeCap.Round))
 
             // ── CUERPO ────────────────────────────────────────────────────────
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 // Silueta redondeada típica de labrador
                 moveTo(x - bodyLen * 0.42f, y + bodyBob)
                 cubicTo(
@@ -95,7 +98,7 @@ object BimbaRenderer : CreatureRenderer {
             drawPath(body, LabGold)
 
             // Sombra dorsal (lomo ligeramente más oscuro)
-            val dorsalShade = Path().apply {
+            val dorsalShade = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.35f, y - bodyH * 0.7f + bodyBob)
                 cubicTo(
                     x - bodyLen * 0.1f, y - bodyH * 0.95f + bodyBob * 0.5f,
@@ -112,7 +115,7 @@ object BimbaRenderer : CreatureRenderer {
             drawPath(dorsalShade, LabGoldDark.copy(alpha = 0.35f))
 
             // Barriga crema
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.30f, y + bodyBob * 0.8f)
                 cubicTo(
                     x - bodyLen * 0.10f, y + bodyH * 0.78f + bodyBob * 0.5f,
@@ -167,7 +170,7 @@ object BimbaRenderer : CreatureRenderer {
             // ── OREJAS (caídas, como labrador) ────────────────────────────────
             // Oreja derecha (visible)
             val earSwing = sin(t * 2.2f * PI.toFloat()) * 0.8f * s
-            val earPath = Path().apply {
+            val earPath = paths.obtain().apply {
                 moveTo(headX - headR * 0.3f, headY - headR * 0.6f)
                 cubicTo(
                     headX - headR * 0.5f, headY - headR * 0.1f + earSwing,
@@ -196,7 +199,7 @@ object BimbaRenderer : CreatureRenderer {
             if (tongueOut > 0.3f) {
                 val tongueAlpha = ((tongueOut - 0.3f) / 0.7f).coerceIn(0f, 1f)
                 val tongueLen = 2.0f * s * tongueAlpha
-                val tonguePath = Path().apply {
+                val tonguePath = paths.obtain().apply {
                     moveTo(noseX + headR * 0.15f, noseY + headR * 0.25f)
                     cubicTo(
                         noseX - headR * 0.05f, noseY + headR * 0.55f + tongueLen * 0.3f,

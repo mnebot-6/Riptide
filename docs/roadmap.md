@@ -287,21 +287,26 @@
 
 ---
 
-## Fase 2 -- Calidad
+## Done - Sprint QA & Testing
 
-### Sprint QA & Testing
+- Accesibilidad: `contentDescription` en 5 iconos (StatsScreen, TaskFormSheet, HistoryScreen, MainDrawer)
+- Touch targets: IconButton 40dp en HistoryScreen, 48dp back button en BlockFormScreen
+- 6 strings a11y nuevas (EN + ES)
+- 45 tests nuevos: AuthFlowTest (12), DecorationUnlockNewDecorationsTest (15), CreatureCatalogIntegrityTest (10), BimbaEasterEggTest (8)
+- Total: 129 tests, 0 fallos, 13 test suites
 
-- Tests de integracion (flujos completos con fake backend)
-- Edge cases UX (sin internet, primer uso, migracion datos)
-- Accesibilidad (`contentDescription`, contraste WCAG, touch targets 48dp)
-- Ampliar cobertura de unit tests (repositories, sync logic)
+---
 
-### Sprint Polish
+## Done - Sprint Polish
 
-- Performance audit (recomposiciones innecesarias, lazy lists)
-- Animaciones de transicion entre pantallas
-- Haptic feedback en interacciones clave
-- Bug fixing final
+- PathPool: 480 Path() allocaciones por frame eliminadas en 70 renderers Canvas (zero-allocation after first frame)
+- `remember(blocksWithTasks)` en MainScreen para evitar recomputacion
+- Transiciones de navegacion: slide horizontal (pantallas), slide vertical (formularios de bloque)
+- Haptic feedback en checkbox de tarea y apertura de lootbox
+- Deprecaciones resueltas: `dayOfMonth` -> `day`, `monthNumber` -> `month.ordinal`
+- `when` exhaustivo sin `else` redundante en WeekCalendar
+- Cast redundante eliminado en BlockFormScreen
+- Debug logs eliminados en Navigation.kt y SyncManager.kt (solo se conserva Log.e para errores)
 
 ---
 

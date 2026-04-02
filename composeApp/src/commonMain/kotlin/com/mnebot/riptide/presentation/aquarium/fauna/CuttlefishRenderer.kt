@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -21,11 +22,13 @@ private val CuttPupil = Color(0xFF000000)  // W-shaped pupil
 private val CuttShim  = Color(0x55AA88CC)  // iridescent shimmer
 
 object CuttlefishRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 28f
         val t = animTimeMs / 1000f
 
@@ -43,7 +46,7 @@ object CuttlefishRenderer : CreatureRenderer {
             val finAmplitude = (2.5f + level * 0.2f) * s
 
             // Top fin skirt
-            val topFin = Path().apply {
+            val topFin = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.45f, y - bodyH * 0.78f)
                 for (i in 0..finSegments) {
                     val frac  = i.toFloat() / finSegments
@@ -66,7 +69,7 @@ object CuttlefishRenderer : CreatureRenderer {
             drawPath(topFin, CuttFin.copy(alpha = 0.70f))
 
             // Bottom fin skirt (mirror)
-            val botFin = Path().apply {
+            val botFin = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.45f, y + bodyH * 0.78f)
                 for (i in 0..finSegments) {
                     val frac  = i.toFloat() / finSegments
@@ -90,7 +93,7 @@ object CuttlefishRenderer : CreatureRenderer {
             // ════════════════════════════════════════════════════════════════
             // MAIN BODY MANTLE — oval, somewhat flattened
             // ════════════════════════════════════════════════════════════════
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.5f, y)  // rear (blunt)
                 cubicTo(
                     x - bodyLen * 0.5f, y - bodyH,
@@ -148,7 +151,7 @@ object CuttlefishRenderer : CreatureRenderer {
                 val armLen = (3.5f + level * 0.2f) * s
                 val tipX   = armBaseX + armLen + armSway
                 val tipY   = armBaseY + spread - bodyH * 0.1f
-                val arm = Path().apply {
+                val arm = paths.obtain().apply {
                     moveTo(armBaseX, armBaseY + spread * 0.5f - bodyH * 0.05f)
                     quadraticTo(
                         armBaseX + armLen * 0.5f + armSway * 0.5f,
@@ -165,7 +168,7 @@ object CuttlefishRenderer : CreatureRenderer {
                 val tentSway = sin(t * 2.5f * PI.toFloat() + a * PI.toFloat()) * 2f * s
                 val tentLen  = (7f + level * 0.4f) * s
                 val spread   = (a - 0.5f) * bodyH * 0.4f
-                val tent = Path().apply {
+                val tent = paths.obtain().apply {
                     moveTo(armBaseX, armBaseY + spread)
                     cubicTo(
                         armBaseX + tentLen * 0.3f + tentSway * 0.3f, armBaseY + spread,
@@ -194,7 +197,7 @@ object CuttlefishRenderer : CreatureRenderer {
             // W-shaped pupil: draw as horizontal thick bar with notch in center
             val pupilW = eyeR * 1.2f
             val pupilH = eyeR * 0.45f
-            val pupil = Path().apply {
+            val pupil = paths.obtain().apply {
                 moveTo(eyeX - pupilW, eyeY - pupilH * 0.2f)
                 lineTo(eyeX - pupilW * 0.35f, eyeY - pupilH * 0.2f)
                 lineTo(eyeX - pupilW * 0.15f, eyeY + pupilH * 0.6f)

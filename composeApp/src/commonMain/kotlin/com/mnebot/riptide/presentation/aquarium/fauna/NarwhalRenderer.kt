@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val IceCrystal      = Color(0xFFC0E8FF)  // ice crystal sparkle
 private val IceWhite        = Color(0xFFE8F8FF)  // bright ice highlight
 
 object NarwhalRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -57,7 +60,7 @@ object NarwhalRenderer : CreatureRenderer {
             val tailX = x + bodyLen * 0.45f
             val flukeSpan = bodyH * 0.8f
 
-            val upperFluke = Path().apply {
+            val upperFluke = paths.obtain().apply {
                 moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.4f, y - bodyH * 0.3f + tailSway,
                     tailX + flukeSpan * 0.7f, y - bodyH * 0.9f + tailSway,
@@ -69,7 +72,7 @@ object NarwhalRenderer : CreatureRenderer {
             }
             drawPath(upperFluke, FlukeDark)
 
-            val lowerFluke = Path().apply {
+            val lowerFluke = paths.obtain().apply {
                 moveTo(tailX, y + rearArc * 0.3f)
                 cubicTo(tailX + flukeSpan * 0.35f, y + bodyH * 0.15f + tailSway * 0.5f,
                     tailX + flukeSpan * 0.7f, y + bodyH * 0.6f + tailSway,
@@ -86,7 +89,7 @@ object NarwhalRenderer : CreatureRenderer {
             drawPath(lowerFluke, BodyDarkBlue.copy(alpha = 0.20f))
 
             // ── PECTORAL FLIPPERS ────────────────────────────────────────
-            val pect = Path().apply {
+            val pect = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.10f, y + bodyH * 0.65f + flipperSweep * 0.5f)
                 cubicTo(x - bodyLen * 0.02f, y + bodyH * 1.35f + flipperSweep * 0.3f,
                     x + bodyLen * 0.10f, y + bodyH * 1.40f + flipperSweep * 0.2f,
@@ -100,7 +103,7 @@ object NarwhalRenderer : CreatureRenderer {
             drawPath(pect, BodyPaleBlue.copy(alpha = 0.20f))
 
             // ── MAIN BODY (smooth whale shape, S-wave) ───────────────────
-            val bodyShadow = Path().apply {
+            val bodyShadow = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.48f, y + frontArc)
                 cubicTo(x - bodyLen * 0.40f, y - bodyH * 0.82f + frontArc * 0.8f,
                     x + bodyLen * 0.05f, y - bodyH * 0.98f + midArc * 0.4f,
@@ -119,7 +122,7 @@ object NarwhalRenderer : CreatureRenderer {
             }
             drawPath(bodyShadow, ShadowDeep.copy(alpha = 0.15f))
 
-            val body = Path().apply {
+            val body = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.46f, y + frontArc)
                 cubicTo(x - bodyLen * 0.38f, y - bodyH * 0.80f + frontArc * 0.8f,
                     x + bodyLen * 0.03f, y - bodyH * 0.95f + midArc * 0.4f,
@@ -139,7 +142,7 @@ object NarwhalRenderer : CreatureRenderer {
             drawPath(body, BodyBlueGray)
 
             // Upper body highlight
-            val upperHL = Path().apply {
+            val upperHL = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.38f, y - bodyH * 0.25f + frontArc * 0.8f)
                 cubicTo(x - bodyLen * 0.20f, y - bodyH * 0.70f + midArc * 0.5f,
                     x + bodyLen * 0.10f, y - bodyH * 0.72f + midArc * 0.3f,
@@ -152,7 +155,7 @@ object NarwhalRenderer : CreatureRenderer {
             drawPath(upperHL, BodyPaleBlue.copy(alpha = 0.30f))
 
             // Belly (lighter)
-            val belly = Path().apply {
+            val belly = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.40f, y + frontArc + bodyH * 0.05f)
                 cubicTo(x - bodyLen * 0.25f, y + bodyH * 0.75f + midArc * 0.6f,
                     x + bodyLen * 0.15f, y + bodyH * 0.72f + midArc * 0.2f,
@@ -259,7 +262,7 @@ object NarwhalRenderer : CreatureRenderer {
             }
 
             // ── ROUNDED HEAD (melon) ─────────────────────────────────────
-            val melon = Path().apply {
+            val melon = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.46f, y + frontArc - bodyH * 0.15f)
                 cubicTo(x - bodyLen * 0.50f, y + frontArc - bodyH * 0.40f,
                     x - bodyLen * 0.48f, y + frontArc - bodyH * 0.55f,
@@ -285,7 +288,7 @@ object NarwhalRenderer : CreatureRenderer {
                 Offset(eyeX - eyeR * 0.15f, eyeY - eyeR * 0.15f))
 
             // ── MOUTH LINE ───────────────────────────────────────────────
-            val mouthPath = Path().apply {
+            val mouthPath = paths.obtain().apply {
                 moveTo(x - bodyLen * 0.46f, y + frontArc + bodyH * 0.02f)
                 cubicTo(x - bodyLen * 0.43f, y + frontArc + bodyH * 0.08f,
                     x - bodyLen * 0.40f, y + frontArc + bodyH * 0.10f,

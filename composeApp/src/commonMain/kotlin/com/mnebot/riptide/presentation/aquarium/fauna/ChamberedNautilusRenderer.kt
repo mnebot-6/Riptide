@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.aquarium.fauna
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import com.mnebot.riptide.presentation.aquarium.PathPool
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,11 +30,13 @@ private val EyeBlack         = Color(0xFF1A1008)  // near-black
 private val PearlWhite       = Color(0xFFFFF8F0)  // pearlescent highlight
 
 object ChamberedNautilusRenderer : CreatureRenderer {
+    private val paths = PathPool()
 
     override fun DrawScope.render(
         x: Float, y: Float, size: Float, level: Int,
         animTimeMs: Long, mirrored: Boolean
     ) {
+        paths.begin()
         val s = size / 30f
         val t = animTimeMs / 1000f
 
@@ -65,7 +68,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                     val tipX = bx - tentLen * 0.8f + sin(phase + 0.5f) * waveAmp * 1.5f
                     val tipY = by + sin(baseAngle) * tentLen * 0.7f + cos(phase + 0.5f) * waveAmp
 
-                    val tentacle = Path().apply {
+                    val tentacle = paths.obtain().apply {
                         moveTo(bx, by)
                         cubicTo(cp1x, cp1y, tipX - tentLen * 0.1f, tipY, tipX, tipY)
                     }
@@ -83,7 +86,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                     Offset(x + shellR * 0.03f, y + shellR * 0.04f))
 
                 // ── MAIN SHELL (oval, cream base) ────────────────────────────
-                val shellPath = Path().apply {
+                val shellPath = paths.obtain().apply {
                     moveTo(x - shellR * 0.7f, y)
                     cubicTo(x - shellR * 0.7f, y - shellR * 0.95f,
                         x + shellR * 0.4f, y - shellR * 0.95f,
@@ -99,7 +102,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                 drawPath(shellPath, ShellCream)
 
                 // Shell tan layer (lower half depth)
-                val shellLower = Path().apply {
+                val shellLower = paths.obtain().apply {
                     moveTo(x - shellR * 0.65f, y + shellR * 0.1f)
                     cubicTo(x - shellR * 0.55f, y + shellR * 0.85f,
                         x + shellR * 0.5f, y + shellR * 0.85f,
@@ -146,7 +149,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                             .coerceAtMost(shellR * 0.78f)
                     // Draw chamber arc
                     val segments = 16
-                    val chamberPath = Path().apply {
+                    val chamberPath = paths.obtain().apply {
                         val startAngle = -PI.toFloat() * 0.6f + cFrac * 0.3f
                         val sweep = PI.toFloat() * 1.2f
                         val a0 = startAngle
@@ -164,7 +167,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                     // Level 3+: extra detail line parallel to chamber
                     if (level >= 3) {
                         val detailR = r * 0.92f
-                        val detailPath = Path().apply {
+                        val detailPath = paths.obtain().apply {
                             val startA = -PI.toFloat() * 0.55f + cFrac * 0.3f
                             val sweep = PI.toFloat() * 1.1f
                             moveTo(x + cos(startA) * detailR, y + sin(startA) * detailR)
@@ -179,7 +182,7 @@ object ChamberedNautilusRenderer : CreatureRenderer {
                 }
 
                 // ── INNER SHELL (opening, pinkish) ───────────────────────────
-                val opening = Path().apply {
+                val opening = paths.obtain().apply {
                     moveTo(x - shellR * 0.7f, y - shellR * 0.25f)
                     cubicTo(x - shellR * 0.55f, y - shellR * 0.55f,
                         x - shellR * 0.25f, y - shellR * 0.45f,

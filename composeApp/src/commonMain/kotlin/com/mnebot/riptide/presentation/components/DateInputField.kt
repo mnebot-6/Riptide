@@ -30,7 +30,7 @@ fun DateInputField(
     var showPicker by remember { mutableStateOf(false) }
 
     val displayText = value?.let {
-        "${it.year}-${it.monthNumber.toString().padStart(2, '0')}-${it.dayOfMonth.toString().padStart(2, '0')}"
+        "${it.year}-${(it.month.ordinal + 1).toString().padStart(2, '0')}-${it.day.toString().padStart(2, '0')}"
     } ?: "----/--/--"
 
     Box(
