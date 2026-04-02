@@ -1,4 +1,4 @@
-# Modelos de datos — Riptide
+# Modelos de datos -- Riptide
 
 Todos los modelos viven en `commonMain/kotlin/com/mnebot/riptide/domain/model/` como clases Kotlin puras, sin dependencias de Room ni de Android.
 
@@ -45,11 +45,11 @@ data class WeeklySlot(
 enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 ```
 
-| Estado | Descripción |
+| Estado | Descripcion |
 |--------|-------------|
 | PENDING | Estado por defecto |
 | COMPLETED | Da 10 XP al ecosistema (solo la primera vez, controlado por `hasBeenRewarded`) |
-| EXPIRED | Marcada por resumen nocturno. Sigue siendo completable (⌛ + checkbox) |
+| EXPIRED | Marcada por resumen nocturno. Sigue siendo completable |
 | POSTPONED | No cuenta en resumen ni barra de progreso |
 
 ---
@@ -84,7 +84,7 @@ data class DayTask(
 
 `hasBeenRewarded`: se pone a `true` al completar la tarea por primera vez. Evita dar XP duplicado al desmarcar y volver a marcar. Una vez `true`, nunca se resetea.
 
-`notificationsEnabled`: si `true` y la tarea tiene hora, se programa un `TaskReminderWorker` a esa hora. Por defecto `false`. Solo relevante si `schedule` incluye `time != null`.
+`notificationsEnabled`: si `true` y la tarea tiene hora, se programa un `TaskReminderWorker` a esa hora. Solo relevante si `schedule` incluye `time != null`.
 
 ---
 
@@ -95,14 +95,14 @@ data class RecurringTaskDef(
     val id: String,
     val blockId: String,
     val title: String,
-    val time: LocalTime?,   // nullable — hora opcional
+    val time: LocalTime?,   // nullable -- hora opcional
     val recurrence: Recurrence,
     val isActive: Boolean,
     val notificationsEnabled: Boolean = false
 )
 ```
 
-`notificationsEnabled`: se propaga a cada `DayTask` generado por `RecurringTaskGenerator`. Equivalente al campo del mismo nombre en `DayTask`.
+`notificationsEnabled`: se propaga a cada `DayTask` generado por `RecurringTaskGenerator`.
 
 ---
 
@@ -119,13 +119,15 @@ data class BlockCategory(val blockId: String, val category: MarineCategory)
 ```kotlin
 enum class MarineCategory(val isUnlockedByDefault: Boolean) {
     FISH(true), FLORA(true), CRUSTACEAN(true), MOLLUSK(true), PELAGIC(true),
-    CEPHALOPOD(false), REPTILE(false), MAMMAL(false), DECORATION(false)
+    CEPHALOPOD(false), REPTILE(false), MAMMAL(false), DECORATION(false),
+    COMPANION(false)  // Easter egg -- no se muestra hasta desbloquear; no sale por lootbox
 }
 ```
 
-Las 5 categorías base se desbloquean desde el inicio. Las demás requieren condiciones especiales (`unlockCategory()` existe en `EcosystemProcessor`).
+Las 5 categorias base se desbloquean desde el inicio. Las demas requieren condiciones especiales.
 
-DECORATION no recibe XP ni participa en la redistribución de categorías.
+DECORATION no recibe XP regular ni participa en la redistribucion de categorias.
+COMPANION es una categoria oculta para easter eggs (Bimba).
 
 ---
 
@@ -151,9 +153,12 @@ data class DaySummary(
 data class BlockStreak(
     val blockId: String,
     val currentStreak: Int,
-    val lastActiveDate: LocalDate
+    val lastActiveDate: LocalDate,
+    val longestStreak: Int = 0
 )
 ```
+
+`longestStreak`: racha mas larga historica del bloque (Room v11).
 
 ---
 
@@ -170,20 +175,20 @@ data class EcosystemState(
 )
 ```
 
-Un registro por categoría (9 en total). `isUnlocked` controla si la categoría participa en el ecosistema.
+Un registro por categoria (10 en total). `isUnlocked` controla si la categoria participa en el ecosistema.
 
 Curva de niveles:
 
 | Nivel | XP total | Coste |
 |---|---|---|
-| 1 | 0 | — |
+| 1 | 0 | -- |
 | 2 | 1 | 1 |
 | 3 | 21 | 20 |
 | 4 | 61 | 40 |
 | 5 | 126 | 65 |
 | 6 | 226 | 100 |
 | 7 | 376 | 150 |
-| N | — | anterior × 1.5 |
+| N | -- | anterior x 1.5 |
 
 ---
 
@@ -191,15 +196,15 @@ Curva de niveles:
 
 ```kotlin
 enum class CreatureRarity(val weight: Float, val displayName: String) {
-    COMMON(0.40f, "Común"),
-    UNCOMMON(0.30f, "Poco común"),
+    COMMON(0.40f, "Comun"),
+    UNCOMMON(0.30f, "Poco comun"),
     RARE(0.20f, "Raro"),
-    EPIC(0.08f, "Épico"),
+    EPIC(0.08f, "Epico"),
     LEGENDARY(0.02f, "Legendario")
 }
 ```
 
-Los pesos son probabilidades relativas, normalizadas entre las especies aún bloqueadas de la categoría al resolver una lootbox.
+Los pesos son probabilidades relativas, normalizadas entre las especies aun bloqueadas de la categoria al resolver una lootbox.
 
 ---
 
@@ -212,7 +217,7 @@ data class PendingLootbox(
 )
 ```
 
-Representa una lootbox pendiente de abrir. Se genera cuando una categoría alcanza un nivel definido en `CATEGORY_UNLOCK_LEVELS`. La especie se resuelve al ABRIR (no al ganar).
+Se genera cuando una categoria alcanza un nivel definido en `CATEGORY_UNLOCK_LEVELS`. La especie se resuelve al ABRIR (no al ganar).
 
 ---
 
@@ -231,143 +236,133 @@ data class MarineCreature(
 )
 ```
 
-`experience` y `creatureLevel` se actualizan con cada evento XP de la categoría. La criatura recién desbloqueada empieza con `experience=0` y no recibe XP hasta el siguiente evento.
+`experience` y `creatureLevel` se actualizan con cada evento XP de la categoria.
 
 ```kotlin
 enum class CreatureSpecies(val category: MarineCategory, val displayName: String) {
-    // FISH (6)
+    // FISH (9)
     CLOWNFISH(FISH, "Pez payaso"),
-    ANGELFISH(FISH, "Pez ángel"),
+    ANGELFISH(FISH, "Pez angel"),
     PUFFERFISH(FISH, "Pez globo"),
     SURGEONFISH(FISH, "Pez cirujano"),
-    LIONFISH(FISH, "Pez león"),
+    LIONFISH(FISH, "Pez leon"),
     SUNFISH(FISH, "Pez luna"),
-    // FLORA (5)
+    BUTTERFLYFISH(FISH, "Pez mariposa"),
+    SEAHORSE(FISH, "Caballito de mar"),
+    MORAY_EEL(FISH, "Morena"),
+
+    // FLORA (9)
     BRAIN_CORAL(FLORA, "Coral cerebro"),
-    ANEMONE(FLORA, "Anémona"),
+    ANEMONE(FLORA, "Anemona"),
     KELP(FLORA, "Alga kelp"),
     POSIDONIA(FLORA, "Posidonia"),
     FAN_CORAL(FLORA, "Coral abanico"),
-    // CRUSTACEAN (5)
+    TUBE_SPONGE(FLORA, "Esponja tubular"),
+    SEA_GRASS(FLORA, "Hierba marina"),
+    FIRE_CORAL(FLORA, "Coral de fuego"),
+    STAGHORN_CORAL(FLORA, "Coral cuerno de ciervo"),
+
+    // CRUSTACEAN (9)
     LOBSTER(CRUSTACEAN, "Langosta"),
-    HERMIT_CRAB(CRUSTACEAN, "Cangrejo ermitaño"),
+    HERMIT_CRAB(CRUSTACEAN, "Cangrejo ermitano"),
     SHRIMP(CRUSTACEAN, "Gamba"),
-    SPIDER_CRAB(CRUSTACEAN, "Cangrejo araña"),
+    SPIDER_CRAB(CRUSTACEAN, "Cangrejo arana"),
     BARNACLE(CRUSTACEAN, "Percebes"),
-    // MOLLUSK (5)
+    KRILL(CRUSTACEAN, "Krill"),
+    HORSESHOE_CRAB(CRUSTACEAN, "Cangrejo herradura"),
+    MANTIS_SHRIMP(CRUSTACEAN, "Gamba mantis"),
+    COCONUT_CRAB(CRUSTACEAN, "Cangrejo cocotero"),
+
+    // MOLLUSK (9)
     SEA_URCHIN(MOLLUSK, "Erizo de mar"),
     STARFISH(MOLLUSK, "Estrella de mar"),
     OYSTER(MOLLUSK, "Ostra"),
     NAUTILUS(MOLLUSK, "Nautilus"),
     GIANT_CLAM(MOLLUSK, "Almeja gigante"),
-    // PELAGIC (5)
+    CONCH(MOLLUSK, "Caracola"),
+    SCALLOP(MOLLUSK, "Vieira"),
+    SEA_SLUG(MOLLUSK, "Nudibranquio"),
+    SEA_CUCUMBER(MOLLUSK, "Pepino de mar"),
+
+    // PELAGIC (9)
     MANTA_RAY(PELAGIC, "Raya manta"),
     MOON_JELLYFISH(PELAGIC, "Medusa luna"),
-    WHALE_SHARK(PELAGIC, "Tiburón ballena"),
+    WHALE_SHARK(PELAGIC, "Tiburon ballena"),
     HAMMERHEAD(PELAGIC, "Pez martillo"),
     BARRACUDA(PELAGIC, "Barracuda"),
-    // CEPHALOPOD (4)
+    BLUEFIN_TUNA(PELAGIC, "Atun rojo"),
+    FLYING_FISH(PELAGIC, "Pez volador"),
+    LIONSMANE_JELLYFISH(PELAGIC, "Medusa melena de leon"),
+    SWORDFISH(PELAGIC, "Pez espada"),
+
+    // CEPHALOPOD (6)
     OCTOPUS(CEPHALOPOD, "Pulpo"),
     SQUID(CEPHALOPOD, "Calamar"),
     CUTTLEFISH(CEPHALOPOD, "Sepia"),
     BLUE_RINGED_OCTOPUS(CEPHALOPOD, "Pulpo anillado"),
-    // REPTILE (2)
+    CHAMBERED_NAUTILUS(CEPHALOPOD, "Nautilus camara"),
+    GIANT_PACIFIC_OCTOPUS(CEPHALOPOD, "Pulpo gigante del Pacifico"),
+
+    // REPTILE (6)
     SEA_TURTLE(REPTILE, "Tortuga marina"),
     MARINE_IGUANA(REPTILE, "Iguana marina"),
-    // MAMMAL (5)
-    DOLPHIN(MAMMAL, "Delfín"),
+    GREEN_SEA_TURTLE(REPTILE, "Tortuga verde"),
+    SEA_SNAKE(REPTILE, "Serpiente marina"),
+    LEATHERBACK_TURTLE(REPTILE, "Tortuga laud"),
+    SALTWATER_CROCODILE(REPTILE, "Cocodrilo marino"),
+
+    // MAMMAL (6)
+    DOLPHIN(MAMMAL, "Delfin"),
     SEAL(MAMMAL, "Foca"),
     BLUE_WHALE(MAMMAL, "Ballena azul"),
     SEA_OTTER(MAMMAL, "Nutria marina"),
-    MANATEE(MAMMAL, "Manatí"),
-    // DECORATION (3)
+    MANATEE(MAMMAL, "Manati"),
+    NARWHAL(MAMMAL, "Narval"),
+
+    // DECORATION (6)
     TREASURE_CHEST(DECORATION, "Cofre del tesoro"),
     ANCHOR(DECORATION, "Ancla"),
-    SUNKEN_SHIP(DECORATION, "Barco hundido")
+    SUNKEN_SHIP(DECORATION, "Barco hundido"),
+    DIVING_HELMET(DECORATION, "Escafandra"),
+    CORAL_THRONE(DECORATION, "Trono de coral"),
+    GOLDEN_TRIDENT(DECORATION, "Tridente dorado"),
+
+    // COMPANION -- easter egg oculto
+    BIMBA(COMPANION, "Bimba")
 }
 ```
 
-Total: 40 especies. Rareza asignada en `CreatureSpec` (código, no DB).
+Total: **70 especies** en 10 categorias. Rareza asignada en `CreatureSpec` (codigo, no DB).
 
 ---
 
-## CreatureSpec (presentation/aquarium)
-
-```kotlin
-data class CreatureSpec(
-    val emoji: String,
-    val species: CreatureSpecies,
-    val category: MarineCategory,
-    val rarity: CreatureRarity,
-    val swimDuration: Int,          // ms; 0 = fija
-    val wobbleAmplitude: Float,     // amplitud onda Y primaria (fracción de banda)
-    val speedScalePerLevel: Float,  // + más rápido, - más lento al crecer
-    val swimZone: SwimZone,         // banda vertical asignada
-    val personalYFraction: Float,   // [0..1] cota personal dentro de la banda
-    val waveCount: Int,             // entero → sin salto en loop
-    val erraticness: Float,         // [0..1] peso onda secundaria (PHI·waveCount)
-    val driftSpeed: Float,          // velocidad deriva lenta del eje Y (fraccionario)
-    val driftAmplitude: Float,      // cuánto se desplaza el centro de nado
-    val pauseFraction: Float,       // fracción del ciclo en pausa en cada extremo
-    val easingType: EasingType,     // SMOOTH / BURST / CRAWL
-    val verticalCoupling: Float,    // [0..1] arco vertical acoplado a X
-    val microWobble: Float,         // amplitud oscilación alta frecuencia (aleta/cola)
-    val xErraticness: Float,        // perturbación aperiódica de X
-    val fixedWobbleScale: Float,    // para criaturas fijas: escala de ondeo de corriente
-    val tempoVariation: Float,      // [0..1) modulación de velocidad continua
-    val sizeMultiplier: Float,      // escala relativa del tamaño base (0.4–1.05)
-    val instanceCount: Int,         // número de instancias Canvas (flora fija)
-    val emojiRotation: Float        // rotación en grados para emojis orientados
-)
-```
-
-`sizeMultiplier`: multiplicador de tamaño relativo. El tamaño final renderizado es `baseSize * sizeScale * sizeMultiplier`. Flora grande (Kelp, BrainCoral, FanCoral, Posidonia) está escalada a ~0.50 para verse proporcionada en el nuevo terreno suavizado. SeaUrchin: 0.55.
-
-`instanceCount`: solo para criaturas fijas (flora, decoración). El Canvas renderer se dibuja este número de veces con posiciones pseudoaleatorias (round-robin).
-
-`emojiRotation`: rotación en grados. Langosta (-90°) apunta arriba; peces y otros depredadores (0°) apuntan a la derecha naturalmente.
-
-### SwimZone
-
-| Zona | centerFraction | bandFraction | Especies |
-|---|---|---|---|
-| SURFACE | 0.16 | 0.07 | Delfín, Ballena azul |
-| UPPER | 0.30 | 0.10 | Clownfish, Medusa luna, Foca |
-| MID | 0.47 | 0.13 | Angelfish, Pufferfish, Manta ray, Calamar, Tortuga, Tiburón ballena |
-| LOWER | 0.64 | 0.09 | Langosta, Cangrejo, Gamba, Pulpo |
-| BOTTOM | 0.82 | 0.05 | Flora (BrainCoral 0.50, Anemone 0.42, Kelp 0.50, Posidonia 0.52, FanCoral 0.48), Moluscos (SeaUrchin 0.55, Starfish 0.90, Oyster 0.85, etc.), Decoración |
-
-### EasingType
-
-| Tipo | Comportamiento | Especies |
-|---|---|---|
-| SMOOTH | Coseno estándar — entrada y salida suaves | Peces, tortuga, mamíferos, manta |
-| BURST | 75% en el primer 25%, luego planea | Gamba, calamar, pulpo |
-| CRAWL | 93% lineal | Langosta, cangrejo ermitaño |
-
-### Efectos visuales por `creatureLevel`
-
-- Tamaño: `baseSize * (0.8f + (creatureLevel - 1) * 0.10f)`
-- Velocidad: `swimDuration / max(0.3f, 1f + (creatureLevel - 1) * speedScalePerLevel)`
-
----
-
-## Room — androidMain (v10)
+## Room -- androidMain (v12)
 
 | Entity | Tabla |
 |--------|-------|
-| `WorkBlockEntity` | `work_blocks` |
-| `BlockCategoryEntity` | `block_categories` — PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity` | `day_tasks` — + `hasBeenRewarded: Boolean`, + `notificationsEnabled: Boolean` |
-| `RecurringTaskDefEntity` | `recurring_task_defs` — `time String?` nullable, + `notificationsEnabled: Boolean` |
-| `DaySummaryEntity` | `day_summaries` |
-| `BlockStreakEntity` | `block_streaks` — PK `blockId` |
-| `EcosystemStateEntity` | `ecosystem_states` — `isUnlocked Boolean` |
-| `MarineCreatureEntity` | `marine_creatures` |
+| `WorkBlockEntity` | `work_blocks` -- + `updatedAt`, `isDeleted` |
+| `BlockCategoryEntity` | `block_categories` -- PK `(blockId, category)`, FK CASCADE |
+| `DayTaskEntity` | `day_tasks` -- + `hasBeenRewarded`, `notificationsEnabled`, `updatedAt`, `isDeleted` |
+| `RecurringTaskDefEntity` | `recurring_task_defs` -- `time String?` nullable, + `notificationsEnabled`, `updatedAt`, `isDeleted` |
+| `DaySummaryEntity` | `day_summaries` -- + `updatedAt` |
+| `BlockStreakEntity` | `block_streaks` -- PK `blockId`, + `longestStreak`, `updatedAt` |
+| `EcosystemStateEntity` | `ecosystem_states` -- `isUnlocked Boolean`, + `updatedAt` |
+| `MarineCreatureEntity` | `marine_creatures` -- + `updatedAt` |
 
 ### Migraciones
 
-| Migración | SQL |
+| Migracion | Cambio |
 |---|---|
-| 8 → 9 | `ALTER TABLE day_tasks ADD COLUMN hasBeenRewarded INTEGER NOT NULL DEFAULT 0` |
-| 9 → 10 | `ALTER TABLE day_tasks ADD COLUMN notificationsEnabled INTEGER NOT NULL DEFAULT 0` + `ALTER TABLE recurring_task_defs ADD COLUMN notificationsEnabled INTEGER NOT NULL DEFAULT 0` |
+| 8 -> 9 | `ALTER TABLE day_tasks ADD COLUMN hasBeenRewarded INTEGER NOT NULL DEFAULT 0` |
+| 9 -> 10 | `+ notificationsEnabled` en `day_tasks` y `recurring_task_defs` |
+| 10 -> 11 | `+ longestStreak INTEGER` en `block_streaks` |
+| 11 -> 12 | `+ updatedAt TEXT` en 8 tablas + `+ isDeleted INTEGER` en 3 tablas (11 ALTER TABLE) |
+
+### DAOs -- queries de sync
+
+Todos los DAOs incluyen:
+- `getModifiedSince(timestamp: String)`: entities modificadas desde una fecha ISO
+- `upsertAll(entities: List<Entity>)`: insert o update batch
+- `stampUpdatedAt(id: String, timestamp: String)`: actualizar timestamp tras mutacion
+
+Queries existentes filtran `isDeleted = 0` (soft delete transparente).

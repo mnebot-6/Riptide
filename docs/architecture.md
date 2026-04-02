@@ -1,17 +1,18 @@
-# Arquitectura — Riptide
+# Arquitectura -- Riptide
 
-## Patrón general
+## Patron general
 
 MVVM con repositorios. La UI no conoce Room, solo los ViewModels.
 
 ```
 UI (Compose)
-    ↕
+    |
 ViewModel (commonMain)
-    ↕
+    |
 Repository interface (commonMain)
-    ↕
-Repository impl (androidMain) → Room DAOs → SQLite
+    |
+Repository impl (androidMain) -> Room DAOs -> SQLite
+                               -> Ktor Client -> Backend API
 ```
 
 ---
@@ -29,25 +30,27 @@ expect fun TimePickerDialogWrapper(initial: LocalTime?, onConfirm: (LocalTime?) 
 expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -> Unit, onDismiss: () -> Unit)
 ```
 
-### Serialización
+### Serializacion
 
-`Recurrence` y `WeeklySlot` son `@Serializable`. `LocalTime` usa `LocalTimeSerializer` (ISO string) con `@file:UseSerializers` en `WorkBlock.kt`. Mappers usan `Json.encodeToString<Recurrence>(...)` con tipo explícito.
+`Recurrence` y `WeeklySlot` son `@Serializable`. `LocalTime` usa `LocalTimeSerializer` (ISO string) con `@file:UseSerializers` en `WorkBlock.kt`. Mappers usan `Json.encodeToString<Recurrence>(...)` con tipo explicito.
 
 ---
 
-## androidMain — Room (v10)
+## androidMain -- Room (v12)
 
 Migraciones reales desde v9. Sin `fallbackToDestructiveMigration`.
 
 ### Historial de versiones de esquema
 
-| Versión | Cambio |
+| Version | Cambio |
 |---|---|
 | 6 | Esquema base |
-| 7 | `RecurringTaskDefEntity.time` → `String?` nullable |
+| 7 | `RecurringTaskDefEntity.time` -> `String?` nullable |
 | 8 | `EcosystemStateEntity` + `isUnlocked: Boolean` |
-| 9 | `DayTaskEntity` + `hasBeenRewarded: Boolean` (migración real) |
+| 9 | `DayTaskEntity` + `hasBeenRewarded: Boolean` (migracion real) |
 | 10 | `DayTaskEntity` + `notificationsEnabled: Boolean`; `RecurringTaskDefEntity` + `notificationsEnabled: Boolean` |
+| 11 | `BlockStreakEntity` + `longestStreak: Int` |
+| 12 | `updatedAt TEXT` en 8 tablas + `isDeleted INTEGER` en 3 (WorkBlock, DayTask, RecurringTaskDef) para sync. 11 ALTER TABLE. DAOs con `getModifiedSince()`, `upsertAll()`, `stampUpdatedAt()`. Queries filtran `isDeleted = 0`. |
 
 ---
 
@@ -58,23 +61,23 @@ Dependencias: `EcosystemStateRepository` + `MarineCreatureRepository`.
 ```
 addXp(category, xp, fromOverflow=false):
   1. Obtener EcosystemState existente
-  2. Si categoría completa (todas las especies desbloqueadas):
+  2. Si categoria completa (todas las especies desbloqueadas):
      - kept = xp / 2 (sube nivel + reparte a criaturas)
-     - overflow = xp - kept → redistributeOverflow() (si !fromOverflow)
+     - overflow = xp - kept -> redistributeOverflow() (si !fromOverflow)
   3. oldLevel, calcular newXp y newLevel
   4. Crear o actualizar EcosystemState
   5. Detectar lootboxes: CATEGORY_UNLOCK_LEVELS[category] filtrado por (oldLevel+1)..newLevel
-  6. Repartir XP entre criaturas desbloqueadas de la categoría
+  6. Repartir XP entre criaturas desbloqueadas de la categoria
   7. Devolver List<PendingLootbox>
 ```
 
 XP overflow:
-- `redistributeOverflow(category, overflow)`: encuentra la categoría de menor nivel entre las NO completas (excluyendo DECORATION), llama `addXp(lowestCategory, overflow, fromOverflow=true)`
-- `fromOverflow=true` evita recursión infinita
+- `redistributeOverflow(category, overflow)`: encuentra la categoria de menor nivel entre las NO completas (excluyendo DECORATION), llama `addXp(lowestCategory, overflow, fromOverflow=true)`
+- `fromOverflow=true` evita recursion infinita
 
 Casos especiales:
-- `categories` vacío en `addXpForTask` → reparte entre todas las desbloqueadas (tareas sin bloque)
-- Criatura recién desbloqueada: `experience=0`, no recibe XP hasta el siguiente evento
+- `categories` vacio en `addXpForTask` -> reparte entre todas las desbloqueadas (tareas sin bloque)
+- Criatura recien desbloqueada: `experience=0`, no recibe XP hasta el siguiente evento
 - XP sobrante (xp % N) se pierde
 - XP solo se otorga si `!task.hasBeenRewarded` (controlado en `MainViewModel`)
 
@@ -86,30 +89,30 @@ Dependencias: `MarineCreatureRepository`.
 
 ```
 resolve(lootbox: PendingLootbox): CreatureSpec
-  1. Obtener allSpecs de la categoría
-  2. Filtrar especies ya desbloqueadas → candidates
-  3. weightedRandom(candidates): selección ponderada por rarity.weight
+  1. Obtener allSpecs de la categoria
+  2. Filtrar especies ya desbloqueadas -> candidates
+  3. weightedRandom(candidates): seleccion ponderada por rarity.weight
 ```
 
-La resolución ocurre cuando el usuario ABRE la lootbox, no cuando se gana. Esto hace que la especie revelada sea verdaderamente aleatoria en el momento de la apertura.
+La resolucion ocurre cuando el usuario ABRE la lootbox, no cuando se gana.
 
 ---
 
 ## MarineCategoryAssigner
 
-Redistribuye entre categorías con `isUnlocked=true`, excluyendo DECORATION.
+Redistribuye entre categorias con `isUnlocked=true`, excluyendo DECORATION y COMPANION.
 
-**Orden crítico en DataSeeder**: los `EcosystemState` deben existir ANTES de llamar a `reassign()`. Si no existen, `getUnlocked()` devuelve lista vacía y los bloques no reciben categorías.
+**Orden critico en DataSeeder**: los `EcosystemState` deben existir ANTES de llamar a `reassign()`.
 
 ---
 
-## MainViewModel — toggleTaskCompleted
+## MainViewModel -- toggleTaskCompleted
 
 ```kotlin
 fun toggleTaskCompleted(task: DayTask) {
     // Desmarcar:
-    //   Si DaySummary existe para la fecha → EXPIRED (el resumen ya procesó)
-    //   Si no → PENDING
+    //   Si DaySummary existe para la fecha -> EXPIRED
+    //   Si no -> PENDING
     // Marcar: COMPLETED + hasBeenRewarded = true
     // XP solo si !task.hasBeenRewarded (objeto original, inmutable)
 }
@@ -117,37 +120,9 @@ fun toggleTaskCompleted(task: DayTask) {
 
 ---
 
-## MainViewModel — loadDay
+## AquariumCreatures -- sistema de movimiento
 
-```kotlin
-private fun loadDay(date: LocalDate) {
-    val blocks = loadBlocksWithCategories()
-    val tasks = dayTaskRepository.getByDate(date)
-    val tasksByBlock = tasks.groupBy { it.blockId }
-    val streaksByBlock = ...
-    val ecosystemByCategory = MarineCategory.entries.mapNotNull { ... }.toMap()
-
-    val allCreaturesFromDb = MarineCategory.entries.flatMap { category ->
-        ecosystemStateRepository.getByCategory(category) ?: return@flatMap emptyList()
-        marineCreatureRepository.getByCategory(category)
-    }
-    val creatureLevelBySpecies = allCreaturesFromDb.associate { it.species to it.creatureLevel }
-
-    _uiState.update {
-        it.copy(
-            ...,
-            creatureLevelBySpecies = creatureLevelBySpecies,
-            creaturesData = allCreaturesFromDb
-        )
-    }
-}
-```
-
----
-
-## AquariumCreatures — sistema de movimiento
-
-### Tamaño y velocidad por nivel
+### Tamano y velocidad por nivel
 
 ```kotlin
 val sizeScale = 0.8f + (creatureLevel - 1) * 0.10f
@@ -155,28 +130,28 @@ val speedMultiplier = max(0.3f, 1f + (creatureLevel - 1) * spec.speedScalePerLev
 val cycleDuration = (variedDuration / speedMultiplier).toLong().coerceAtLeast(2000L)
 ```
 
-### Capa 0 — Tempo warping
+### Capa 0 -- Tempo warping
 
-Deforma el tiempo `t` en `t'` para que la velocidad varíe continuamente:
+Deforma el tiempo `t` en `t'` para que la velocidad varie continuamente:
 ```
-t' = t + (k·P/TAU) · (cos(φ) − cos(TAU·t/P + φ))
+t' = t + (k*P/TAU) * (cos(phi) - cos(TAU*t/P + phi))
 ```
-- Continua y monotónica (k < 1 → derivada > 0 siempre)
-- Período ~37s variado por phase → cambio gradual e imperceptible
+- Continua y monotonica (k < 1 -> derivada > 0 siempre)
+- Periodo ~37s variado por phase
 - `tempoVariation`: 0 = constante (ballena), 0.60 = muy variable (cangrejo)
-- tSwim (tiempo deformado) → capas de nado. tRaw → drift y microwobble.
+- tSwim (tiempo deformado) -> capas de nado. tRaw -> drift y microwobble.
 
-### Variación por instancia
+### Variacion por instancia
 
 ```kotlin
 fun instanceNoise(index: Int, seed: Int): Float  // [-1, 1] determinista
 fun vary(base: Float, index: Int, seed: Int, pct: Float = 0.12f): Float
 ```
-Aplica ±12% sobre swimDuration, wobbleAmplitude, driftSpeed, tempoVariation.
+Aplica +-12% sobre swimDuration, wobbleAmplitude, driftSpeed, tempoVariation.
 
-### Posición X — continua sin saltos
+### Posicion X -- continua sin saltos
 
-Márgenes simétricos basados en tamaño del emoji:
+Margenes simetricos basados en tamano del emoji:
 ```kotlin
 val halfIcon = iconSize / 2f
 val xMin = halfIcon + w * 0.01f
@@ -185,7 +160,7 @@ x = (xMin + (xMax - xMin) * swimProgress + w * xPert).coerceIn(xMin, xMax)
 ```
 Easing por especie: `applyEasing(localT, spec.easingType)`.
 
-### Posición Y — cinco capas
+### Posicion Y -- cinco capas
 
 ```
 personalY = zoneCenter + (personalYFraction - 0.5f) * zoneBand
@@ -197,24 +172,24 @@ Y = personalY
   + micro (aleta/cola, con tRaw)
 ```
 
-- **Onda primaria**: `waveCount` entero → sin salto en loop.
-- **Onda secundaria**: frecuencia `waveCount·PHI` (irracional) → nunca se sincroniza.
-- **Deriva**: `driftSpeed` fraccionario → aperiódica. Usa tRaw.
-- **Coupling**: delfín/foca suben en el centro del recorrido (velocidad máxima).
+- **Onda primaria**: `waveCount` entero -> sin salto en loop.
+- **Onda secundaria**: frecuencia `waveCount*PHI` (irracional) -> nunca se sincroniza.
+- **Deriva**: `driftSpeed` fraccionario -> aperiodica. Usa tRaw.
+- **Coupling**: delfin/foca suben en el centro del recorrido (velocidad maxima).
 - **Microwobble**: ~1.5Hz, simula movimiento de aleta/cola. Usa tRaw.
 
 ### Hit-testing
 
-Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset contra `creaturePositions` (posiciones reales del último frame). Radio: `maxOf(iconSize * 2.5f, 75f)`.
+Un unico `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset contra `creaturePositions` (posiciones reales del ultimo frame). Radio: `maxOf(iconSize * 2.5f, 75f)`.
 
 ---
 
-## AquariumBackground — cielo, superficie y fondo marino
+## AquariumBackground -- cielo, superficie y fondo marino
 
-- **Cielo dinámico**: `skyForHour(hour)` → 7 periodos (noche, amanecer, mañana dorada, día, atardecer, crepúsculo, noche tardía). Usa `kotlin.time.Clock.System.now()`.
+- **Cielo dinamico**: `skyForHour(hour)` -> 7 periodos (noche, amanecer, manana dorada, dia, atardecer, crepusculo, noche tardia). Usa `kotlin.time.Clock.System.now()`.
 - **Superficie del agua**: ola animada con `Path` + `quadraticTo` (8 segmentos, 9.dp amplitud). Cresta principal + cresta secundaria (60% amplitud) para efecto de profundidad.
-- **Terreno** (`AquariumTerrain`): curva suave procedural con Catmull-Rom. Amplitud reducida a `0.022f` (≈72% menos variación) para ondulaciones apenas perceptibles. Y-range: `[0.80, 0.90]`.
-- **Fondo marino**: banda de arena con gradiente + 3 líneas de textura ondulada. Guijarros sutiles dispersos. Sin rocas ni corales decorativos.
+- **Terreno** (`AquariumTerrain`): curva suave procedural con Catmull-Rom. Amplitud reducida a `0.022f` para ondulaciones casi imperceptibles. Y-range: `[0.80, 0.90]`.
+- **Fondo marino**: banda de arena con gradiente + lineas de textura ondulada. Guijarros sutiles dispersos. Sistema procedural de decoraciones.
 - **AquariumBounds**: `SURFACE_FRACTION = 0.08f`, `FLOOR_FRACTION = 0.85f`, compartidas entre background y criaturas.
 
 ---
@@ -222,104 +197,86 @@ Un único `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset co
 ## CreatureRenderer + CreatureIcon
 
 - `CreatureRenderer`: interfaz con `fun DrawScope.render(x, y, size, level, animTimeMs, mirrored)`.
-- `rendererFor(species)`: despacha entre Canvas renderers y `null` (emoji fallback).
-- **40 renderers** registrados en el mapa de `CreatureRenderer.kt` — cobertura total de todas las especies:
-  - **`flora/`** (fijos, sin mirror, escala reducida): `BrainCoralRenderer` (rediseño: cúpula hemisférica + grooves laberínticos sinusoidales + highlight especular), `AnemoneRenderer`, `KelpRenderer`, `PosidoniaRenderer`, `FanCoralRenderer`
-  - **`fauna/`** (nadadores, con mirror): peces, cefalópodos, mamíferos (18 especies)
-  - **`fauna/`** (fijos, sin mirror, escala reducida): `SeaUrchinRenderer`, `BarnacleRenderer`, `StarfishRenderer`, `OysterRenderer`, `NautilusRenderer`, `GiantClamRenderer` (6 moluscos)
-- **Ajustes de escala** (`sizeMultiplier` en CreatureSpec):
-  - Flora: BrainCoral (1.0→0.50), Anemone (0.65→0.42), Kelp (1.0→0.50), Posidonia (1.0→0.52), FanCoral (1.0→0.48)
-  - Moluscos: SeaUrchin (1.0→0.55)
-- Las criaturas con renderer nunca muestran emoji en el acuario ni en dialogs — solo en EcosystemScreen (locked cards al 10% opacity).
-- `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para cualquier especie con renderer, emoji escalado a la caja para el resto.
+- `rendererFor(species)`: despacha entre Canvas renderers.
+- **70 renderers** registrados -- cobertura total de todas las 70 especies:
+  - **`flora/`** (9 fijos, sin mirror, escala reducida): BrainCoral, Anemone, Kelp, Posidonia, FanCoral, TubeSponge, SeaGrass, FireCoral, StaghornCoral
+  - **`fauna/`** (61 renderers): peces, cefalopodos, mamiferos, reptiles, crustaceos, moluscos, pelagicos, decoraciones, companion (Bimba)
+- `CreatureIcon`: `@Composable` reutilizable. Canvas animado (60fps via `withFrameNanos`) para cualquier especie con renderer.
 - Usado en `EcosystemScreen` (52.dp) y `CreatureDetailDialog` (80.dp).
 
 ---
 
-## CreatureDetailDialog
+## Sync -- arquitectura offline-first
 
-- Trigger: tap → `freezeState.freeze(species)` + `frozenTimeMap[species] = currentTimeMs`
-- La criatura queda congelada en su posición hasta que el dialog llama `onDismiss` → `unfreeze`
-- Muestra `CreatureIcon` (80.dp) — Canvas animado para flora, emoji para el resto.
-- Badge de rareza con color bajo el nombre de especie (COMMON=gris, UNCOMMON=verde, RARE=azul, EPIC=morado, LEGENDARY=dorado)
-- Nickname: `BasicTextField` con overlay de placeholder. Permite guardar vacío → `null`.
-- `XpBar`: barra de progreso al siguiente nivel + texto "Nivel X" numérico.
-- Persistencia: `viewModel.updateCreatureNickname` → `marineCreatureRepository.update`
-
----
-
-## EcosystemScreen
-
-- Ruta: `ROUTE_ECOSYSTEM = "ecosystem"` en `Navigation.kt`
-- Botón de retroceso `←` en el header con `onNavigateBack` → `navController.popBackStack()`
-- Lee `uiState.ecosystemByCategory` y `uiState.creaturesData` del `MainViewModel` compartido
-- Grid 3 columnas con `IntrinsicSize.Max` por fila → altura uniforme
-- Ordenamiento: por `rarity.ordinal` (COMMON→LEGENDARY), desbloqueados primero, luego bloqueados
-- Barra de progreso por categoría: usa `CATEGORY_UNLOCK_LEVELS` para calcular progreso hacia siguiente lootbox
-- Cards desbloqueadas: `CreatureIcon` (52.dp) + badge de rareza (punto de color) + "Nv. X" numérico
-- Cards bloqueadas: emoji al 10% opacity + "???" + punto de rareza tenue (sin barra de progreso individual)
-
----
-
-## Flujo de desbloqueo de criaturas (Lootbox)
+### Flujo de datos
 
 ```
-toggleTaskCompleted (si !hasBeenRewarded)
-    → addXpForTask(categories)
-        → addXp por categoría (con overflow si categoría completa)
-            → detecta niveles en CATEGORY_UNLOCK_LEVELS → List<PendingLootbox>
-            → reparte XP a criaturas existentes
-    → si lootboxes.isNotEmpty → pendingLootboxes en UiState
-
-NightSummaryProcessor.processDay(date, blockNames, blockCategories, summaryTime)
-    → addNightBonus
-        → mismo flujo
-        → persiste List<PendingLootbox> en DataStore (formato "FISH:4|CRUSTACEAN:6")
-
-MainActivity.onCreate
-    → checkPendingLootboxes → DataStore → UiState (+ migración legacy emojis)
-    → pendingSummary primero, luego pendingLootboxes
-    → Fase 1: 🎁 cerrada → botón "Abrir" → LootboxResolver.resolve() → revealedSpecies
-    → Fase 2: especie revelada + nombre → confirmUnlock → MarineCreature(experience=0, creatureLevel=1)
+App (Room v12)                         Backend (Ktor + PostgreSQL)
+     |                                       |
+     |-- SyncManager.sync() --------------->|
+     |   push: entities con updatedAt       |
+     |   POST /api/sync                     |
+     |<-- pull: server changes -------------|
+     |   upsert local con conflict res.     |
+     |                                       |
 ```
+
+### Conflict resolution
+
+- `updatedAt` wins: el registro mas reciente prevalece
+- `hasBeenRewarded` OR-merge: si cualquiera de los dos es true, se mantiene true
+- Server deletion autoritativo: `isDeleted` del servidor siempre se respeta
+- Orden FK-safe en upsert
+
+### Triggers de sync
+
+- `SyncTrigger`: debounce 5s tras cualquier mutacion local
+- `SyncWorker`: WorkManager periodico cada 1h (constraint CONNECTED)
+- Manual: boton "Sincronizar ahora" en drawer
+- `InitialSyncPreparer`: stampa datos pre-existentes para primera sync
+
+### Auth
+
+- Google Sign-In -> `POST /auth/google` (verificacion idToken) -> JWT pair
+- Access token: 24h. Refresh token: 30d con theft detection
+- Auto-refresh transparente via Ktor Client Bearer Auth
+- `DataStoreTokenProvider`: puente entre prefs y Ktor Auth
 
 ---
 
-## Resumen nocturno — evaluación selectiva
+## Widget Android (Glance)
+
+- `RiptideWidget` (GlanceAppWidget): tareas del dia agrupadas por bloque, barra de progreso
+- `WidgetUpdater.refreshAll()`: refresca widgets desde la app en `onResume`
+- Metadata: 3x3 celdas, redimensionable, auto-update 30min
+- Widget interactivo: toggle de tareas completadas
+
+---
+
+## Live Wallpaper
+
+- `RiptideWallpaperService`: WallpaperService + Engine con Choreographer 30fps vsync-aligned
+- `CanvasDrawScope` bridge: reutiliza `drawAquariumBackground()` y `drawAquariumCreatures()` sin portar codigo
+- `WallpaperDataProvider`: lee criaturas de Room DB, refresco cada 5min
+- `GLOBAL_SPEED_MULTIPLIER = 2.0f` para velocidad mas natural
+
+---
+
+## Resumen nocturno -- evaluacion selectiva
 
 `processDay` recibe `summaryTime: LocalTime?`.
 
-Solo se evalúan:
+Solo se evaluan:
 - Tareas con `status == COMPLETED` (siempre)
-- Tareas PENDING del día actual con `time != null && time <= summaryTime`
+- Tareas PENDING del dia actual con `time != null && time <= summaryTime`
 
 Se ignoran:
 - `status == POSTPONED`
-- Tareas sin hora (se evaluarán en el siguiente resumen)
+- Tareas sin hora (se evaluaran en el siguiente resumen)
 - Tareas con hora posterior al summaryTime
-- Tareas de otros días
+- Tareas de otros dias
 
 `NightSummaryWorker` lee la hora con `getNightSummaryTime().first()`.
-
----
-
-## Inputs de fecha y hora
-
-`TimeInputField` y `DateInputField` son campos **readonly** (sin `BasicTextField`, sin emojis).
-Click sobre el campo abre el picker correspondiente.
-`TimePicker` usa `TimePickerDefaults.colors()` con paleta marina explícita.
-`DatePicker` usa `DatePickerDefaults.colors()` con la misma paleta.
-
----
-
-## Gestos en MainScreen
-
-El `Box` raíz tiene un `detectDragGestures`:
-- **Vertical hacia abajo** (drawer cerrado) → abre drawer
-- **Horizontal** (drawer cerrado) → cambia día
-
-El `Box` del drawer tiene su propio `detectDragGestures`:
-- **Vertical hacia arriba** → cierra drawer
 
 ---
 
@@ -327,39 +284,30 @@ El `Box` del drawer tiene su propio `detectDragGestures`:
 
 ### Canales (Android O+)
 
-| Canal | ID | Descripción |
+| Canal | ID | Descripcion |
 |---|---|---|
-| Resumen nocturno | `night_summary` | Push tras `processDay` con stats del día |
+| Resumen nocturno | `night_summary` | Push tras `processDay` con stats del dia |
 | Aviso matutino | `morning_reminder` | Recordatorio configurable por el usuario |
-| Recordatorio de tarea | `task_reminder` | Notificación a la hora exacta de una tarea |
-
-`NotificationHelper.createChannels(context)` crea los tres canales. Llamar desde `MainActivity.onCreate`.
-
-Permiso `POST_NOTIFICATIONS` declarado en `AndroidManifest.xml`. Solicitar en runtime (API 33+) con `registerForActivityResult(RequestPermission())`.
+| Recordatorio de tarea | `task_reminder` | Notificacion a la hora exacta de una tarea |
 
 ### Workers
 
 ```
 NightSummaryWorker.doWork()
-  → processDay(targetDate, summaryTime)
-  → sendNightSummaryNotification(completedCount, totalCount)
-  → schedule(context, summaryTime)   // se reprograma para mañana
+  -> processDay(targetDate, summaryTime)
+  -> sendNightSummaryNotification(completedCount, totalCount)
+  -> schedule(context, summaryTime)   // se reprograma para manana
 
 MorningReminderWorker.doWork()
-  → sendMorningReminderNotification()
-  → prefs.getMorningReminderTime().first() ?: return
-  → schedule(context, time)          // se reprograma para mañana
+  -> sendMorningReminderNotification()
+  -> schedule(context, time)          // se reprograma para manana
 
 TaskReminderWorker.doWork()
-  → sendTaskReminderNotification(taskTitle, taskId)
+  -> sendTaskReminderNotification(taskTitle, taskId)
   // one-shot, no se reprograma
 ```
 
-`TaskReminderWorker` usa `ExistingWorkPolicy.REPLACE` con nombre `"task_reminder_$taskId"`. Cancelar con `WorkManager.cancelUniqueWork(name)`.
-
 ### TaskReminderScheduler
-
-Interfaz en `commonMain` para que `MainViewModel` y `TaskFormViewModel` no dependan de WorkManager directamente:
 
 ```kotlin
 interface TaskReminderScheduler {
@@ -369,15 +317,21 @@ interface TaskReminderScheduler {
 }
 ```
 
-`rescheduleAll()` obtiene las tareas PENDING con `notificationsEnabled = true` y hora futura via `DayTaskDao.getPendingWithNotifications()` y las reprograma con `ExistingWorkPolicy.KEEP`.
+`rescheduleAll()` obtiene tareas PENDING con `notificationsEnabled = true` y hora futura.
 
-### UserPreferencesRepository — claves de notificación
+---
 
-| Clave DataStore | Tipo | Descripción |
-|---|---|---|
-| `morning_reminder_hour` | `Int` | Hora del aviso matutino. `-1` = desactivado |
-| `morning_reminder_minute` | `Int` | Minuto del aviso matutino |
-| `onboarding_completed` | `Boolean` | Si el usuario completó el onboarding |
+## Inputs de fecha y hora
+
+`TimeInputField` y `DateInputField` son campos **readonly**. Click sobre el campo abre el picker correspondiente.
+
+---
+
+## Gestos en MainScreen
+
+- **Vertical hacia abajo** (drawer cerrado) -> abre drawer
+- **Horizontal** (drawer cerrado) -> cambia dia
+- **Vertical hacia arriba** (drawer) -> cierra drawer
 
 ---
 
@@ -386,6 +340,6 @@ interface TaskReminderScheduler {
 - IDs: UUID v4
 - Colores: hex `"#RRGGBB"`, parseados en androidMain
 - Fechas: `LocalDate` / `LocalTime` / `LocalDateTime` de `kotlinx-datetime`
-- Métricas internas (score, XP, totalExperience, currentLevel): **nunca visibles al usuario**
+- Metricas internas (score, XP, totalExperience, currentLevel): **nunca visibles al usuario**
 - Pantalla bloqueada en portrait (`AndroidManifest`)
-- Categorías DECORATION: nunca reciben XP, nunca participan en redistribución
+- Categorias DECORATION y COMPANION: nunca reciben XP regular, nunca participan en redistribucion

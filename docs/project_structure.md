@@ -1,12 +1,15 @@
-# Estructura del proyecto — Riptide
+# Estructura del proyecto -- Riptide
 
-## Visión general
+## Vision general
 
-Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `composeApp/src/`:
+Kotlin Multiplatform con Compose Multiplatform. Todo el codigo vive en `composeApp/src/`:
 
-- `commonMain` — modelos, repositorios, ViewModels, UI compartida
-- `androidMain` — Room, implementaciones, factories, navegación
-- `iosMain` — entrypoint, actuals (parcialmente pendientes)
+- `commonMain` -- modelos, repositorios, ViewModels, UI compartida
+- `androidMain` -- Room, implementaciones, factories, navegacion, widget, wallpaper, sync
+- `iosMain` -- entrypoint, actuals (parcialmente pendientes)
+- `commonTest` -- tests unitarios (37 tests)
+
+Backend independiente en `/backend` (Ktor + PostgreSQL).
 
 ---
 
@@ -14,21 +17,24 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 ### `domain/model/`
 
-| Archivo | Qué representa |
+| Archivo | Que representa |
 |---|---|
-| `MarineCategory.kt` | Enum con `isUnlockedByDefault`. 9 categorías: 5 base + CEPHALOPOD/REPTILE/MAMMAL/DECORATION |
+| `MarineCategory.kt` | Enum con `isUnlockedByDefault`. 10 categorias: 5 base + CEPHALOPOD/REPTILE/MAMMAL/DECORATION/COMPANION |
 | `WorkBlock.kt` | Bloque + `Recurrence` sealed `@Serializable` + `WeeklySlot` |
 | `TaskStatus.kt` | PENDING, COMPLETED, EXPIRED, POSTPONED |
 | `TaskSchedule.kt` | `OneTime(date, time?)` / `Recurring(time, recurrence)` |
 | `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP, `notificationsEnabled` para push |
 | `RecurringTaskDef.kt` | `time: LocalTime?` nullable, `notificationsEnabled` propagado a instancias generadas |
 | `DaySummary.kt` | Score interno + mensaje visible |
-| `BlockStreak.kt` | PK natural = `blockId` |
-| `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoría |
-| `MarineCreature.kt` | `experience` + `creatureLevel` individuales + `CreatureSpecies` (40 especies) |
-| `CreatureRarity.kt` | Enum: COMMON(0.40), UNCOMMON(0.30), RARE(0.20), EPIC(0.08), LEGENDARY(0.02) con pesos |
-| `PendingLootbox.kt` | `data class PendingLootbox(category, categoryLevel)` — lootbox pendiente de abrir |
-| `BlockCategory.kt` | Relación bloque ↔ categoría (automática) |
+| `BlockStreak.kt` | PK natural = `blockId`, + `longestStreak` |
+| `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoria |
+| `MarineCreature.kt` | `experience` + `creatureLevel` individuales + `CreatureSpecies` (70 especies en 10 categorias) |
+| `CreatureRarity.kt` | Enum: COMMON(0.40), UNCOMMON(0.30), RARE(0.20), EPIC(0.08), LEGENDARY(0.02) |
+| `PendingLootbox.kt` | `data class PendingLootbox(category, categoryLevel)` |
+| `BlockCategory.kt` | Relacion bloque <-> categoria (automatica) |
+| `DecorationProgress.kt` | Progreso de desbloqueo de decoraciones |
+| `LoggedInUser.kt` | Datos del usuario logueado (Google Sign-In) |
+| `SyncStatus.kt` | Enum: IDLE, SYNCING, SUCCESS, ERROR, OFFLINE |
 
 ### `domain/repository/`
 
@@ -36,90 +42,105 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 |---|---|
 | `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
-| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, pendingUnlocks (legacy), **lastDismissedSummaryDate**, hasCompletedOnboarding, **morningReminderTime** (Flow<LocalTime?>) |
-| Resto | operaciones estándar |
+| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, **lastDismissedSummaryDate**, hasCompletedOnboarding, **morningReminderTime** (Flow) |
+| Resto | operaciones estandar + getModifiedSince, upsertAll (sync) |
 
 ### `domain/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `MarineCategoryAssigner.kt` | Redistribuye entre categorías **desbloqueadas** (requiere `EcosystemStateRepository`) |
-| `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable; propaga `notificationsEnabled` de def a cada `DayTask` |
-| `BlockStreakProcessor.kt` | Rachas por bloque |
-| `NightSummaryProcessor.kt` | Recibe `summaryTime`; evalúa tareas completadas + PENDING con hora ≤ summaryTime |
-| `EcosystemProcessor.kt` | XP a categorías + XP a criaturas + lootbox detection + overflow; requiere `MarineCreatureRepository` |
-| `LootboxResolver.kt` | Selección weighted-random de especie al abrir lootbox; requiere `MarineCreatureRepository` |
+| `MarineCategoryAssigner.kt` | Redistribuye entre categorias **desbloqueadas** (requiere `EcosystemStateRepository`) |
+| `RecurringTaskGenerator.kt` | Genera instancias; soporta `time` nullable; propaga `notificationsEnabled` |
+| `BlockStreakProcessor.kt` | Rachas por bloque + deteccion de hitos [7, 14, 30] |
+| `NightSummaryProcessor.kt` | Recibe `summaryTime`; evalua tareas completadas + PENDING con hora <= summaryTime |
+| `EcosystemProcessor.kt` | XP a categorias + XP a criaturas + lootbox detection + overflow |
+| `LootboxResolver.kt` | Seleccion weighted-random de especie al abrir lootbox |
 | `EcosystemLevelCalculator.kt` | Curva de niveles compartida para ecosistemas y criaturas |
+| `DecorationUnlockChecker.kt` | Verifica condiciones de desbloqueo de decoraciones |
 
 ### `presentation/aquarium/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `AquariumBackground.kt` | Canvas: cielo dinámico por hora (7 periodos), superficie con olas animadas (cresta doble), fondo marino (arena con textura, 11 rocas 3 estilos), burbujas |
-| `AquariumBounds.kt` | `SURFACE_FRACTION=0.08`, `FLOOR_FRACTION=0.88`, `surfaceY(h)`, `floorY(h)` — compartidas entre background y criaturas |
-| `AquariumCreature.kt` | `CreatureSpec` (+`rarity`, `sizeMultiplier`, `instanceCount`), SwimZone, EasingType, 40 especies, `CATEGORY_UNLOCK_LEVELS`, `specBySpecies`, `AquariumCreatures`, `CreatureFreezeState`, hit-testing, tempo warping, variación por instancia, múltiples instancias de flora Canvas, crustáceos en BOTTOM diferenciados |
-| `CreatureRenderer.kt` | `CreatureRenderer` interface + `rendererFor(species)` dispatch + `CreatureIcon` @Composable (Canvas animado para flora, emoji fallback) |
-| `CreatureDetailDialog.kt` | Dialog OceanMid: `CreatureIcon(80dp)`, nombre, badge rareza, nickname editable, XpBar con nivel numérico, fecha desbloqueo |
-| `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos entre dialogs |
-| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": botón ← retroceso, grid 3 col por rareza, barra progreso por categoría, badges rareza, niveles numéricos, cards bloqueadas con emoji 10% opacity |
-| `flora/BrainCoralRenderer.kt` | Canvas: domos con crestas, cluster multi-domo nivel 6+, colores coral/rosa |
-| `flora/AnemoneRenderer.kt` | Canvas: tentáculos con `quadraticTo`, ondulación interna animada, 5→14 tentáculos según nivel |
-| `flora/KelpRenderer.kt` | Canvas: tallos con hojas alternas, ondulación creciente, bosque multi-tallo nivel 6+ |
-| `flora/PosidoniaRenderer.kt` | Canvas: cintas de hierba marina ancladas, oscilación por fase por hoja, matte de fibras nivel 5+ |
-| `flora/FanCoralRenderer.kt` | Canvas: árbol bifurcado recursivo, balanceo suave, malla nivel 3+, pólipos blancos nivel 5+ |
-| `fauna/MantaRayRenderer.kt` | Canvas: aleteo con onda progresiva, aletas cefálicas, cola ondulante, manchas ventrales nivel 3+ |
-| `fauna/SurgeonfishRenderer.kt` | Canvas: cuerpo azul cobalto, cola amarilla en media luna, máscara negra, escalpelo blanco |
-| `fauna/LionfishRenderer.kt` | Canvas: 11-13 espinas dorsales en abanico con membrana, aletas pectorales enormes, cuerpo rayado |
-| `fauna/SunfishRenderer.kt` | Canvas: disco circular, aletas dorsal/ventral enormes, clavus ondulado, parches de piel nivel 3+ |
-| `fauna/HammerheadRenderer.kt` | Canvas: cabeza en T con ojos en los extremos, contrasombreado, hendiduras branquiales nivel 3+ |
-| `fauna/BarracudaRenderer.kt` | Canvas: cuerpo 3× elongado, mandíbula prominente con dientes, dos aletas dorsales, cola bifurcada |
-| `fauna/ManateeRenderer.kt` | Canvas: cuerpo redondeado, cola paleta horizontal, aletas frontales, arrugas, bigotes |
-| `fauna/SpiderCrabRenderer.kt` | Canvas: caparazón pequeño, 10 patas larguísimas articuladas con animación por fase |
-| `fauna/CuttlefishRenderer.kt` | Canvas: falda de aletas ondulantes a lo largo del cuerpo, pupila en W, 8 brazos + 2 tentáculos |
-| `fauna/BlueRingedOctopusRenderer.kt` | Canvas: 8 brazos con ventosas, 16 anillos azules eléctricos pulsantes con `sin(t)` |
-| `fauna/SeaUrchinRenderer.kt` | Canvas: semiesfera con ~30 espinas radiales de longitud variable, 5 bandas de simetría |
-| `fauna/BarnacleRenderer.kt` | Canvas: cluster de 7 volcanes/conos con placas, cirros alimenticios animados nivel 3+ |
+| `AquariumBackground.kt` | Canvas: cielo dinamico por hora (7 periodos), superficie con olas animadas, fondo marino |
+| `AquariumBounds.kt` | `SURFACE_FRACTION=0.08`, `FLOOR_FRACTION=0.85`, `surfaceY(h)`, `floorY(h)` |
+| `AquariumCreature.kt` | `CreatureSpec`, SwimZone, EasingType, 70 especies, `CATEGORY_UNLOCK_LEVELS`, tempo warping, hit-testing |
+| `AquariumTerrain.kt` | Terreno procedural Catmull-Rom con seed |
+| `AquariumTerrainConfig.kt` | Configuracion per-session del terreno |
+| `AquariumTerrainDecorations.kt` | Sistema procedural de decoraciones del fondo |
+| `AquariumLighting.kt` | Sistema de iluminacion dinamica |
+| `AquariumWeatherEffects.kt` | Efectos meteorologicos en el acuario |
+| `AquariumParticles.kt` | Sistema de particulas (burbujas, etc.) |
+| `CreatureRenderer.kt` | `CreatureRenderer` interface + `rendererFor(species)` dispatch + `CreatureIcon` @Composable |
+| `CreatureDetailDialog.kt` | Dialog: CreatureIcon, nombre, badge rareza, nickname editable, XpBar |
+| `CreatureExtensions.kt` | `displayName` y `xpRequiredForLevel` compartidos |
+| `EcosystemScreen.kt` | Pantalla "Mi ecosistema": grid 3 col, barra progreso por categoria |
+| `weather/WeatherProvider.kt` | Interfaz de proveedor de clima |
+| `weather/WeatherState.kt` | Estado meteorologico |
+| `weather/RandomWeatherProvider.kt` | Proveedor de clima aleatorio |
+| `flora/` | **9 renderers**: BrainCoral, Anemone, Kelp, Posidonia, FanCoral, TubeSponge, SeaGrass, FireCoral, StaghornCoral |
+| `fauna/` | **61 renderers**: todos los peces, cefalopodos, mamiferos, reptiles, crustaceos, moluscos, pelagicos, decoraciones + Bimba |
 
 ### `presentation/main/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `MainUiState.kt` | + `creaturesData`, `pendingLootboxes`, `revealedSpecies` |
-| `MainViewModel.kt` | `loadDay` carga `creaturesData`; `toggleTaskCompleted` con lootboxes; `openLootbox`, `confirmUnlock`, `dismissLootbox`; `updateCreatureNickname` |
-| `MainScreen.kt` | EXPIRED: ⌛ + checkbox; tap criatura → `CreatureDetailDialog`; diálogo lootbox bifásico (cerrada→abierta) |
+| `MainUiState.kt` | + `creaturesData`, `pendingLootboxes`, `revealedSpecies`, sync status |
+| `MainViewModel.kt` | `loadDay`, `toggleTaskCompleted` con lootboxes, `openLootbox`, `confirmUnlock`, sync |
+| `MainScreen.kt` | EXPIRED + checkbox; tap criatura -> CreatureDetailDialog; dialogo lootbox bifasico |
 | `WeekCalendar.kt` | Excluye POSTPONED |
-| `MainDrawer.kt` | BLOQUES + ECOSISTEMA (botón "Mi ecosistema") + AJUSTES (hora resumen nocturno + aviso matutino toggle+hora); scroll interno con `LocalWindowInfo` |
-
-### `presentation/components/`
-
-| Archivo | Qué hace |
-|---|---|
-| `TimeInputField.kt` | Campo readonly, click abre `TimePickerDialogWrapper` |
-| `DateInputField.kt` | Campo readonly, click abre `DatePickerDialogWrapper` |
-| `InputFieldDialogs.kt` | Declaraciones `expect` de pickers |
+| `MainDrawer.kt` | BLOQUES + ECOSISTEMA + PROGRESO + CUENTA + AJUSTES |
+| `CurrentDate.kt` | expect fun currentDate() |
 
 ### `presentation/stats/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `StatsUiState.kt` | `StatsRange` enum (WEEK/MONTH) + `StatsUiState` (summaries, streaksByBlock, range, isLoading) |
-| `StatsViewModel.kt` | Carga `DaySummary` por rango + `BlockStreak` activos; `selectRange()` reactivo |
-| `StatsScreen.kt` | Gráfico barras Canvas (coloreado por % completado, etiquetas día localizadas), toggle Semana/Mes, tarjetas resumen, rachas por bloque |
+| `StatsUiState.kt` | `StatsRange` enum (WEEK/MONTH/ALL_TIME) + estado |
+| `StatsViewModel.kt` | Carga DaySummary por rango + BlockStreak activos |
+| `StatsScreen.kt` | Grafico barras Canvas + toggle rango + tarjetas resumen + rachas |
 
 ### `presentation/history/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `HistoryUiState.kt` | `HistoryRange` enum (DAYS_30/DAYS_60/DAYS_90) + `HistoryUiState` (tasksByDate, summaryByDate, range, isLoading) |
-| `HistoryViewModel.kt` | Carga tareas completadas/expiradas + summaries por rango; `selectRange()` reactivo |
-| `HistoryScreen.kt` | Selector 30/60/90 días, LazyColumn de días agrupados descendente, meses localizados EN/ES, badge completadas/totales |
+| `HistoryUiState.kt` | `HistoryRange` enum (DAYS_30/DAYS_60/DAYS_90) + estado |
+| `HistoryViewModel.kt` | Carga tareas completadas/expiradas + summaries por rango |
+| `HistoryScreen.kt` | LazyColumn dias agrupados + selector rango + filtros |
+
+### `presentation/onboarding/`
+
+| Archivo | Que hace |
+|---|---|
+| `OnboardingScreen.kt` | Flujo 4 pasos con AnimatedContent, paleta marina |
 
 ### `presentation/task/`
 
-| Archivo | Qué hace |
+| Archivo | Que hace |
 |---|---|
-| `TaskFormSheet.kt` | `initialBlockId` para preseleccionar bloque; `forceRecurring`; precargar días/hora de `existingDef` con `remember(existingDef)`; toggle `notificationsEnabled` visible solo si hay hora |
-| `PostponeSheet.kt` | Hora opcional. `onPostpone` llama a `postponingTask = null` tras confirmar. |
+| `TaskFormSheet.kt` | `initialBlockId`, `forceRecurring`, toggle `notificationsEnabled` |
+| `PostponeSheet.kt` | Hora opcional |
+| `TaskFormViewModel.kt` | Logica del formulario de tarea |
+
+### `presentation/block/`
+
+| Archivo | Que hace |
+|---|---|
+| `BlockFormScreen.kt` | Formulario de bloque |
+| `BlockFormViewModel.kt` | Logica del formulario de bloque |
+
+### `presentation/components/`
+
+| Archivo | Que hace |
+|---|---|
+| `TimeInputField.kt` | Campo readonly, click abre picker |
+| `DateInputField.kt` | Campo readonly, click abre picker |
+
+### Otros
+
+| Archivo | Que hace |
+|---|---|
+| `LocalizationExtensions.kt` | Extension functions para enums (displayNameRes) |
 
 ---
 
@@ -127,101 +148,147 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el código vive en `compose
 
 ### `data/local/entity/`
 
-| Entity | Cambios relevantes |
-|---|---|
-| `DayTaskEntity` | + `hasBeenRewarded: Boolean` (v9), + `notificationsEnabled: Boolean` (v10) |
-| `RecurringTaskDefEntity` | `time: String?` nullable, + `notificationsEnabled: Boolean` (v10) |
-| `EcosystemStateEntity` | + `isUnlocked: Boolean` |
+8 entities Room con campos `updatedAt` (v12) y `isDeleted` en 3 tablas (WorkBlock, DayTask, RecurringTaskDef).
 
 ### `data/local/dao/`
 
-| DAO | Queries añadidas |
-|---|---|
-| `EcosystemStateDao` | `getAll()`, `getUnlocked()` |
-| `MarineCreatureDao` | `getByCategory(category: String)` |
-| `DayTaskDao` | `getPendingWithNotifications()` — tareas PENDING con `notificationsEnabled=1` y hora no nula; `getCompletedRange(from, to)` — COMPLETED/EXPIRED en rango de fechas |
-| `DaySummaryDao` | `getRange(from, to)` — summaries en rango de fechas (DESC) |
-| `BlockStreakDao` | `getAll()` — todas las rachas por bloque |
+8 DAOs. Todos incluyen `getModifiedSince()`, `upsertAll()`, `stampUpdatedAt()` para sync.
 
 ### `data/local/db/`
 
-`RiptideDatabase` — **versión 10**. Migraciones reales `MIGRATION_8_9`, `MIGRATION_9_10`. Sin `fallbackToDestructiveMigration`.
+`RiptideDatabase` -- **version 12**. Migraciones reales: `MIGRATION_9_10`, `MIGRATION_10_11`, `MIGRATION_11_12`.
+
+### `data/local/mapper/`
+
+8 mappers Entity <-> domain model.
+
+### `data/remote/`
+
+| Archivo | Que hace |
+|---|---|
+| `ApiClient.kt` | Ktor HttpClient (OkHttp, JSON, Bearer auth, auto-refresh) |
+| `RiptideApi.kt` | sync(), authGoogle(), logout() |
+| `TokenProvider.kt` | Interface abstracta para JWT storage |
+| `DataStoreTokenProvider.kt` | Implementacion con DataStore |
+| `AuthManager.kt` | Google Sign-In flow + JWT lifecycle |
+| `dto/SyncDtos.kt` | SyncRequest, SyncResponse, 8 DTOs de recurso, auth DTOs |
+| `dto/DtoMappers.kt` | Entity <-> DTO conversiones (16 funciones) |
+
+### `data/sync/`
+
+| Archivo | Que hace |
+|---|---|
+| `SyncManager.kt` | Push/pull bidireccional con conflict resolution |
+| `SyncTrigger.kt` | Debounce 5s tras mutacion local |
+| `SyncWorker.kt` | WorkManager periodico (1h, constraint CONNECTED) |
+| `InitialSyncPreparer.kt` | Stampar datos pre-existentes para primera sync |
+| `ConnectivityObserver.kt` | Flow<Boolean> de estado de red |
+
+### `data/repository/`
+
+9 repository implementations (Room-backed).
 
 ### `presentation/`
 
-| Archivo | Nota |
+| Archivo | Que hace |
 |---|---|
-| `MainViewModelFactory.kt` | `EcosystemProcessor(...)` + `LootboxResolver(marineCreatureRepo)` + `TaskReminderSchedulerImpl` |
-| `BlockFormViewModelFactory.kt` | `MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo)` |
-| `StatsViewModelFactory.kt` | Instancia `StatsViewModel` con repos de DB |
-| `HistoryViewModelFactory.kt` | Instancia `HistoryViewModel` con repos de DB |
-| `MainActivity.kt` | `createChannels()`, permiso `POST_NOTIFICATIONS` (API 33+), `rescheduleAll()` tras seeding |
-| `NightSummaryWorker.kt` | Lee `summaryTime` con `.first()`, lo pasa a `processDay`; envía push con stats; se auto-reprograma |
-| `MorningReminderWorker.kt` | Envía push matutino; lee hora de DataStore; se auto-reprograma diariamente |
-| `TaskReminderWorker.kt` | One-shot; envía push a la hora de la tarea (`task_reminder_$taskId` nombre único) |
-| `TaskReminderSchedulerImpl.kt` | WorkManager `REPLACE`; `rescheduleAll()` vía `getPendingWithNotifications()` |
-| `NightSummaryScheduler.android.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
-| `NotificationHelper.kt` | `createChannels()`, `sendNightSummaryNotification()`, `sendMorningReminderNotification()`, `sendTaskReminderNotification()` |
-| `Navigation.kt` | `ROUTE_ECOSYSTEM`, `ROUTE_ONBOARDING`, `ROUTE_STATS`, `ROUTE_HISTORY`; composable usa `MainViewModel` compartido |
-| `OnboardingScreen.kt` | 4 pasos con `AnimatedContent`, indicador de puntos, paleta marina |
-| `App.kt` | Decide `startDestination` según `hasCompletedOnboarding()` de DataStore |
+| `Navigation.kt` | ROUTE_ECOSYSTEM, ROUTE_ONBOARDING, ROUTE_STATS, ROUTE_HISTORY; composable conectado a MainViewModel |
+| `MainViewModelFactory.kt` | Inyecta EcosystemProcessor, LootboxResolver, TaskReminderScheduler, AuthManager, SyncManager |
+| `BlockFormViewModelFactory.kt` | Inyecta MarineCategoryAssigner |
+| `StatsViewModelFactory.kt` | Instancia StatsViewModel con repos de DB |
+| `HistoryViewModelFactory.kt` | Instancia HistoryViewModel con repos de DB |
+| `TaskFormViewModelFactory.kt` | Instancia TaskFormViewModel |
+| `MainScreen.android.kt` | Platform-specific composable |
 
-### `presentation/components/`
+### Workers y notificaciones
 
-| Archivo | Nota |
+| Archivo | Que hace |
 |---|---|
-| `InputFieldDialogs.android.kt` | `TimePicker` con `TimePickerDefaults.colors()` explícitos; `DatePicker` con `DatePickerDefaults.colors()` |
+| `NotificationHelper.kt` | 3 canales + send functions |
+| `NightSummaryWorker.kt` | Resumen nocturno + push + auto-reprogramacion |
+| `MorningReminderWorker.kt` | Aviso matutino + auto-reprogramacion diaria |
+| `TaskReminderWorker.kt` | One-shot a la hora de la tarea |
+| `TaskReminderSchedulerImpl.kt` | WorkManager REPLACE + rescheduleAll() |
+| `NightSummaryScheduler.android.kt` | + getMorningReminderTime, scheduleMorningReminder |
 
-### `DataSeeder.kt`
+### Widget
 
-5 bloques genéricos. **Orden crítico**:
-1. Crear `EcosystemState` para las 5 categorías base (`isUnlocked=true`)
-2. Insertar bloques
-3. `assigner.reassign()`
-4. Insertar tareas
-
----
-
-### `domain/`
-
-| Archivo | Nota |
+| Archivo | Que hace |
 |---|---|
-| `NightSummaryScheduler.kt` | + `getMorningReminderTime()`, `setMorningReminderTime()`, `scheduleMorningReminder()` |
-| `TaskReminderScheduler.kt` | Interfaz: `scheduleReminder(taskId, title, scheduledAt)`, `cancelReminder(taskId)`, `rescheduleAll()` |
+| `widget/RiptideWidget.kt` | GlanceAppWidget -- tareas del dia + progreso |
+| `widget/RiptideWidgetReceiver.kt` | GlanceAppWidgetReceiver |
+| `widget/WidgetUpdater.kt` | refreshAll() -- refresca widgets desde la app |
+| `widget/ToggleTaskAction.kt` | Accion interactiva para toggle de tareas |
+
+### Wallpaper
+
+| Archivo | Que hace |
+|---|---|
+| `wallpaper/RiptideWallpaperService.kt` | WallpaperService + Engine, 30fps vsync-aligned |
+| `wallpaper/WallpaperDataProvider.kt` | Carga criaturas de Room, refresco cada 5min |
+
+### Otros
+
+| Archivo | Que hace |
+|---|---|
+| `App.kt` | Decide startDestination segun hasCompletedOnboarding |
+| `MainActivity.kt` | createChannels(), permiso POST_NOTIFICATIONS, rescheduleAll(), splash |
+| `DataSeeder.kt` | 5 bloques genericos + EcosystemStates pre-creados |
 
 ---
 
 ## iosMain
 
-Todo pendiente para v6 excepto `UuidGenerator`, `CurrentDate` y `ParseColor`.
+Todo pendiente para Fase 4 excepto `UuidGenerator`, `CurrentDate` y `ParseColor`.
 
 ---
 
-## Capas del Box raíz en MainScreen
+## commonTest
+
+| Archivo | Tests |
+|---|---|
+| `EcosystemLevelCalculatorTest.kt` | 16 tests: xpForLevel, levelForXp, nightBonus |
+| `BlockStreakProcessorTest.kt` | 12 tests: rachas, hitos, reset, idempotencia |
+| `NightSummaryProcessorTest.kt` | 9 tests: score, exclusiones, EXPIRED |
+
+Fakes in-memory: `FakeDayTaskRepository`, `FakeBlockStreakRepository`, `FakeDaySummaryRepository`.
+
+---
+
+## Backend (`/backend`)
 
 ```
-Box (pointerInput gestos)
- ├── AquariumBackground()
- ├── AquariumCreatures(ecosystemByCategory, creatureLevelBySpecies, creaturesData,
- │                     freezeState, onCreatureTap)
- ├── when(showAquarium)
- │    ├── true  → FAB ✕
- │    └── false → Column
- │                 ├── MainHeader
- │                 │    ├── 🌊 Riptide + ⟳ + 📅 + ➕ + ☰
- │                 │    └── WeekCalendar
- │                 └── MainContent (LazyColumn)
- │                      ├── BlockSection (long press header → nueva tarea)
- │                      └── TaskCard (EXPIRED: ⌛ + checkbox; long press → menú contextual)
- ├── AlertDialog contextMenu
- ├── AlertDialog deletingRecurring
- ├── AlertDialog editingScopeTask
- ├── AlertDialog pendingSummary
- ├── Dialog pendingLootboxes (bifásico: cerrada→abierta)
- ├── CreatureDetailDialog (tap criatura)
- ├── Drawer (pointerInput propio para cerrar)
- │    └── MainDrawer(onNavigateToEcosystem)
- ├── DatePickerDialogWrapper
- ├── Dialog TaskFormSheet (nueva / editar)
- └── Dialog PostponeSheet
+backend/src/main/kotlin/com/mnebot/riptide/backend/
+  Application.kt                  -- Ktor entry point (EngineMain + module)
+  plugins/
+    Routing.kt                    -- Registro central de rutas + CORS + CallLogging
+    Serialization.kt              -- ContentNegotiation + kotlinx.serialization JSON
+    Security.kt                   -- JWT config + Google token verification + JwtConfig
+    StatusPages.kt                -- Manejo global de errores (400, 401, 404, 500)
+  db/
+    DatabaseFactory.kt            -- HikariCP pool + Exposed + SchemaUtils.create()
+    tables/                       -- 10 tablas Exposed (mirror Room v12 + users + refresh_tokens)
+      UsersTable.kt               -- id, email, googleId, displayName, avatarUrl
+      WorkBlocksTable.kt          -- + userId, updatedAt, isDeleted
+      BlockCategoriesTable.kt
+      DayTasksTable.kt            -- 14 campos -- mirror exacto de DayTaskEntity
+      RecurringTaskDefsTable.kt
+      DaySummariesTable.kt
+      BlockStreaksTable.kt         -- + longestStreak
+      EcosystemStatesTable.kt
+      MarineCreaturesTable.kt
+  models/
+    Auth.kt                       -- GoogleAuthRequest, TokenResponse, RefreshRequest
+    ApiModels.kt                  -- DTOs + SyncRequest + FullSyncResponse
+  routes/
+    AuthRoutes.kt                 -- POST /auth/google, POST /auth/refresh, POST /auth/logout
+    SyncRoutes.kt                 -- POST /api/sync -- batch push/pull con conflict resolution
+    WorkBlockRoutes.kt            -- CRUD /api/blocks
+    BlockCategoryRoutes.kt        -- GET + POST(upsert) /api/block-categories
+    DayTaskRoutes.kt              -- CRUD /api/tasks (?date=, ?updatedSince=)
+    RecurringTaskDefRoutes.kt     -- CRUD /api/recurring-defs
+    DaySummaryRoutes.kt           -- CRUD /api/summaries (?from=, ?to=)
+    BlockStreakRoutes.kt          -- GET + POST(upsert) /api/streaks
+    EcosystemStateRoutes.kt       -- GET + POST(upsert) /api/ecosystem-states
+    MarineCreatureRoutes.kt       -- GET + POST(upsert) /api/creatures (?category=)
 ```
