@@ -24,9 +24,9 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 |---|---|
 | `riptide_context.txt` | Referencia completa del proyecto: todos los sistemas, modelos, lógica de negocio, convenciones |
 | `architecture.md` | MVVM, expect/actual KMP, Room schema, EcosystemProcessor, animaciones AquariumCreatures, NightSummary |
-| `data-models.md` | Todos los modelos de dominio: WorkBlock, DayTask, RecurringTaskDef, MarineCreature, CreatureSpecies (40), XP curve |
+| `data-models.md` | Todos los modelos de dominio: WorkBlock, DayTask, RecurringTaskDef, MarineCreature, CreatureSpecies (70), XP curve |
 | `project_structure.md` | Árbol de directorios completo con descripción de cada archivo |
-| `roadmap.md` | Fases completadas y futuras (v3: testing/onboarding, v4: wallpaper dinámico, v5: backend, v6: iOS) |
+| `roadmap.md` | Fases completadas y futuras (siguiente: Play Store, después iOS) |
 
 **Para contexto profundo en una tarea específica, lee primero el archivo de /docs/ correspondiente.**
 
@@ -40,7 +40,7 @@ App de productividad personal con sistema de recompensa emocional basado en un e
 |---|---|
 | Kotlin | 2.3.10 |
 | Compose Multiplatform | 1.10.2 |
-| Room | 2.8.4 (schema v12) |
+| Room | 2.8.4 (schema v13) |
 | Ktor Client | 3.0.3 |
 | Google Play Services Auth | 21.3.0 |
 | kotlinx-serialization | 1.7.3 |
@@ -118,8 +118,8 @@ cd backend && bash gradlew run
 ## Estado actual (abril 2026)
 
 **Completado:**
-- MVVM + Room offline-first (v12, migraciones reales)
-- Ecosistema marino: 40 especies, 9 categorías, sistema lootbox con rareza, crecimiento individual
+- MVVM + Room offline-first (v13, migraciones reales)
+- Ecosistema marino: 70 especies, 10 categorías, sistema lootbox con rareza, crecimiento individual
 - Patrones de nado orgánicos (tempo warping, variación por instancia, márgenes simétricos)
 - Resumen nocturno con filtrado correcto por `summaryTime`; push notification tras `processDay`
 - Tareas EXPIRED completables con checkbox
@@ -127,30 +127,37 @@ cd backend && bash gradlew run
 - Inputs de fecha/hora readonly (click abre picker)
 - Superficie del agua animada, fondo marino elaborado, cielo dinámico (7 periodos)
 - Flora Canvas: BrainCoral, Anemone, Kelp, Posidonia, FanCoral — crecimiento visual por nivel
-- `CreatureIcon` composable reutilizable (Canvas animado para flora, emoji para el resto)
+- `CreatureIcon` composable reutilizable (Canvas animado para todas las especies)
 - Sistema lootbox: desbloqueo aleatorio ponderado por rareza (COMMON→LEGENDARY)
 - **i18n**: EN + ES, `LocalizationExtensions.kt` con extension functions para enums
-- **40 renderers Canvas** (cobertura total): todas las 40 especies tienen Canvas renderer propio
+- **70 renderers Canvas** (cobertura total): todas las 70 especies tienen Canvas renderer propio
 - **Onboarding**: flujo de 4 pasos con `AnimatedContent`, DataStore key `onboarding_completed`, se muestra solo en primer lanzamiento
 - **Notificaciones push**: `NotificationHelper` (3 canales), push resumen nocturno + matutino + por tarea, `TaskReminderSchedulerImpl` (WorkManager, `rescheduleAll()`), `notificationsEnabled` en `DayTask`/`RecurringTaskDef` (Room v10), permiso `POST_NOTIFICATIONS`
-- **Estadísticas**: `StatsScreen` con gráfico de barras Canvas, toggle Semana/Mes, tarjetas de resumen, rachas por bloque
+- **Estadísticas**: `StatsScreen` con gráfico de barras Canvas, toggle Semana/Mes/Todo, toggle absoluto/porcentaje, tarjetas de resumen, rachas por bloque
 - **Historial**: `HistoryScreen` con selector 30/60/90 días, LazyColumn de días agrupados, badge completadas/totales
 - **Recompensas de racha**: `BlockStreakUpdate` con `milestonesReached`, hitos [7, 14, 30], `PendingLootbox` generados en `NightSummaryProcessor`
 - **Evolución visual de criaturas**: efectos discretos en nivel 3+ y nivel 5+ en 10 renderers de fauna (marcas, brillos, compañeros, bioluminiscencia)
-- **Tests automatizados**: 37 tests en `commonTest` — `EcosystemLevelCalculatorTest` (16), `BlockStreakProcessorTest` (12), `NightSummaryProcessorTest` (9). Fakes in-memory, `kotlinx-coroutines-test`
-- **Iconografía Lucide**: 18 vector drawables stroke-based (`ic_*.xml`). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
+- **Tests automatizados**: 129 tests en `commonTest` — 13 test suites. Fakes in-memory, `kotlinx-coroutines-test`
+- **Iconografía Lucide**: 26 vector drawables (`ic_*.xml`, incluyendo filled play/pause). Todos los emojis de control reemplazados por `Icon(painterResource(...))` en MainDrawer, MainScreen, TaskFormSheet, StatsScreen, EcosystemScreen
 - **Logo & Branding "Rising Currents"**: 3 olas ascendentes con ondulación, adaptive icon (foreground + background azul océano), logo in-app 24dp, icono notificación, splash screen (`core-splashscreen` 1.0.1, tema `Theme.Riptide.Splash`)
 - **Widget Android**: Glance widget con tareas del día, barra de progreso, paleta marina. `WidgetUpdater.refreshAll()` en `onResume`. Metadata 3×3 celdas, redimensionable, auto-update 30min.
-- **Live Wallpaper**: `RiptideWallpaperService` (WallpaperService + Choreographer 30fps vsync-aligned). Bridge `CanvasDrawScope` reutiliza todo el renderizado Compose sin portar código. `WallpaperDataProvider` lee criaturas de Room con refresco cada 5min. Botón en drawer → `ACTION_CHANGE_LIVE_WALLPAPER` (bypass del picker OEM). `GLOBAL_SPEED_MULTIPLIER = 2.0f` para velocidad más natural.
+- **Live Wallpaper**: `RiptideWallpaperService` (WallpaperService + Choreographer, FPS configurable 15/30/60). Bridge `CanvasDrawScope` reutiliza todo el renderizado Compose sin portar código. `WallpaperDataProvider` lee criaturas de Room con `@Volatile` y refresco cada 5min (IO dispatchers). Hardware canvas (`lockHardwareCanvas()`) para API 26+. Diálogo FPS en MainScreen antes de aplicar. `GLOBAL_SPEED_MULTIPLIER = 2.0f`.
 - **Terreno suavizado**: amplitud de ondulaciones reducida 72% (`0.08f → 0.022f`), Y-range `[0.73-0.93] → [0.80-0.90]` — superficie de arena con cambios casi imperceptibles
 - **Flora del fondo escalada**: Kelp (1.0→0.50), Anemone (0.65→0.42), BrainCoral (1.0→0.50), FanCoral (1.0→0.48), Posidonia (1.0→0.52), SeaUrchin (1.0→0.55)
 - **Rediseño BrainCoral**: reemplaza líneas rectas por cúpula hemisférica con gradiente + grooves laberínticos sinusoidales + highlight especular + glow secundario (nivel 3+)
 
-- **Backend Ktor**: proyecto `/backend` independiente — Ktor 3.0.3 + Exposed 0.57.0 + PostgreSQL. 10 tablas (mirror Room v12 + users + refresh_tokens), API REST CRUD completa (8 recursos), auth Google Sign-In + JWT con refresh token rotation y theft detection, Dockerfile multi-stage, health check.
-- **Sync offline-first**: Room v12 con `updatedAt` en 8 tablas + `isDeleted` en 3 (soft delete). Ktor Client (OkHttp) con auto-refresh JWT. `POST /api/sync` batch endpoint (push+pull en una llamada). `SyncManager` con conflict resolution (`updatedAt` wins, `hasBeenRewarded` OR-merge, server deletion autoritativo). `SyncTrigger` (5s debounce) + `SyncWorker` (1h periodic via WorkManager). Google Sign-In en drawer con sección "Cuenta" (avatar, sync status badge, logout). `InitialSyncPreparer` para primera sincronización de datos pre-existentes.
+- **Backend Ktor**: proyecto `/backend` independiente — Ktor 3.0.3 + Exposed 0.57.0 + PostgreSQL. 10 tablas (mirror Room v13 + users + refresh_tokens), API REST CRUD completa (8 recursos), auth Google Sign-In + JWT con refresh token rotation y theft detection, Dockerfile multi-stage, health check.
+- **Sync offline-first**: Room v13 con `updatedAt` en 8 tablas + `isDeleted` en 3 (soft delete). Ktor Client (OkHttp) con auto-refresh JWT. `POST /api/sync` batch endpoint (push+pull en una llamada). `SyncManager` con conflict resolution (`updatedAt` wins, `hasBeenRewarded` OR-merge, server deletion autoritativo). `SyncTrigger` (5s debounce) + `SyncWorker` (1h periodic via WorkManager). Google Sign-In en drawer con sección "Cuenta" (avatar, sync status badge, logout). `InitialSyncPreparer` para primera sincronización de datos pre-existentes.
+- **Tareas enriquecidas** (Room v13): contable (`targetCount`/`currentCount`), notas markdown con checkboxes interactivos, timer (`timerDurationMinutes`), prioridad (`isPriority`). Campos propagados de `RecurringTaskDef` a `DayTask`. `MIGRATION_12_13` con 9 ALTER TABLE.
+- **TaskCard rediseñado**: altura fija 52dp, single-row. Contables muestran `currentCount/targetCount` sin checkbox. Timer con filled play/pause. Prioridad con estrella. Sorting estable (no cambia al completar tareas).
+- **Notas markdown**: diálogo con botones helper (☐, •, B, H). Checkboxes interactivos en modo lectura.
+- **Rediseño Bimba**: labrador amarilla senior 3 patas con collar rosa, colgante corazón bézier, morro gris, ojo marrón cálido, aura rosa.
+- **Paleta bloques**: 12 colores marinos ajustados en BlockFormScreen.
+- **Widget**: refresh per-GlanceId para recomposición fiable.
+- **Superficie acuario**: `SURFACE_FRACTION` bajada a 0.05.
+- **Ecosistema**: blur 4dp + alpha 0.22f en criaturas bloqueadas.
 
 **Próximo (→ Play Store):**
-- Sprint QA & Polish (tests integración, accesibilidad, performance)
 - Sprint Store Prep (firma, privacy policy, screenshots, listing)
 - 🚀 Play Store
 - Sprint iOS (post-launch, sin prisa)
@@ -163,24 +170,24 @@ cd backend && bash gradlew run
 composeApp/src/
 ├── commonMain/kotlin/com/mnebot/riptide/
 │   ├── domain/
-│   │   ├── model/          # WorkBlock, DayTask, RecurringTaskDef, MarineCreature, etc.
+│   │   ├── model/          # WorkBlock, DayTask (+ contable/timer/prioridad/notas), RecurringTaskDef, MarineCreature, etc.
 │   │   ├── repository/     # Interfaces de repositorios
 │   │   │   └── processor/      # EcosystemProcessor, NightSummaryProcessor, RecurringTaskGenerator, MarineCategoryAssigner
 │   │   └── LootboxResolver.kt            # Selección weighted-random de especie al abrir lootbox
 │   └── presentation/
-│       ├── main/MainScreen.kt              # Pantalla principal (Box con capas)
+│       ├── main/MainScreen.kt              # Pantalla principal: TaskCard 52dp (contable/timer/prioridad/notas), sorting estable, diálogo FPS
 │       ├── main/MainViewModel.kt           # ViewModel principal
 │       ├── stats/StatsScreen.kt            # Gráfico barras Canvas + toggle Semana/Mes + rachas
 │       ├── stats/StatsViewModel.kt         # Carga DaySummary + BlockStreak por rango
 │       ├── history/HistoryScreen.kt        # LazyColumn días agrupados + selector 30/60/90d
 │       ├── history/HistoryViewModel.kt     # Carga tareas completadas + summaries por rango
 │       ├── aquarium/AquariumBackground.kt  # Canvas: cielo dinámico, superficie, fondo marino; drawAquariumBackground() extraída
-│       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION, FLOOR_FRACTION compartidas
+│       ├── aquarium/AquariumBounds.kt      # SURFACE_FRACTION=0.05, FLOOR_FRACTION=0.85
 │       ├── aquarium/AquariumCreature.kt    # CreatureSpec, animación, hit-testing; GLOBAL_SPEED_MULTIPLIER; drawAquariumCreatures() extraída
-│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (40 renderers, cobertura total) + CreatureIcon composable
+│       ├── aquarium/CreatureRenderer.kt    # Interface + rendererFor() (70 renderers, cobertura total) + CreatureIcon composable
 │       ├── aquarium/EcosystemScreen.kt     # Grid de criaturas desbloqueadas
-│       ├── aquarium/flora/                 # BrainCoralRenderer, AnemoneRenderer, KelpRenderer, PosidoniaRenderer, FanCoralRenderer
-│       ├── aquarium/fauna/                 # 35 renderers — COBERTURA TOTAL: todas las 40 especies (5 son flora/)
+│       ├── aquarium/flora/                 # 9 renderers: BrainCoral, Anemone, Kelp, Posidonia, FanCoral, TubeSponge, SeaGrass, FireCoral, StaghornCoral
+│       ├── aquarium/fauna/                 # 61 renderers — COBERTURA TOTAL: todas las 70 especies (9 son flora/)
 │       ├── onboarding/OnboardingScreen.kt  # Flujo 4 pasos: bienvenida, cómo funciona, ecosistema, listo
 │       └── theme/Theme.kt                  # Paleta de colores marina
 └── androidMain/kotlin/com/mnebot/riptide/
@@ -192,12 +199,12 @@ composeApp/src/
     ├── widget/RiptideWidget.kt         # GlanceAppWidget — tareas del día + progreso
     ├── widget/RiptideWidgetReceiver.kt # GlanceAppWidgetReceiver
     ├── widget/WidgetUpdater.kt         # refreshAll() — refresca widgets desde la app
-    ├── wallpaper/RiptideWallpaperService.kt  # WallpaperService + Engine, 30fps vsync-aligned
+    ├── wallpaper/RiptideWallpaperService.kt  # WallpaperService + Engine, FPS configurable (15/30/60), hardware canvas API 26+
     ├── wallpaper/WallpaperDataProvider.kt    # Carga criaturas de Room, refresco cada 5min
     ├── presentation/stats/StatsViewModelFactory.kt
     ├── presentation/history/HistoryViewModelFactory.kt
     ├── data/local/
-    │   ├── db/RiptideDatabase.kt       # Room DB v12, migraciones reales (8_9..11_12)
+    │   ├── db/RiptideDatabase.kt       # Room DB v13, migraciones reales (8_9..12_13)
     │   ├── dao/                        # DAOs para cada entidad (+getModifiedSince, upsertAll, stampUpdatedAt)
     │   └── SyncTimestamp.kt            # nowIso() utility
     ├── data/remote/
@@ -225,11 +232,11 @@ backend/src/main/kotlin/com/mnebot/riptide/backend/
 │   └── StatusPages.kt             # Manejo global de errores (400, 401, 404, 500)
 ├── db/
 │   ├── DatabaseFactory.kt         # HikariCP pool + Exposed + SchemaUtils.create()
-│   └── tables/                    # 10 tablas Exposed (mirror Room v12 + users + refresh_tokens)
+│   └── tables/                    # 10 tablas Exposed (mirror Room v13 + users + refresh_tokens)
 │       ├── UsersTable.kt          # id, email, googleId, displayName, avatarUrl
 │       ├── WorkBlocksTable.kt     # + userId, updatedAt, isDeleted
 │       ├── BlockCategoriesTable.kt
-│       ├── DayTasksTable.kt       # 14 campos — mirror exacto de DayTaskEntity
+│       ├── DayTasksTable.kt       # 19 campos — mirror exacto de DayTaskEntity (v13)
 │       ├── RecurringTaskDefsTable.kt
 │       ├── DaySummariesTable.kt
 │       ├── BlockStreaksTable.kt   # + longestStreak (Room v11)

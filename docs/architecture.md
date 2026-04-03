@@ -36,7 +36,7 @@ expect fun DatePickerDialogWrapper(initial: LocalDate, onConfirm: (LocalDate?) -
 
 ---
 
-## androidMain -- Room (v12)
+## androidMain -- Room (v13)
 
 Migraciones reales desde v9. Sin `fallbackToDestructiveMigration`.
 
@@ -51,6 +51,7 @@ Migraciones reales desde v9. Sin `fallbackToDestructiveMigration`.
 | 10 | `DayTaskEntity` + `notificationsEnabled: Boolean`; `RecurringTaskDefEntity` + `notificationsEnabled: Boolean` |
 | 11 | `BlockStreakEntity` + `longestStreak: Int` |
 | 12 | `updatedAt TEXT` en 8 tablas + `isDeleted INTEGER` en 3 (WorkBlock, DayTask, RecurringTaskDef) para sync. 11 ALTER TABLE. DAOs con `getModifiedSince()`, `upsertAll()`, `stampUpdatedAt()`. Queries filtran `isDeleted = 0`. |
+| 13 | Tareas enriquecidas: `DayTaskEntity` + `targetCount`, `currentCount`, `notes`, `timerDurationMinutes`, `isPriority`. `RecurringTaskDefEntity` + `targetCount`, `noteTemplate`, `timerDurationMinutes`, `isPriority`. 9 ALTER TABLE. |
 
 ---
 
@@ -190,7 +191,7 @@ Un unico `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset con
 - **Superficie del agua**: ola animada con `Path` + `quadraticTo` (8 segmentos, 9.dp amplitud). Cresta principal + cresta secundaria (60% amplitud) para efecto de profundidad.
 - **Terreno** (`AquariumTerrain`): curva suave procedural con Catmull-Rom. Amplitud reducida a `0.022f` para ondulaciones casi imperceptibles. Y-range: `[0.80, 0.90]`.
 - **Fondo marino**: banda de arena con gradiente + lineas de textura ondulada. Guijarros sutiles dispersos. Sistema procedural de decoraciones.
-- **AquariumBounds**: `SURFACE_FRACTION = 0.08f`, `FLOOR_FRACTION = 0.85f`, compartidas entre background y criaturas.
+- **AquariumBounds**: `SURFACE_FRACTION = 0.05f`, `FLOOR_FRACTION = 0.85f`, compartidas entre background y criaturas.
 
 ---
 
@@ -211,7 +212,7 @@ Un unico `pointerInput` con `detectTapGestures(onTap = ...)`. Compara offset con
 ### Flujo de datos
 
 ```
-App (Room v12)                         Backend (Ktor + PostgreSQL)
+App (Room v13)                         Backend (Ktor + PostgreSQL)
      |                                       |
      |-- SyncManager.sync() --------------->|
      |   push: entities con updatedAt       |
@@ -247,18 +248,20 @@ App (Room v12)                         Backend (Ktor + PostgreSQL)
 ## Widget Android (Glance)
 
 - `RiptideWidget` (GlanceAppWidget): tareas del dia agrupadas por bloque, barra de progreso
-- `WidgetUpdater.refreshAll()`: refresca widgets desde la app en `onResume`
+- `WidgetUpdater.refreshAll()`: refresca per-GlanceId para recomposicion fiable
 - Metadata: 3x3 celdas, redimensionable, auto-update 30min
-- Widget interactivo: toggle de tareas completadas
+- Widget interactivo: toggle de tareas completadas (per-GlanceId update)
 
 ---
 
 ## Live Wallpaper
 
-- `RiptideWallpaperService`: WallpaperService + Engine con Choreographer 30fps vsync-aligned
+- `RiptideWallpaperService`: WallpaperService + Engine con Choreographer, FPS configurable (15/30/60) via DataStore
 - `CanvasDrawScope` bridge: reutiliza `drawAquariumBackground()` y `drawAquariumCreatures()` sin portar codigo
-- `WallpaperDataProvider`: lee criaturas de Room DB, refresco cada 5min
+- `WallpaperDataProvider`: lee criaturas de Room DB con `@Volatile`, refresco cada 5min, IO dispatchers
 - `GLOBAL_SPEED_MULTIPLIER = 2.0f` para velocidad mas natural
+- Hardware canvas (`lockHardwareCanvas()`) para API 26+ con fallback a software canvas
+- Dialogo FPS en MainScreen antes de lanzar el picker del sistema
 
 ---
 

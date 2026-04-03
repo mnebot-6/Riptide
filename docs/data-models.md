@@ -42,7 +42,7 @@ data class WeeklySlot(
 ## TaskStatus
 
 ```kotlin
-enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
+enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED, CANCELLED }
 ```
 
 | Estado | Descripcion |
@@ -51,6 +51,7 @@ enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED }
 | COMPLETED | Da 10 XP al ecosistema (solo la primera vez, controlado por `hasBeenRewarded`) |
 | EXPIRED | Marcada por resumen nocturno. Sigue siendo completable |
 | POSTPONED | No cuenta en resumen ni barra de progreso |
+| CANCELLED | Tarea cancelada, no cuenta en resumen ni progreso |
 
 ---
 
@@ -78,13 +79,28 @@ data class DayTask(
     val postponedTo: LocalDateTime?,
     val sourceTaskId: String?,
     val hasBeenRewarded: Boolean = false,
-    val notificationsEnabled: Boolean = false
-)
+    val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0,
+    val notes: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
+) {
+    val isCountable: Boolean get() = targetCount != null && targetCount > 0
+}
 ```
 
 `hasBeenRewarded`: se pone a `true` al completar la tarea por primera vez. Evita dar XP duplicado al desmarcar y volver a marcar. Una vez `true`, nunca se resetea.
 
 `notificationsEnabled`: si `true` y la tarea tiene hora, se programa un `TaskReminderWorker` a esa hora. Solo relevante si `schedule` incluye `time != null`.
+
+`targetCount` / `currentCount`: tareas contables. Si `targetCount != null && > 0`, la tarea se muestra como `currentCount/targetCount` sin checkbox. Se completa al alcanzar el target.
+
+`notes`: notas markdown libres. Soporta checkboxes interactivos (`- [ ]` / `- [x]`), listas, negritas, encabezados.
+
+`timerDurationMinutes`: duracion del timer en minutos. Si no es null, la tarea muestra iconos play/pause para controlar el timer.
+
+`isPriority`: marca la tarea con estrella visual (no-clickable, solo informativa).
 
 ---
 
@@ -98,11 +114,17 @@ data class RecurringTaskDef(
     val time: LocalTime?,   // nullable -- hora opcional
     val recurrence: Recurrence,
     val isActive: Boolean,
-    val notificationsEnabled: Boolean = false
+    val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val noteTemplate: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )
 ```
 
 `notificationsEnabled`: se propaga a cada `DayTask` generado por `RecurringTaskGenerator`.
+
+`targetCount`, `timerDurationMinutes`, `isPriority`: se propagan a cada instancia `DayTask` generada. `noteTemplate` se propaga como `notes` en la instancia.
 
 ---
 
@@ -336,14 +358,14 @@ Total: **70 especies** en 10 categorias. Rareza asignada en `CreatureSpec` (codi
 
 ---
 
-## Room -- androidMain (v12)
+## Room -- androidMain (v13)
 
 | Entity | Tabla |
 |--------|-------|
 | `WorkBlockEntity` | `work_blocks` -- + `updatedAt`, `isDeleted` |
 | `BlockCategoryEntity` | `block_categories` -- PK `(blockId, category)`, FK CASCADE |
-| `DayTaskEntity` | `day_tasks` -- + `hasBeenRewarded`, `notificationsEnabled`, `updatedAt`, `isDeleted` |
-| `RecurringTaskDefEntity` | `recurring_task_defs` -- `time String?` nullable, + `notificationsEnabled`, `updatedAt`, `isDeleted` |
+| `DayTaskEntity` | `day_tasks` -- + `hasBeenRewarded`, `notificationsEnabled`, `targetCount`, `currentCount`, `notes`, `timerDurationMinutes`, `isPriority`, `updatedAt`, `isDeleted` |
+| `RecurringTaskDefEntity` | `recurring_task_defs` -- `time String?` nullable, + `notificationsEnabled`, `targetCount`, `noteTemplate`, `timerDurationMinutes`, `isPriority`, `updatedAt`, `isDeleted` |
 | `DaySummaryEntity` | `day_summaries` -- + `updatedAt` |
 | `BlockStreakEntity` | `block_streaks` -- PK `blockId`, + `longestStreak`, `updatedAt` |
 | `EcosystemStateEntity` | `ecosystem_states` -- `isUnlocked Boolean`, + `updatedAt` |
@@ -357,6 +379,7 @@ Total: **70 especies** en 10 categorias. Rareza asignada en `CreatureSpec` (codi
 | 9 -> 10 | `+ notificationsEnabled` en `day_tasks` y `recurring_task_defs` |
 | 10 -> 11 | `+ longestStreak INTEGER` en `block_streaks` |
 | 11 -> 12 | `+ updatedAt TEXT` en 8 tablas + `+ isDeleted INTEGER` en 3 tablas (11 ALTER TABLE) |
+| 12 -> 13 | `+ targetCount`, `currentCount`, `notes`, `timerDurationMinutes`, `isPriority` en `day_tasks`; `+ targetCount`, `noteTemplate`, `timerDurationMinutes`, `isPriority` en `recurring_task_defs` (9 ALTER TABLE) |
 
 ### DAOs -- queries de sync
 

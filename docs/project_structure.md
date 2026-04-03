@@ -7,7 +7,7 @@ Kotlin Multiplatform con Compose Multiplatform. Todo el codigo vive en `composeA
 - `commonMain` -- modelos, repositorios, ViewModels, UI compartida
 - `androidMain` -- Room, implementaciones, factories, navegacion, widget, wallpaper, sync
 - `iosMain` -- entrypoint, actuals (parcialmente pendientes)
-- `commonTest` -- tests unitarios (37 tests)
+- `commonTest` -- tests unitarios (129 tests)
 
 Backend independiente en `/backend` (Ktor + PostgreSQL).
 
@@ -23,8 +23,8 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 | `WorkBlock.kt` | Bloque + `Recurrence` sealed `@Serializable` + `WeeklySlot` |
 | `TaskStatus.kt` | PENDING, COMPLETED, EXPIRED, POSTPONED |
 | `TaskSchedule.kt` | `OneTime(date, time?)` / `Recurring(time, recurrence)` |
-| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP, `notificationsEnabled` para push |
-| `RecurringTaskDef.kt` | `time: LocalTime?` nullable, `notificationsEnabled` propagado a instancias generadas |
+| `DayTask.kt` | `blockId` nullable, `sourceTaskId` para recurrentes, `hasBeenRewarded` para XP, `notificationsEnabled` para push, `targetCount`/`currentCount` (contable), `notes` (markdown), `timerDurationMinutes`, `isPriority` |
+| `RecurringTaskDef.kt` | `time: LocalTime?` nullable, `notificationsEnabled` propagado, `targetCount`, `noteTemplate`, `timerDurationMinutes`, `isPriority` |
 | `DaySummary.kt` | Score interno + mensaje visible |
 | `BlockStreak.kt` | PK natural = `blockId`, + `longestStreak` |
 | `EcosystemState.kt` | XP + nivel + `isUnlocked` por categoria |
@@ -42,7 +42,7 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 |---|---|
 | `EcosystemStateRepository.kt` | getByCategory, getAll, **getUnlocked**, insert, update |
 | `MarineCreatureRepository.kt` | getByEcosystem, **getByCategory**, insert, update |
-| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, **lastDismissedSummaryDate**, hasCompletedOnboarding, **morningReminderTime** (Flow) |
+| `UserPreferencesRepository.kt` | nightSummaryTime (Flow), **pendingLootboxes**, **lastDismissedSummaryDate**, hasCompletedOnboarding, **morningReminderTime** (Flow), wallpaperFps, resetOnboarding, auth tokens, sync time |
 | Resto | operaciones estandar + getModifiedSince, upsertAll (sync) |
 
 ### `domain/`
@@ -63,7 +63,7 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 | Archivo | Que hace |
 |---|---|
 | `AquariumBackground.kt` | Canvas: cielo dinamico por hora (7 periodos), superficie con olas animadas, fondo marino |
-| `AquariumBounds.kt` | `SURFACE_FRACTION=0.08`, `FLOOR_FRACTION=0.85`, `surfaceY(h)`, `floorY(h)` |
+| `AquariumBounds.kt` | `SURFACE_FRACTION=0.05`, `FLOOR_FRACTION=0.85`, `surfaceY(h)`, `floorY(h)` |
 | `AquariumCreature.kt` | `CreatureSpec`, SwimZone, EasingType, 70 especies, `CATEGORY_UNLOCK_LEVELS`, tempo warping, hit-testing |
 | `AquariumTerrain.kt` | Terreno procedural Catmull-Rom con seed |
 | `AquariumTerrainConfig.kt` | Configuracion per-session del terreno |
@@ -87,9 +87,9 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 |---|---|
 | `MainUiState.kt` | + `creaturesData`, `pendingLootboxes`, `revealedSpecies`, sync status |
 | `MainViewModel.kt` | `loadDay`, `toggleTaskCompleted` con lootboxes, `openLootbox`, `confirmUnlock`, sync |
-| `MainScreen.kt` | EXPIRED + checkbox; tap criatura -> CreatureDetailDialog; dialogo lootbox bifasico |
+| `MainScreen.kt` | TaskCard 52dp (contable, timer, prioridad, notas markdown); sorting estable; dialogo FPS wallpaper; dialogo lootbox bifasico |
 | `WeekCalendar.kt` | Excluye POSTPONED |
-| `MainDrawer.kt` | BLOQUES + ECOSISTEMA + PROGRESO + CUENTA + AJUSTES |
+| `MainDrawer.kt` | BLOQUES + ECOSISTEMA + PROGRESO + CUENTA + AJUSTES (sin boton reset tutorial) |
 | `CurrentDate.kt` | expect fun currentDate() |
 
 ### `presentation/stats/`
@@ -118,7 +118,7 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 
 | Archivo | Que hace |
 |---|---|
-| `TaskFormSheet.kt` | `initialBlockId`, `forceRecurring`, toggle `notificationsEnabled` |
+| `TaskFormSheet.kt` | `initialBlockId`, `forceRecurring`, toggle `notificationsEnabled`, dialogos timer/contable con presets + campo custom, toggle prioridad |
 | `PostponeSheet.kt` | Hora opcional |
 | `TaskFormViewModel.kt` | Logica del formulario de tarea |
 
@@ -148,7 +148,7 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 
 ### `data/local/entity/`
 
-8 entities Room con campos `updatedAt` (v12) y `isDeleted` en 3 tablas (WorkBlock, DayTask, RecurringTaskDef).
+8 entities Room con campos `updatedAt` (v12+) y `isDeleted` en 3 tablas (WorkBlock, DayTask, RecurringTaskDef). v13 añade campos enriquecidos (contable, timer, prioridad, notas).
 
 ### `data/local/dao/`
 
@@ -156,7 +156,7 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 
 ### `data/local/db/`
 
-`RiptideDatabase` -- **version 12**. Migraciones reales: `MIGRATION_9_10`, `MIGRATION_10_11`, `MIGRATION_11_12`.
+`RiptideDatabase` -- **version 13**. Migraciones reales: `MIGRATION_9_10`, `MIGRATION_10_11`, `MIGRATION_11_12`, `MIGRATION_12_13`.
 
 ### `data/local/mapper/`
 
@@ -217,14 +217,14 @@ Backend independiente en `/backend` (Ktor + PostgreSQL).
 |---|---|
 | `widget/RiptideWidget.kt` | GlanceAppWidget -- tareas del dia + progreso |
 | `widget/RiptideWidgetReceiver.kt` | GlanceAppWidgetReceiver |
-| `widget/WidgetUpdater.kt` | refreshAll() -- refresca widgets desde la app |
+| `widget/WidgetUpdater.kt` | refreshAll() -- refresca per-GlanceId desde la app |
 | `widget/ToggleTaskAction.kt` | Accion interactiva para toggle de tareas |
 
 ### Wallpaper
 
 | Archivo | Que hace |
 |---|---|
-| `wallpaper/RiptideWallpaperService.kt` | WallpaperService + Engine, 30fps vsync-aligned |
+| `wallpaper/RiptideWallpaperService.kt` | WallpaperService + Engine, FPS configurable (15/30/60), hardware canvas API 26+ |
 | `wallpaper/WallpaperDataProvider.kt` | Carga criaturas de Room, refresco cada 5min |
 
 ### Otros

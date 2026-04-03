@@ -19,7 +19,7 @@ STACK TECNICO
 - La estructura no tiene carpeta shared: todo vive en composeApp/src/
 - commonMain: logica de negocio, modelos, repositorios, ViewModels, UI
 - androidMain / iosMain: implementaciones especificas de plataforma
-- Persistencia: Room (local, offline-first), version 12
+- Persistencia: Room (local, offline-first), version 13
 - IDs String (UUID) desde el primer dia para facilitar sincronizacion
 - Capa repositorio que abstrae el origen de datos
 - Patron MVVM
@@ -72,8 +72,8 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
       WorkBlock.kt
       TaskStatus.kt
       TaskSchedule.kt
-      DayTask.kt                (+ hasBeenRewarded + notificationsEnabled)
-      RecurringTaskDef.kt       (time: LocalTime? -- hora opcional, + notificationsEnabled)
+      DayTask.kt                (+ hasBeenRewarded + notificationsEnabled + targetCount/currentCount + notes + timerDurationMinutes + isPriority)
+      RecurringTaskDef.kt       (time: LocalTime? -- hora opcional, + notificationsEnabled + targetCount + noteTemplate + timerDurationMinutes + isPriority)
       DaySummary.kt
       BlockStreak.kt            (+ longestStreak)
       EcosystemState.kt         (+ isUnlocked: Boolean)
@@ -98,7 +98,7 @@ composeApp/src/commonMain/kotlin/com/mnebot/riptide/
   presentation/
     aquarium/
       AquariumBackground.kt    (Canvas: cielo dinamico 7 periodos, superficie olas, fondo marino)
-      AquariumBounds.kt        (SURFACE_FRACTION=0.08, FLOOR_FRACTION=0.85)
+      AquariumBounds.kt        (SURFACE_FRACTION=0.05, FLOOR_FRACTION=0.85)
       AquariumTerrain.kt       (terreno procedural Catmull-Rom, amplitud 0.022f)
       AquariumTerrainConfig.kt (configuracion per-session)
       AquariumTerrainDecorations.kt (decoraciones procedurales)
@@ -162,7 +162,7 @@ composeApp/src/androidMain/kotlin/com/mnebot/riptide/
     entity/                     (8 entities Room con updatedAt + isDeleted en 3)
     dao/                        (8 DAOs con getModifiedSince, upsertAll, stampUpdatedAt)
     db/
-      RiptideDatabase.kt       (version 12, migraciones reales 9_10, 10_11, 11_12)
+      RiptideDatabase.kt       (version 13, migraciones reales 9_10, 10_11, 11_12, 12_13)
       DatabaseProvider.kt      (addMigrations, sin fallbackToDestructiveMigration)
     mapper/                    (8 mappers Entity <-> domain)
   data/remote/
@@ -256,16 +256,21 @@ MODELOS DE DATOS (commonMain, Kotlin puro)
 WorkBlock: id, name, marineCategories(List<MarineCategory>), color(hex), icon(emoji),
   recurrence(Recurrence), isActive
 
-TaskStatus enum: PENDING, COMPLETED, EXPIRED, POSTPONED
+TaskStatus enum: PENDING, COMPLETED, EXPIRED, POSTPONED, CANCELLED
 
 TaskSchedule sealed: OneTime(date, time?) / Recurring(time, recurrence)
 
 DayTask: id, blockId(String?), title, schedule, status,
   completedAt(LocalDateTime?), postponedTo(LocalDateTime?), sourceTaskId(String?),
-  hasBeenRewarded(Boolean), notificationsEnabled(Boolean=false)
+  hasBeenRewarded(Boolean), notificationsEnabled(Boolean=false),
+  targetCount(Int?=null), currentCount(Int=0), notes(String?=null),
+  timerDurationMinutes(Int?=null), isPriority(Boolean=false)
+  isCountable: computed = targetCount != null && targetCount > 0
 
 RecurringTaskDef: id, blockId, title, time(LocalTime?), recurrence, isActive,
-  notificationsEnabled(Boolean=false)
+  notificationsEnabled(Boolean=false),
+  targetCount(Int?=null), noteTemplate(String?=null),
+  timerDurationMinutes(Int?=null), isPriority(Boolean=false)
 
 Recurrence @Serializable sealed: None | Weekly(slots: List<WeeklySlot>)
 WeeklySlot @Serializable: dayOfWeek(Int), startTime(LocalTime?), endTime(LocalTime?)
@@ -414,7 +419,7 @@ AquariumBackground: cielo dinamico (7 periodos), superficie olas, terreno proced
 
 SYNC -- ARQUITECTURA OFFLINE-FIRST
 
-Room v12: updatedAt en 8 tablas + isDeleted en 3 (soft delete).
+Room v13: updatedAt en 8 tablas + isDeleted en 3 (soft delete) + campos enriquecidos (v13).
 Ktor Client (OkHttp) con auto-refresh JWT.
 POST /api/sync: batch endpoint push+pull.
 Conflict resolution: updatedAt wins, hasBeenRewarded OR-merge, server deletion autoritativo.
@@ -434,7 +439,7 @@ Docker multi-stage.
 WIDGET ANDROID (Glance)
 
 RiptideWidget: tareas del dia por bloque, barra progreso, paleta marina.
-WidgetUpdater.refreshAll() en onResume.
+WidgetUpdater.refreshAll(): refresca per-GlanceId para recomposicion fiable.
 Metadata 3x3 celdas, redimensionable, auto-update 30min.
 Widget interactivo: ToggleTaskAction para toggle de tareas.
 
@@ -442,11 +447,12 @@ Widget interactivo: ToggleTaskAction para toggle de tareas.
 
 LIVE WALLPAPER
 
-RiptideWallpaperService: WallpaperService + Choreographer 30fps vsync-aligned.
+RiptideWallpaperService: WallpaperService + Choreographer, FPS configurable (15/30/60) via DataStore.
 CanvasDrawScope bridge reutiliza drawAquariumBackground + drawAquariumCreatures.
-WallpaperDataProvider: criaturas de Room, refresco 5min.
+WallpaperDataProvider: criaturas de Room con @Volatile, refresco 5min, IO dispatchers.
+Hardware canvas (lockHardwareCanvas) para API 26+ con fallback a software canvas.
 GLOBAL_SPEED_MULTIPLIER = 2.0f.
-Boton en drawer -> ACTION_CHANGE_LIVE_WALLPAPER.
+Dialogo FPS en MainScreen antes de lanzar picker del sistema.
 
 ---
 
@@ -465,12 +471,22 @@ Header fijo con logo Riptide + iconos Lucide (history, calendar, plus, waves).
 WeekCalendar integrado (excluye POSTPONED).
 Long press en cabecera del bloque -> TaskFormSheet(initialBlockId).
 Long press en tarea -> menu contextual: Editar / Posponer / Eliminar.
+Swipe horizontal en tarea -> swipe gestures.
 Drawer: BLOQUES + ECOSISTEMA + PROGRESO (Stats/Historial) + CUENTA (Google Sign-In, sync) + AJUSTES.
 FAB: toggle modo acuario fullscreen.
 Resumen nocturno: no reaparece si ya fue cerrado (fecha en DataStore).
 Tareas EXPIRED: muestran indicador + checkbox, siguen completables.
 
-Iconografia Lucide: 18 vector drawables stroke-based. Todos los emojis de control reemplazados.
+TaskCard (52dp fijo, single-row):
+- Contables: muestran currentCount/targetCount sin checkbox.
+- Timer: iconos filled play/pause (ic_play, ic_pause).
+- Prioridad: estrella no-clickable (ic_star).
+- Notas: dialogo con markdown interactivo (checkboxes clickables) + botones helper (checkbox, bullet, bold, heading).
+
+Sorting estable: bloques calculan posicion con TODAS las tareas (no solo pendientes).
+Tareas unassigned se dividen en activas (antes de bloques) y completadas (despues de bloques).
+
+Iconografia Lucide: 26 vector drawables (18 stroke-based + 8 nuevos incluyendo filled play/pause).
 Logo "Rising Currents": adaptive icon, splash screen, icono notificacion.
 
 ---
@@ -502,7 +518,7 @@ Toggle en TaskFormSheet visible solo si hay hora.
 
 ESTADISTICAS E HISTORIAL
 
-StatsScreen: grafico barras Canvas coloreado por %, toggle Semana/Mes/Todo, tarjetas resumen, rachas por bloque.
+StatsScreen: grafico barras Canvas coloreado por %, toggle Semana/Mes/Todo, toggle modo absoluto/porcentaje, tarjetas resumen, rachas por bloque.
 HistoryScreen: LazyColumn dias desc, selector 30/60/90 dias, filtros, badge completadas/totales.
 StatsViewModel + HistoryViewModel con selectRange() reactivo.
 
@@ -510,10 +526,15 @@ StatsViewModel + HistoryViewModel con selectRange() reactivo.
 
 TESTS AUTOMATIZADOS
 
-37 tests en commonTest, 0 fallos:
+129 tests en commonTest, 0 fallos:
   EcosystemLevelCalculatorTest (16): xpForLevel, levelForXp, nightBonus
   BlockStreakProcessorTest (12): rachas, hitos, reset, idempotencia
   NightSummaryProcessorTest (9): score, exclusiones, EXPIRED
+  AuthFlowTest (12): login, tokens, refresh
+  DecorationUnlockNewDecorationsTest (15): condiciones de desbloqueo
+  CreatureCatalogIntegrityTest (10): integridad del catalogo de especies
+  BimbaEasterEggTest (8): easter egg Bimba
+  + 47 tests adicionales en 6 suites mas
 Fakes in-memory sin libreria de mocking.
 
 ---
@@ -537,7 +558,6 @@ MVP -> v2 -> v2.1 -> Sprints fixes -> v2 ampliado -> pre-v3 -> bugfixes -> visua
 -> Backend -> Sync -> XP spillover -> Expansion 70 especies -> Mejoras acuario -- TODO COMPLETADO
 
 Pendiente:
-  Fase 2 -- QA & Polish (tests integracion, accesibilidad, performance)
   Fase 3 -- Play Store (keystore, privacy policy, screenshots, listing)
   Fase 4 -- iOS (expect/actual reales, pickers nativos, notificaciones iOS)
   Fase 5 -- Social (visitar estanque de amigo)

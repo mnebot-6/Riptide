@@ -310,6 +310,29 @@
 
 ---
 
+## Done - Sprint UI Polish 2 -- Tareas enriquecidas y pulido general
+
+- **Tareas enriquecidas** (Room v13): 5 campos nuevos en `DayTask` (`targetCount`, `currentCount`, `notes`, `timerDurationMinutes`, `isPriority`) y 4 en `RecurringTaskDef` (`targetCount`, `noteTemplate`, `timerDurationMinutes`, `isPriority`). Migracion real `MIGRATION_12_13`
+- **TaskCard rediseñado**: altura fija 52dp, single-row compacto. Contables muestran `currentCount/targetCount` sin checkbox. Prioridad con estrella no-clickable. Timer con iconos filled play/pause
+- **TaskFormSheet**: dialogos dedicados para timer (presets + campo custom) y contable (presets + campo custom). Toggle prioridad
+- **Notas con markdown**: dialogo de notas con botones helper (☐, •, B, H) para insertar markdown facilmente. Checkboxes interactivos en modo lectura
+- **Sorting estable**: bloques calculan posicion con todas las tareas (no solo pendientes), evitando saltos al completar. Tareas unassigned completadas van al final
+- **8 iconos nuevos**: ic_play (filled), ic_pause (filled), ic_star, ic_timer, ic_check, ic_hash, ic_minus, ic_file_text
+- **Widget mejorado**: refresh per-GlanceId para recomposicion fiable
+- **Wallpaper mejorado**: dialogo FPS (15/30/60) antes de aplicar, hardware canvas (API 26+), IO dispatchers para carga de datos
+- **Superficie acuario**: `SURFACE_FRACTION` bajada de 0.07 a 0.05
+- **Ecosistema**: blur 4dp + alpha 0.22f en criaturas bloqueadas, niveles ocultos para DECORATION/COMPANION
+- **StatsScreen**: toggle modo absoluto/porcentaje, rango "All Time"
+- **Paleta bloques**: 12 colores marinos ajustados en BlockFormScreen
+- **Rediseño Bimba**: labrador amarilla senior con collar rosa y colgante corazon bezier, morro gris, ojo marron calido, aura rosa
+- **Onboarding**: 2 pasos extra (resumen nocturno + sync). Eliminado onboarding de creacion de tareas
+- **Drawer**: eliminado boton "Reset tutorial". Dialogo FPS movido a MainScreen
+- **i18n**: 20+ strings nuevas EN+ES (wallpaper quality, stats modes, onboarding extras)
+- **UserPreferencesRepository**: `getWallpaperFps`, `setWallpaperFps`, `resetOnboarding`
+- **TaskStatus**: nuevo valor `CANCELLED`
+
+---
+
 ## Fase 3 -- Lanzamiento Play Store
 
 ### Sprint Store Prep
