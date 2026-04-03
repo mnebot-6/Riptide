@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.updateAll
 import com.mnebot.riptide.data.local.db.DatabaseProvider
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -34,18 +34,32 @@ class ToggleTaskAction : ActionCallback {
                 val dao = db.dayTaskDao()
                 val task = dao.getById(taskId) ?: return
 
-                if (task.status == "COMPLETED") {
-                    // Uncomplete: check if night summary exists for this date
-                    val summaryExists = task.date?.let {
-                        db.daySummaryDao().getByDate(it) != null
-                    } ?: false
-                    val newStatus = if (summaryExists) "EXPIRED" else "PENDING"
-                    dao.update(task.copy(status = newStatus, completedAt = null))
+                // Already completed → do nothing
+                if (task.status == "COMPLETED") return
+
+                val now = Clock.System.now()
+                    .toLocalDateTime(TimeZone.currentSystemDefault())
+
+                if (task.targetCount != null && task.targetCount > 0) {
+                    // Countable task: increment currentCount
+                    val newCount = task.currentCount + 1
+                    if (newCount >= task.targetCount) {
+                        // Reached target → auto-complete
+                        dao.update(
+                            task.copy(
+                                currentCount = newCount,
+                                status = "COMPLETED",
+                                completedAt = now.toString(),
+                                hasBeenRewarded = false
+                            )
+                        )
+                    } else {
+                        // Just increment, stay in current status
+                        dao.update(task.copy(currentCount = newCount))
+                    }
                 } else {
-                    // Complete: set status and timestamp.
+                    // Non-countable task: complete immediately.
                     // hasBeenRewarded stays false — the app will award XP when it opens next.
-                    val now = Clock.System.now()
-                        .toLocalDateTime(TimeZone.currentSystemDefault())
                     dao.update(
                         task.copy(
                             status = "COMPLETED",
@@ -56,7 +70,11 @@ class ToggleTaskAction : ActionCallback {
                 }
 
                 // Refresh all Riptide widgets
-                RiptideWidget().updateAll(context)
+                val manager = GlanceAppWidgetManager(context)
+                val glanceIds = manager.getGlanceIds(RiptideWidget::class.java)
+                glanceIds.forEach { glanceId ->
+                    RiptideWidget().update(context, glanceId)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error toggling task $taskId", e)
             }

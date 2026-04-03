@@ -47,7 +47,6 @@ private val ChipBorder     = Color(0x44FFFFFF)
 fun HistoryScreen(
     uiState: HistoryUiState,
     onNavigateBack: () -> Unit,
-    onRangeSelected: (HistoryRange) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onBlockFilterChanged: (String?) -> Unit
 ) {
@@ -88,12 +87,6 @@ fun HistoryScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            // Range chips
-            RangeChipsRow(
-                selectedRange = uiState.selectedRange,
-                onRangeSelected = onRangeSelected
-            )
 
             // Search field
             SearchField(
@@ -159,49 +152,6 @@ fun HistoryScreen(
                         item { Spacer(Modifier.height(24.dp)) }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RangeChipsRow(
-    selectedRange: HistoryRange,
-    onRangeSelected: (HistoryRange) -> Unit
-) {
-    val labels = mapOf(
-        HistoryRange.DAYS_30 to stringResource(Res.string.history_range_30d),
-        HistoryRange.DAYS_60 to stringResource(Res.string.history_range_60d),
-        HistoryRange.DAYS_90 to stringResource(Res.string.history_range_90d),
-        HistoryRange.ALL_TIME to stringResource(Res.string.history_range_all)
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        HistoryRange.entries.forEach { range ->
-            val selected = range == selectedRange
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .then(
-                        if (selected) Modifier.background(OceanMid)
-                        else Modifier.border(1.dp, ChipBorder, RoundedCornerShape(20.dp))
-                    )
-                    .clickable { onRangeSelected(range) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = labels[range] ?: "",
-                    color = if (selected) TextPrimary else TextSecondary,
-                    fontSize = 13.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                )
             }
         }
     }

@@ -97,7 +97,12 @@ data class DayTaskDto(
     val hasBeenRewarded: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val updatedAt: String? = null,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0,
+    val notes: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )
 
 @Serializable
@@ -110,7 +115,11 @@ data class RecurringTaskDefDto(
     val isActive: Boolean = true,
     val notificationsEnabled: Boolean = false,
     val updatedAt: String? = null,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val targetCount: Int? = null,
+    val noteTemplate: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )
 
 @Serializable

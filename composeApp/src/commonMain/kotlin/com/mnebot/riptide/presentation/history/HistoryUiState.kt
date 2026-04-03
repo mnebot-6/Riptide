@@ -13,7 +13,7 @@ data class HistoryUiState(
     val summaryByDate: Map<LocalDate, DaySummary> = emptyMap(),
     val blocks: List<WorkBlock> = emptyList(),
     val isLoading: Boolean = true,
-    val selectedRange: HistoryRange = HistoryRange.DAYS_90,
+    val selectedRange: HistoryRange = HistoryRange.ALL_TIME,
     val searchQuery: String = "",
     val selectedBlockId: String? = null
 )

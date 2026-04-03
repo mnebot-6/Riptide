@@ -45,9 +45,9 @@ private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0x80FFFFFF)
 
 private val colorPalette = listOf(
-    "#1A73E8", "#E8711A", "#34A853", "#EA4335",
-    "#9C27B0", "#00BCD4", "#FF9800", "#607D8B",
-    "#E91E63", "#795548", "#009688", "#F5C842"
+    "#4A90D9", "#5BB5A2", "#E8896B", "#D4A84B",
+    "#8C7AE6", "#5DADE2", "#6BCB77", "#F48FB1",
+    "#78909C", "#F0A050", "#7E57C2", "#26A69A"
 )
 
 @Composable

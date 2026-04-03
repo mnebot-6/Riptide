@@ -24,5 +24,9 @@ data class RecurringTaskDefEntity(
     val isActive: Boolean,
     val notificationsEnabled: Boolean = false,
     val updatedAt: String = "",
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val targetCount: Int? = null,
+    val noteTemplate: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )

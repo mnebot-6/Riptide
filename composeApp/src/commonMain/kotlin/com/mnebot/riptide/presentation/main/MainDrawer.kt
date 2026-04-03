@@ -54,9 +54,12 @@ fun MainDrawer(
     onNavigateToHistory: () -> Unit,
     loggedInUser: LoggedInUser? = null,
     syncStatus: SyncStatus = SyncStatus.IDLE,
+    wallpaperFps: Int = 30,
+    onWallpaperFpsChanged: (Int) -> Unit = {},
     onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
-    onSyncNow: () -> Unit = {}
+    onSyncNow: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {}
 ) {
     val screenHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
         LocalWindowInfo.current.containerSize.height.toDp()

@@ -39,7 +39,12 @@ class RecurringTaskGenerator(
                         completedAt = null,
                         postponedTo = null,
                         sourceTaskId = def.id,
-                        notificationsEnabled = def.notificationsEnabled
+                        notificationsEnabled = def.notificationsEnabled,
+                        targetCount = def.targetCount,
+                        currentCount = 0,
+                        notes = def.noteTemplate,
+                        timerDurationMinutes = def.timerDurationMinutes,
+                        isPriority = def.isPriority
                     )
                 )
             }

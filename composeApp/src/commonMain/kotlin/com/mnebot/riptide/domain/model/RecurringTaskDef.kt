@@ -9,5 +9,9 @@ data class RecurringTaskDef(
     val time: LocalTime?,              // nullable — la hora es opcional en recurrentes
     val recurrence: Recurrence,
     val isActive: Boolean,
-    val notificationsEnabled: Boolean = false
+    val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val noteTemplate: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )

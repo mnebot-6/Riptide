@@ -30,7 +30,12 @@ fun DayTaskEntity.toDomain(): DayTask {
         postponedTo = postponedTo?.let { LocalDateTime.parse(it) },
         sourceTaskId = sourceTaskId,
         hasBeenRewarded = hasBeenRewarded,
-        notificationsEnabled = notificationsEnabled
+        notificationsEnabled = notificationsEnabled,
+        targetCount = targetCount,
+        currentCount = currentCount,
+        notes = notes,
+        timerDurationMinutes = timerDurationMinutes,
+        isPriority = isPriority
     )
 }
 
@@ -68,6 +73,11 @@ fun DayTask.toEntity(): DayTaskEntity {
         postponedTo = postponedTo?.toString(),
         sourceTaskId = sourceTaskId,
         hasBeenRewarded = hasBeenRewarded,
-        notificationsEnabled = notificationsEnabled
+        notificationsEnabled = notificationsEnabled,
+        targetCount = targetCount,
+        currentCount = currentCount,
+        notes = notes,
+        timerDurationMinutes = timerDurationMinutes,
+        isPriority = isPriority
     )
 }

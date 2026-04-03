@@ -57,6 +57,8 @@ import riptide.composeapp.generated.resources.onboarding_how_body
 import riptide.composeapp.generated.resources.onboarding_how_day
 import riptide.composeapp.generated.resources.onboarding_how_morning
 import riptide.composeapp.generated.resources.onboarding_how_night
+import riptide.composeapp.generated.resources.onboarding_how_summary
+import riptide.composeapp.generated.resources.onboarding_how_sync
 import riptide.composeapp.generated.resources.onboarding_how_title
 import riptide.composeapp.generated.resources.onboarding_ready_body
 import riptide.composeapp.generated.resources.onboarding_ready_title
@@ -100,7 +102,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             extras = listOf(
                 "🌅" to stringResource(Res.string.onboarding_how_morning),
                 "✅" to stringResource(Res.string.onboarding_how_day),
-                "🌙" to stringResource(Res.string.onboarding_how_night)
+                "🌙" to stringResource(Res.string.onboarding_how_night),
+                "⏰" to stringResource(Res.string.onboarding_how_summary),
+                "🔄" to stringResource(Res.string.onboarding_how_sync)
             )
         ),
         OnboardingPage(

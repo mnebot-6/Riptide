@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,8 +55,8 @@ fun TaskFormSheet(
     existingTask: DayTask? = null,
     existingDef: RecurringTaskDef? = null,
     forceRecurring: Boolean = false,
-    onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?, notificationsEnabled: Boolean) -> Unit,
-    onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence, notificationsEnabled: Boolean) -> Unit,
+    onSaveOneTime: (title: String, blockId: String?, date: LocalDate, time: LocalTime?, notificationsEnabled: Boolean, targetCount: Int?, notes: String?, timerDurationMinutes: Int?, isPriority: Boolean) -> Unit,
+    onSaveRecurring: (title: String, blockId: String, time: LocalTime?, recurrence: Recurrence, notificationsEnabled: Boolean, targetCount: Int?, noteTemplate: String?, timerDurationMinutes: Int?, isPriority: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
@@ -74,6 +75,14 @@ fun TaskFormSheet(
     var notificationsEnabled by remember(existingTask, existingDef) {
         mutableStateOf(existingTask?.notificationsEnabled ?: existingDef?.notificationsEnabled ?: false)
     }
+
+    // New feature states
+    var targetCountEnabled by remember { mutableStateOf(existingTask?.targetCount != null || existingDef?.targetCount != null) }
+    var targetCount by remember { mutableIntStateOf(existingTask?.targetCount ?: existingDef?.targetCount ?: 3) }
+    var timerEnabled by remember { mutableStateOf(existingTask?.timerDurationMinutes != null || existingDef?.timerDurationMinutes != null) }
+    var timerDuration by remember { mutableIntStateOf(existingTask?.timerDurationMinutes ?: existingDef?.timerDurationMinutes ?: 15) }
+    var isPriority by remember { mutableStateOf(existingTask?.isPriority ?: existingDef?.isPriority ?: false) }
+    var notesText by remember { mutableStateOf(existingTask?.notes ?: existingDef?.noteTemplate ?: "") }
 
     // Reset notification toggle when time is cleared
     LaunchedEffect(selectedTime) { if (selectedTime == null) notificationsEnabled = false }
@@ -153,24 +162,30 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (!isRecurring) {
-                SheetSectionLabel(stringResource(Res.string.label_date))
-                Spacer(modifier = Modifier.height(8.dp))
-                DateInputField(
-                    value = selectedDate,
-                    onValueChange = { selectedDate = it },
-                    nullable = false,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SheetSectionLabel(stringResource(Res.string.label_time_optional))
-                Spacer(modifier = Modifier.height(8.dp))
-                TimeInputField(
-                    value = selectedTime,
-                    onValueChange = { selectedTime = it },
-                    nullable = true
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        SheetSectionLabel(stringResource(Res.string.label_date))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DateInputField(
+                            value = selectedDate,
+                            onValueChange = { selectedDate = it },
+                            nullable = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        SheetSectionLabel(stringResource(Res.string.label_time_optional))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TimeInputField(
+                            value = selectedTime,
+                            onValueChange = { selectedTime = it },
+                            nullable = true
+                        )
+                    }
+                }
                 if (selectedTime != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -272,26 +287,288 @@ fun TaskFormSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // ── Feature toggles 2×2 grid ────────────────────────────────
+            var showCountDialog by remember { mutableStateOf(false) }
+            var showTimerDialog by remember { mutableStateOf(false) }
+            var showNotesDialog by remember { mutableStateOf(false) }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FeatureToggleChip(
+                        icon = Res.drawable.ic_star,
+                        label = stringResource(Res.string.label_priority),
+                        isActive = isPriority,
+                        activeColor = Color(0xFFFFB347),
+                        modifier = Modifier.weight(1f),
+                        onClick = { isPriority = !isPriority }
+                    )
+                    FeatureToggleChip(
+                        icon = Res.drawable.ic_hash,
+                        label = stringResource(Res.string.label_countable),
+                        isActive = targetCountEnabled,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showCountDialog = true }
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FeatureToggleChip(
+                        icon = Res.drawable.ic_timer,
+                        label = stringResource(Res.string.label_timer),
+                        isActive = timerEnabled,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showTimerDialog = true }
+                    )
+                    FeatureToggleChip(
+                        icon = Res.drawable.ic_file_text,
+                        label = stringResource(Res.string.label_notes),
+                        isActive = notesText.isNotEmpty(),
+                        modifier = Modifier.weight(1f),
+                        onClick = { showNotesDialog = true }
+                    )
+                }
+            }
+
+            // Countable config dialog
+            if (showCountDialog) {
+                AlertDialog(
+                    onDismissRequest = { showCountDialog = false },
+                    containerColor = Color(0xFF1B3A6B),
+                    title = { Text(stringResource(Res.string.label_countable), color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                    text = {
+                        Column {
+                            SheetSectionLabel(stringResource(Res.string.label_target))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(2, 3, 5, 10).forEach { preset ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (targetCount == preset) Color(0xFF1A73E8) else CardBackground)
+                                            .border(1.dp, if (targetCount == preset) Color(0xFF1A73E8) else CardBorder, RoundedCornerShape(8.dp))
+                                            .clickable { targetCount = preset; targetCountEnabled = true }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("$preset", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            BasicTextField(
+                                value = if (targetCount in listOf(2, 3, 5, 10)) "" else targetCount.toString(),
+                                onValueChange = { text ->
+                                    text.toIntOrNull()?.let { if (it in 1..999) { targetCount = it; targetCountEnabled = true } }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CardBackground)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                                singleLine = true,
+                                decorationBox = { inner ->
+                                    if (targetCount in listOf(2, 3, 5, 10)) Text(stringResource(Res.string.label_other), color = SectionLabel, fontSize = 14.sp)
+                                    inner()
+                                }
+                            )
+                            if (targetCountEnabled) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(Res.string.btn_remove_config),
+                                    color = Color(0xFFEA4335),
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.clickable { targetCountEnabled = false; showCountDialog = false }
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showCountDialog = false }) {
+                            Text(stringResource(Res.string.btn_accept), color = Color(0xFF1A73E8), fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    dismissButton = {}
+                )
+            }
+
+            // Timer config dialog
+            if (showTimerDialog) {
+                AlertDialog(
+                    onDismissRequest = { showTimerDialog = false },
+                    containerColor = Color(0xFF1B3A6B),
+                    title = { Text(stringResource(Res.string.label_timer), color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                    text = {
+                        Column {
+                            SheetSectionLabel(stringResource(Res.string.label_duration))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(5, 10, 15, 25, 45).forEach { preset ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (timerDuration == preset) Color(0xFF1A73E8) else CardBackground)
+                                            .border(1.dp, if (timerDuration == preset) Color(0xFF1A73E8) else CardBorder, RoundedCornerShape(8.dp))
+                                            .clickable { timerDuration = preset; timerEnabled = true }
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("${preset}m", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            BasicTextField(
+                                value = if (timerDuration in listOf(5, 10, 15, 25, 45)) "" else timerDuration.toString(),
+                                onValueChange = { text ->
+                                    text.toIntOrNull()?.let { if (it in 1..999) { timerDuration = it; timerEnabled = true } }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CardBackground)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                                singleLine = true,
+                                decorationBox = { inner ->
+                                    if (timerDuration in listOf(5, 10, 15, 25, 45)) Text(stringResource(Res.string.label_other), color = SectionLabel, fontSize = 14.sp)
+                                    inner()
+                                }
+                            )
+                            if (timerEnabled) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(Res.string.btn_remove_config),
+                                    color = Color(0xFFEA4335),
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.clickable { timerEnabled = false; showTimerDialog = false }
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showTimerDialog = false }) {
+                            Text(stringResource(Res.string.btn_accept), color = Color(0xFF1A73E8), fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    dismissButton = {}
+                )
+            }
+
+            // Notes config dialog
+            if (showNotesDialog) {
+                AlertDialog(
+                    onDismissRequest = { showNotesDialog = false },
+                    containerColor = Color(0xFF1B3A6B),
+                    title = { Text(stringResource(Res.string.label_notes), color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                    text = {
+                        Column {
+                            SheetSectionLabel(stringResource(Res.string.label_templates))
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                data class NoteTemplate(val label: String, val content: String)
+                                val templates = listOf(
+                                    NoteTemplate(stringResource(Res.string.tmpl_list), "- [ ] \n- [ ] \n- [ ] \n"),
+                                    NoteTemplate(stringResource(Res.string.tmpl_description), "## ${stringResource(Res.string.tmpl_description)}\n\n"),
+                                    NoteTemplate(stringResource(Res.string.tmpl_journal), "**${stringResource(Res.string.tmpl_date)}:** ${currentDate()}\n**${stringResource(Res.string.tmpl_mood)}:**\n**${stringResource(Res.string.tmpl_reflection)}:**\n"),
+                                    NoteTemplate(stringResource(Res.string.tmpl_info), "**${stringResource(Res.string.tmpl_key)}:** ${stringResource(Res.string.tmpl_value)}\n**${stringResource(Res.string.tmpl_key)}:** ${stringResource(Res.string.tmpl_value)}\n")
+                                )
+                                templates.forEach { tmpl ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(CardBackground)
+                                            .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                                            .clickable { notesText = tmpl.content }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(tmpl.label, color = TextPrimary, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            BasicTextField(
+                                value = notesText,
+                                onValueChange = { notesText = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 100.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CardBackground)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                                decorationBox = { inner ->
+                                    if (notesText.isEmpty()) Text(stringResource(Res.string.placeholder_notes), color = SectionLabel, fontSize = 14.sp)
+                                    inner()
+                                }
+                            )
+                            if (notesText.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(Res.string.btn_remove_config),
+                                    color = Color(0xFFEA4335),
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.clickable { notesText = ""; showNotesDialog = false }
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showNotesDialog = false }) {
+                            Text(stringResource(Res.string.btn_accept), color = Color(0xFF1A73E8), fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    dismissButton = {}
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             SheetSectionLabel(stringResource(if (isRecurring) Res.string.label_block else Res.string.label_block_optional))
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (!isRecurring) {
-                BlockChip(
-                    label = stringResource(Res.string.chip_no_block),
-                    color = Color(0x44FFFFFF),
-                    isSelected = selectedBlockId == null,
-                    onClick = { selectedBlockId = null }
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+            val allBlockOptions = buildList {
+                if (!isRecurring) add(null to null) // "No block" option
+                blocks.forEach { add(it.id to it) }
             }
-
-            blocks.forEach { block ->
-                BlockChip(
-                    label = "${block.icon} ${block.name}",
-                    color = parseColor(block.color),
-                    isSelected = selectedBlockId == block.id,
-                    onClick = { selectedBlockId = block.id }
-                )
+            allBlockOptions.chunked(2).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    row.forEach { (id, block) ->
+                        if (block == null) {
+                            BlockChip(
+                                label = stringResource(Res.string.chip_no_block),
+                                color = Color(0x44FFFFFF),
+                                isSelected = selectedBlockId == null,
+                                onClick = { selectedBlockId = null },
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            BlockChip(
+                                label = "${block.icon} ${block.name}",
+                                color = parseColor(block.color),
+                                isSelected = selectedBlockId == block.id,
+                                onClick = { selectedBlockId = block.id },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
@@ -339,17 +616,21 @@ fun TaskFormSheet(
                         .background(Color(0xFF1A73E8))
                         .clickable {
                             titleError = title.isBlank()
+                            val finalTargetCount = if (targetCountEnabled) targetCount else null
+                            val finalTimerDuration = if (timerEnabled) timerDuration else null
+                            val finalNotes = notesText.takeIf { it.isNotBlank() }
+
                             if (!isRecurring) {
                                 blockError = false
                                 if (title.isBlank()) return@clickable
                                 val date = selectedDate ?: currentDate()
-                                onSaveOneTime(title, selectedBlockId, date, selectedTime, notificationsEnabled)
+                                onSaveOneTime(title, selectedBlockId, date, selectedTime, notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
                             } else {
                                 blockError = selectedBlockId == null
                                 if (title.isBlank() || selectedBlockId == null) return@clickable
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
-                                onSaveRecurring(title, selectedBlockId!!, recurringTime, Recurrence.Weekly(slots), notificationsEnabled)
+                                onSaveRecurring(title, selectedBlockId!!, recurringTime, Recurrence.Weekly(slots), notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
                             }
                         }
                         .padding(vertical = 14.dp),
@@ -408,11 +689,11 @@ private fun BlockChip(
     label: String,
     color: Color,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(if (isSelected) color.copy(alpha = 0.25f) else CardBackground)
             .border(
@@ -466,4 +747,37 @@ private fun SheetTextField(
             inner()
         }
     )
+}
+
+@Composable
+private fun FeatureToggleChip(
+    icon: org.jetbrains.compose.resources.DrawableResource,
+    label: String,
+    isActive: Boolean,
+    activeColor: Color = Color(0xFF1A73E8),
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isActive) activeColor.copy(alpha = 0.2f) else CardBackground)
+            .border(
+                width = if (isActive) 1.5.dp else 1.dp,
+                color = if (isActive) activeColor else CardBorder,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = if (isActive) activeColor else TextSecondary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(label, color = if (isActive) TextPrimary else TextSecondary, fontSize = 13.sp)
+    }
 }

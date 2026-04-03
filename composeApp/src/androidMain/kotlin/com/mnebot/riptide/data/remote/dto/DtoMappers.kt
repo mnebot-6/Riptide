@@ -57,7 +57,12 @@ fun DayTaskEntity.toDto() = DayTaskDto(
     hasBeenRewarded = hasBeenRewarded,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt.ifEmpty { null },
-    isDeleted = isDeleted
+    isDeleted = isDeleted,
+    targetCount = targetCount,
+    currentCount = currentCount,
+    notes = notes,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )
 
 fun DayTaskDto.toEntity() = DayTaskEntity(
@@ -75,7 +80,12 @@ fun DayTaskDto.toEntity() = DayTaskEntity(
     hasBeenRewarded = hasBeenRewarded,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt ?: "",
-    isDeleted = isDeleted
+    isDeleted = isDeleted,
+    targetCount = targetCount,
+    currentCount = currentCount,
+    notes = notes,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )
 
 // -- RecurringTaskDef --------------------------------------------------------
@@ -89,7 +99,11 @@ fun RecurringTaskDefEntity.toDto() = RecurringTaskDefDto(
     isActive = isActive,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt.ifEmpty { null },
-    isDeleted = isDeleted
+    isDeleted = isDeleted,
+    targetCount = targetCount,
+    noteTemplate = noteTemplate,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )
 
 fun RecurringTaskDefDto.toEntity() = RecurringTaskDefEntity(
@@ -101,7 +115,11 @@ fun RecurringTaskDefDto.toEntity() = RecurringTaskDefEntity(
     isActive = isActive,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt ?: "",
-    isDeleted = isDeleted
+    isDeleted = isDeleted,
+    targetCount = targetCount,
+    noteTemplate = noteTemplate,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )
 
 // -- DaySummary --------------------------------------------------------------

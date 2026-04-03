@@ -22,6 +22,8 @@ import com.mnebot.riptide.domain.repository.WorkBlockRepository
 import com.mnebot.riptide.generateUUID
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.aquarium.allCreatures
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +66,12 @@ class MainViewModel(
     private val _uiState = MutableStateFlow(MainUiState(selectedDate = currentDate()))
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    // Timer runtime state (not persisted)
+    data class TimerState(val remainingSeconds: Int, val isRunning: Boolean, val totalSeconds: Int)
+    private val _timerStates = MutableStateFlow<Map<String, TimerState>>(emptyMap())
+    val timerStates: StateFlow<Map<String, TimerState>> = _timerStates.asStateFlow()
+    private val timerJobs = mutableMapOf<String, Job>()
+
     init {
         viewModelScope.launch {
             recurringTaskGenerator.generateUpTo(currentDate(), daysAhead = 7)
@@ -83,11 +91,21 @@ class MainViewModel(
                 _uiState.update { it.copy(syncStatus = status) }
             }
         }
+        // Observe wallpaper FPS
+        viewModelScope.launch {
+            userPreferencesRepository.getWallpaperFps().collect { fps ->
+                _uiState.update { it.copy(wallpaperFps = fps) }
+            }
+        }
     }
 
     /** Called from the Activity layer after Google Sign-In completes successfully. */
     fun onSignInCompleted(user: LoggedInUser?) {
         _uiState.update { it.copy(loggedInUser = user) }
+    }
+
+    fun setWallpaperFps(fps: Int) {
+        viewModelScope.launch { userPreferencesRepository.setWallpaperFps(fps) }
     }
 
     /** Sign out and clear auth state. */
@@ -151,12 +169,175 @@ class MainViewModel(
         }
     }
 
+    // ── Countable tasks ───────────────────────────────────────────────────
+
+    fun incrementTaskCount(task: DayTask) {
+        if (!task.isCountable) return
+        viewModelScope.launch {
+            val newCount = (task.currentCount + 1).coerceAtMost(task.targetCount!!)
+            val autoComplete = newCount >= task.targetCount
+            val newStatus = if (autoComplete) TaskStatus.COMPLETED else task.status
+            val completedAt = if (autoComplete)
+                Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) else task.completedAt
+
+            dayTaskRepository.update(
+                task.copy(
+                    currentCount = newCount,
+                    status = newStatus,
+                    completedAt = completedAt,
+                    hasBeenRewarded = if (autoComplete) true else task.hasBeenRewarded
+                )
+            )
+
+            if (autoComplete && !task.hasBeenRewarded) {
+                val block = uiState.value.blocks.find { it.id == task.blockId }
+                val categories = block?.marineCategories ?: emptyList()
+                val newLootboxes = ecosystemProcessor.addXpForTask(categories)
+                if (newLootboxes.isNotEmpty()) {
+                    _uiState.update { it.copy(pendingLootboxes = it.pendingLootboxes + newLootboxes) }
+                }
+                taskReminderScheduler?.cancelReminder(task.id)
+            }
+
+            loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
+        }
+    }
+
+    fun decrementTaskCount(task: DayTask) {
+        if (!task.isCountable) return
+        viewModelScope.launch {
+            val newCount = (task.currentCount - 1).coerceAtLeast(0)
+            val wasCompleted = task.status == TaskStatus.COMPLETED
+            val needsRevert = wasCompleted && newCount < task.targetCount!!
+
+            val newStatus = if (needsRevert) {
+                val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date
+                val summaryExists = taskDate != null && daySummaryRepository.getByDate(taskDate) != null
+                if (summaryExists) TaskStatus.EXPIRED else TaskStatus.PENDING
+            } else task.status
+
+            dayTaskRepository.update(
+                task.copy(
+                    currentCount = newCount,
+                    status = newStatus,
+                    completedAt = if (needsRevert) null else task.completedAt
+                )
+            )
+
+            loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
+        }
+    }
+
+    // ── Priority ─────────────────────────────────────────────────────────
+
+    fun toggleTaskPriority(task: DayTask) {
+        viewModelScope.launch {
+            dayTaskRepository.update(task.copy(isPriority = !task.isPriority))
+            loadDay(_uiState.value.selectedDate)
+            onTaskMutated?.invoke()
+            onSyncMutation?.invoke()
+        }
+    }
+
+    // ── Notes ────────────────────────────────────────────────────────────
+
+    fun updateTaskNotes(task: DayTask, notes: String?) {
+        viewModelScope.launch {
+            dayTaskRepository.update(task.copy(notes = notes))
+            loadDay(_uiState.value.selectedDate)
+            onSyncMutation?.invoke()
+        }
+    }
+
+    // ── Timer (runtime only) ─────────────────────────────────────────────
+
+    fun startTimer(taskId: String, durationMinutes: Int) {
+        timerJobs[taskId]?.cancel()
+        val totalSeconds = durationMinutes * 60
+        _timerStates.update { it + (taskId to TimerState(totalSeconds, true, totalSeconds)) }
+        timerJobs[taskId] = viewModelScope.launch {
+            var remaining = totalSeconds
+            while (remaining > 0) {
+                delay(1000)
+                remaining--
+                _timerStates.update { map ->
+                    val current = map[taskId] ?: return@update map
+                    if (!current.isRunning) return@update map
+                    map + (taskId to current.copy(remainingSeconds = remaining))
+                }
+                // Check if paused
+                val state = _timerStates.value[taskId]
+                if (state != null && !state.isRunning) {
+                    // Wait until resumed or cancelled
+                    while (_timerStates.value[taskId]?.isRunning == false) {
+                        delay(200)
+                    }
+                }
+            }
+            // Timer completed — auto-complete the task
+            _timerStates.update { it - taskId }
+            timerJobs.remove(taskId)
+            val tasks = _uiState.value.tasksByBlock.values.flatten()
+            val task = tasks.find { it.id == taskId }
+            if (task != null && task.status != TaskStatus.COMPLETED) {
+                toggleTaskCompleted(task)
+            }
+        }
+    }
+
+    fun pauseTimer(taskId: String) {
+        _timerStates.update { map ->
+            val current = map[taskId] ?: return@update map
+            map + (taskId to current.copy(isRunning = false))
+        }
+    }
+
+    fun resumeTimer(taskId: String) {
+        _timerStates.update { map ->
+            val current = map[taskId] ?: return@update map
+            map + (taskId to current.copy(isRunning = true))
+        }
+    }
+
+    fun cancelTimer(taskId: String) {
+        timerJobs[taskId]?.cancel()
+        timerJobs.remove(taskId)
+        _timerStates.update { it - taskId }
+    }
+
+    // ── Task creation onboarding ────────────────────────────────────────────
+
+    suspend fun hasShownTaskCreationOnboarding(): Boolean =
+        userPreferencesRepository.hasShownTaskCreationOnboarding()
+
+    fun setTaskCreationOnboardingShown() {
+        viewModelScope.launch {
+            userPreferencesRepository.setTaskCreationOnboardingShown()
+        }
+    }
+
+    fun resetOnboarding() {
+        viewModelScope.launch {
+            userPreferencesRepository.resetOnboarding()
+        }
+    }
+
+    // ── Task CRUD (original, updated signatures) ─────────────────────────
+
     fun addOneTimeTask(
         title: String,
         blockId: String?,
         date: LocalDate,
         time: LocalTime?,
-        notificationsEnabled: Boolean = false
+        notificationsEnabled: Boolean = false,
+        targetCount: Int? = null,
+        notes: String? = null,
+        timerDurationMinutes: Int? = null,
+        isPriority: Boolean = false
     ) {
         viewModelScope.launch {
             val taskId = generateUUID()
@@ -170,7 +351,11 @@ class MainViewModel(
                     completedAt = null,
                     postponedTo = null,
                     sourceTaskId = null,
-                    notificationsEnabled = notificationsEnabled
+                    notificationsEnabled = notificationsEnabled,
+                    targetCount = targetCount,
+                    notes = notes,
+                    timerDurationMinutes = timerDurationMinutes,
+                    isPriority = isPriority
                 )
             )
             if (notificationsEnabled && time != null) {
@@ -194,7 +379,11 @@ class MainViewModel(
         blockId: String,
         time: LocalTime?,
         recurrence: Recurrence,
-        notificationsEnabled: Boolean = false
+        notificationsEnabled: Boolean = false,
+        targetCount: Int? = null,
+        noteTemplate: String? = null,
+        timerDurationMinutes: Int? = null,
+        isPriority: Boolean = false
     ) {
         viewModelScope.launch {
             val def = RecurringTaskDef(
@@ -204,7 +393,11 @@ class MainViewModel(
                 time = time,
                 recurrence = recurrence,
                 isActive = true,
-                notificationsEnabled = notificationsEnabled
+                notificationsEnabled = notificationsEnabled,
+                targetCount = targetCount,
+                noteTemplate = noteTemplate,
+                timerDurationMinutes = timerDurationMinutes,
+                isPriority = isPriority
             )
             recurringTaskDefRepository.insert(def)
             recurringTaskGenerator.generateUpTo(currentDate(), daysAhead = 7)
@@ -233,7 +426,11 @@ class MainViewModel(
         blockId: String,
         time: LocalTime?,
         recurrence: Recurrence,
-        notificationsEnabled: Boolean = false
+        notificationsEnabled: Boolean = false,
+        targetCount: Int? = null,
+        noteTemplate: String? = null,
+        timerDurationMinutes: Int? = null,
+        isPriority: Boolean = false
     ) {
         viewModelScope.launch {
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
@@ -252,7 +449,11 @@ class MainViewModel(
                     blockId = blockId,
                     time = time,
                     recurrence = recurrence,
-                    notificationsEnabled = notificationsEnabled
+                    notificationsEnabled = notificationsEnabled,
+                    targetCount = targetCount,
+                    noteTemplate = noteTemplate,
+                    timerDurationMinutes = timerDurationMinutes,
+                    isPriority = isPriority
                 )
             )
             recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
@@ -423,7 +624,11 @@ class MainViewModel(
         blockId: String?,
         date: LocalDate,
         time: LocalTime?,
-        notificationsEnabled: Boolean = false
+        notificationsEnabled: Boolean = false,
+        targetCount: Int? = null,
+        notes: String? = null,
+        timerDurationMinutes: Int? = null,
+        isPriority: Boolean = false
     ) {
         viewModelScope.launch {
             taskReminderScheduler?.cancelReminder(original.id)
@@ -432,7 +637,11 @@ class MainViewModel(
                     title = title,
                     blockId = blockId,
                     schedule = TaskSchedule.OneTime(date = date, time = time),
-                    notificationsEnabled = notificationsEnabled
+                    notificationsEnabled = notificationsEnabled,
+                    targetCount = targetCount,
+                    notes = notes,
+                    timerDurationMinutes = timerDurationMinutes,
+                    isPriority = isPriority
                 )
             )
             if (notificationsEnabled && time != null) {

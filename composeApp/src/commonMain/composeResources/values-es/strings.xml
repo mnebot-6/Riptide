@@ -199,6 +199,8 @@
     <string name="onboarding_how_morning">Mañana: asigna tareas a tu día.</string>
     <string name="onboarding_how_day">Durante el día: márcalas como completadas.</string>
     <string name="onboarding_how_night">Noche: recibe un resumen emocional de tu jornada.</string>
+    <string name="onboarding_how_summary">Puedes personalizar la hora del resumen desde el menú de ajustes.</string>
+    <string name="onboarding_how_sync">Inicia sesión para mantener tus datos sincronizados entre dispositivos.</string>
     <string name="onboarding_ecosystem_title">Tu ecosistema marino</string>
     <string name="onboarding_ecosystem_body">Completar tareas hace crecer tu estanque.</string>
     <string name="onboarding_ecosystem_lootbox">Sube de nivel y gana lootboxes.</string>
@@ -235,6 +237,12 @@
     <string name="stats_vs_last_month">vs mes anterior</string>
     <string name="stats_streaks_title">RACHAS POR BLOQUE</string>
     <string name="stats_no_streaks">Aún no hay rachas activas</string>
+    <string name="stat_perfect_days">Días perfectos</string>
+    <string name="stat_avg_completion">Completado medio</string>
+    <string name="stat_total_tasks">Total tareas</string>
+    <string name="stat_perfect_rate">Tasa perfecta</string>
+    <string name="stats_mode_percent">%</string>
+    <string name="stats_mode_absolute">#</string>
     <string name="msg_loading">Cargando…</string>
 
     <!-- HistoryScreen -->
@@ -319,4 +327,38 @@
     <string name="month_oct">Oct</string>
     <string name="month_nov">Nov</string>
     <string name="month_dec">Dic</string>
+    <string name="label_notes">Notas</string>
+    <string name="label_edit">Editar</string>
+    <string name="label_priority">Prioritaria</string>
+    <string name="label_countable">Contable</string>
+    <string name="label_timer">Temporizador</string>
+    <string name="label_target">OBJETIVO</string>
+    <string name="label_duration">DURACIÓN</string>
+    <string name="label_templates">PLANTILLAS</string>
+    <string name="label_other">Otro</string>
+    <string name="btn_remove_config">Eliminar configuración</string>
+    <string name="btn_accept">Aceptar</string>
+    <string name="placeholder_notes">Escribe notas…</string>
+    <string name="tmpl_list">Lista</string>
+    <string name="tmpl_description">Descripción</string>
+    <string name="tmpl_journal">Diario</string>
+    <string name="tmpl_info">Info</string>
+    <string name="tmpl_date">Fecha</string>
+    <string name="tmpl_mood">Estado de ánimo</string>
+    <string name="tmpl_reflection">Reflexión</string>
+    <string name="tmpl_key">Clave</string>
+    <string name="tmpl_value">Valor</string>
+
+    <!-- Task creation onboarding -->
+    <string name="onboarding_task_title">Tips para tus tareas</string>
+    <string name="onboarding_task_body">• Desliza a la derecha para completar o sumar\n• Desliza a la izquierda para deshacer o restar\n• Marca tareas como contables para seguir progreso (ej. \"Beber 8 vasos\")\n• Añade un temporizador para sesiones de trabajo enfocado\n• Adjunta notas con listas de verificación\n• Destaca tareas importantes con la estrella</string>
+    <string name="onboarding_task_ok">¡Entendido!</string>
+
+    <!-- Wallpaper quality dialog -->
+    <string name="wallpaper_quality_title">Calidad del fondo</string>
+    <string name="wallpaper_quality_hint">Mayor FPS = más fluido, más consumo de batería</string>
+    <string name="wallpaper_quality_apply">Aplicar</string>
+
+    <!-- Reset onboarding -->
+    <string name="btn_reset_onboarding">Reiniciar tutorial</string>
 </resources>

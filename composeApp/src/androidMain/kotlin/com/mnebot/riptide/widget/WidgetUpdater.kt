@@ -2,8 +2,6 @@ package com.mnebot.riptide.widget
 
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
 
 /**
  * Utility to refresh all Riptide widgets from within the app.
@@ -11,6 +9,10 @@ import androidx.glance.appwidget.updateAll
  */
 object WidgetUpdater {
     suspend fun refreshAll(context: Context) {
-        RiptideWidget().updateAll(context)
+        val manager = GlanceAppWidgetManager(context)
+        val glanceIds = manager.getGlanceIds(RiptideWidget::class.java)
+        glanceIds.forEach { glanceId ->
+            RiptideWidget().update(context, glanceId)
+        }
     }
 }

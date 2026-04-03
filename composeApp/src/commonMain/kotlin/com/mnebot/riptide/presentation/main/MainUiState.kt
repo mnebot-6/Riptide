@@ -30,5 +30,6 @@ data class MainUiState(
     val error: String? = null,
     // Sync
     val loggedInUser: LoggedInUser? = null,
-    val syncStatus: SyncStatus = SyncStatus.IDLE
+    val syncStatus: SyncStatus = SyncStatus.IDLE,
+    val wallpaperFps: Int = 30
 )

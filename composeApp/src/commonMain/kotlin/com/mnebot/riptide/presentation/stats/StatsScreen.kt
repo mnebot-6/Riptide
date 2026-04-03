@@ -39,6 +39,8 @@ private val TextPrimary   = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val CardBackground = Color(0x22FFFFFF)
 
+enum class StatsDisplayMode { PERCENTAGE, ABSOLUTE }
+
 private fun completionColor(pct: Float): Color = when {
     pct <= 0f   -> Color(0x44FFFFFF)
     pct < 0.5f  -> Color(0xFFE57373)
@@ -64,6 +66,8 @@ fun StatsScreen(
     } else emptyList()
     val summaryByDate = uiState.summaries.associateBy { it.date }
 
+    var displayMode by remember { mutableStateOf(StatsDisplayMode.PERCENTAGE) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -78,7 +82,10 @@ fun StatsScreen(
                 .padding(top = 16.dp, bottom = 40.dp)
         ) {
             // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     text = stringResource(Res.string.btn_back),
                     color = TextSecondary,
@@ -91,7 +98,12 @@ fun StatsScreen(
                     text = stringResource(Res.string.title_stats),
                     color = TextPrimary,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                DisplayModeToggle(
+                    mode = displayMode,
+                    onModeChanged = { displayMode = it }
                 )
             }
 
@@ -136,12 +148,14 @@ fun StatsScreen(
                 if (uiState.monthlyTrend.isNotEmpty()) {
                     MonthlyTrendChart(
                         trend = uiState.monthlyTrend,
+                        displayMode = displayMode,
+                        summaries = uiState.summaries,
                         modifier = Modifier.fillMaxWidth().height(160.dp)
                     )
                     Spacer(Modifier.height(10.dp))
                 }
 
-                // KPI Grid 2x2
+                // KPI Grid — row 1
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -158,6 +172,8 @@ fun StatsScreen(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
+
+                // KPI Grid — row 2
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -170,6 +186,54 @@ fun StatsScreen(
                     StatCard(
                         label = stringResource(Res.string.stats_total_completed),
                         value = uiState.totalCompleted.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+
+                // KPI Grid — row 3 (new KPIs)
+                val allTimeSummariesWithTasks = uiState.summaries.filter { it.tasksTotal > 0 }
+                val perfectDays = allTimeSummariesWithTasks.count { it.tasksCompleted == it.tasksTotal }
+                val avgCompletion = if (allTimeSummariesWithTasks.isNotEmpty()) {
+                    allTimeSummariesWithTasks
+                        .map { it.tasksCompleted.toFloat() / it.tasksTotal }
+                        .average().toFloat()
+                } else 0f
+                val totalTasks = uiState.summaries.sumOf { it.tasksTotal }
+                val perfectRate = if (allTimeSummariesWithTasks.isNotEmpty()) {
+                    perfectDays.toFloat() / allTimeSummariesWithTasks.size
+                } else 0f
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stat_perfect_days),
+                        value = perfectDays.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stat_avg_completion),
+                        value = "${(avgCompletion * 100).toInt()}%",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+
+                // KPI Grid — row 4 (new KPIs)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stat_total_tasks),
+                        value = totalTasks.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stat_perfect_rate),
+                        value = "${(perfectRate * 100).toInt()}%",
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -217,6 +281,7 @@ fun StatsScreen(
                     dates = dates,
                     summaryByDate = summaryByDate,
                     range = uiState.range,
+                    displayMode = displayMode,
                     modifier = Modifier.fillMaxWidth().height(160.dp)
                 )
 
@@ -239,6 +304,17 @@ fun StatsScreen(
                 val activeDays = uiState.summaries.count { it.tasksCompleted > 0 }
                 val totalCompleted = uiState.summaries.sumOf { it.tasksCompleted }
                 val bestDay = uiState.summaries.maxByOrNull { it.tasksCompleted }
+                val summariesWithTasks = uiState.summaries.filter { it.tasksTotal > 0 }
+                val perfectDays = summariesWithTasks.count { it.tasksCompleted == it.tasksTotal }
+                val avgCompletion = if (summariesWithTasks.isNotEmpty()) {
+                    summariesWithTasks
+                        .map { it.tasksCompleted.toFloat() / it.tasksTotal }
+                        .average().toFloat()
+                } else 0f
+                val totalTasks = uiState.summaries.sumOf { it.tasksTotal }
+                val perfectRate = if (summariesWithTasks.isNotEmpty()) {
+                    perfectDays.toFloat() / summariesWithTasks.size
+                } else 0f
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -257,10 +333,51 @@ fun StatsScreen(
                     if (bestDay != null && bestDay.tasksTotal > 0) {
                         StatCard(
                             label = stringResource(Res.string.stats_best_day),
-                            value = "${bestDay.tasksCompleted}/${bestDay.tasksTotal}",
+                            value = if (displayMode == StatsDisplayMode.PERCENTAGE)
+                                "${(bestDay.tasksCompleted.toFloat() / bestDay.tasksTotal * 100).toInt()}%"
+                            else
+                                "${bestDay.tasksCompleted}/${bestDay.tasksTotal}",
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // New KPI cards row 1
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stat_perfect_days),
+                        value = perfectDays.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stat_avg_completion),
+                        value = "${(avgCompletion * 100).toInt()}%",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // New KPI cards row 2
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(Res.string.stat_total_tasks),
+                        value = totalTasks.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(Res.string.stat_perfect_rate),
+                        value = "${(perfectRate * 100).toInt()}%",
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -306,6 +423,7 @@ private fun CompletionBarChart(
     dates: List<LocalDate>,
     summaryByDate: Map<LocalDate, DaySummary>,
     range: StatsRange,
+    displayMode: StatsDisplayMode,
     modifier: Modifier = Modifier
 ) {
     val today = currentDate()
@@ -319,16 +437,29 @@ private fun CompletionBarChart(
         stringResource(Res.string.day_sun)
     )
 
+    val isAbsolute = displayMode == StatsDisplayMode.ABSOLUTE
+    val maxAbsolute = if (isAbsolute) {
+        dates.maxOfOrNull { date ->
+            summaryByDate[date]?.tasksCompleted ?: 0
+        }?.coerceAtLeast(1) ?: 1
+    } else 0
+
     Column(modifier = modifier) {
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            // Eje Y (S1): etiquetas 100% / 50% / 0%
+            // Y-axis labels
             Column(
                 modifier = Modifier.width(30.dp).fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
-                Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
-                Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+                if (isAbsolute) {
+                    Text("$maxAbsolute", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("${maxAbsolute / 2}", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("0", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                } else {
+                    Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+                }
             }
 
             Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -338,7 +469,6 @@ private fun CompletionBarChart(
                 val barWidth = (totalWidth / barCount) * 0.55f
                 val barSpacing = totalWidth / barCount
 
-                // Líneas de referencia horizontales (S1)
                 val dashEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
                 drawLine(
                     color = Color(0x33FFFFFF),
@@ -362,8 +492,16 @@ private fun CompletionBarChart(
                     else 0f
 
                     val barColor = completionColor(pct)
-                    val barHeight = if (pct > 0f) (chartHeight * pct).coerceAtLeast(6.dp.toPx())
-                                   else 4.dp.toPx()
+
+                    val normalizedHeight = if (isAbsolute) {
+                        if (summary != null && summary.tasksCompleted > 0)
+                            summary.tasksCompleted.toFloat() / maxAbsolute
+                        else 0f
+                    } else pct
+
+                    val barHeight = if (normalizedHeight > 0f)
+                        (chartHeight * normalizedHeight).coerceAtLeast(6.dp.toPx())
+                    else 4.dp.toPx()
 
                     val left = i * barSpacing + (barSpacing - barWidth) / 2f
                     val top = chartHeight - barHeight
@@ -488,8 +626,23 @@ private fun StreakRow(block: WorkBlock, streak: Int) {
 @Composable
 private fun MonthlyTrendChart(
     trend: List<MonthStat>,
+    displayMode: StatsDisplayMode,
+    summaries: List<DaySummary>,
     modifier: Modifier = Modifier
 ) {
+    val isAbsolute = displayMode == StatsDisplayMode.ABSOLUTE
+
+    // For absolute mode, compute monthly completed counts
+    val monthlyCompleted = if (isAbsolute) {
+        summaries
+            .groupBy { "${it.date.year}-${it.date.month.ordinal.plus(1).toString().padStart(2, '0')}" }
+            .mapValues { (_, sums) -> sums.sumOf { it.tasksCompleted } }
+    } else emptyMap()
+
+    val maxAbsolute = if (isAbsolute) {
+        monthlyCompleted.values.maxOrNull()?.coerceAtLeast(1) ?: 1
+    } else 0
+
     Column(modifier = modifier) {
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // Y-axis labels
@@ -497,9 +650,15 @@ private fun MonthlyTrendChart(
                 modifier = Modifier.fillMaxHeight().width(28.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
-                Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
-                Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+                if (isAbsolute) {
+                    Text("$maxAbsolute", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("${maxAbsolute / 2}", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("0", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                } else {
+                    Text("100%", color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("50%",  color = Color(0x55FFFFFF), fontSize = 8.sp)
+                    Text("0%",   color = Color(0x55FFFFFF), fontSize = 8.sp)
+                }
             }
 
             Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -517,8 +676,16 @@ private fun MonthlyTrendChart(
 
                 trend.forEachIndexed { i, stat ->
                     val barColor = completionColor(stat.completionRate)
-                    val barHeight = if (stat.completionRate > 0f) (chartHeight * stat.completionRate).coerceAtLeast(6.dp.toPx())
-                                    else 4.dp.toPx()
+
+                    val normalizedHeight = if (isAbsolute) {
+                        val completed = monthlyCompleted[stat.yearMonth] ?: 0
+                        if (completed > 0) completed.toFloat() / maxAbsolute else 0f
+                    } else stat.completionRate
+
+                    val barHeight = if (normalizedHeight > 0f)
+                        (chartHeight * normalizedHeight).coerceAtLeast(6.dp.toPx())
+                    else 4.dp.toPx()
+
                     val left = i * barSpacing + (barSpacing - barWidth) / 2f
                     val top = chartHeight - barHeight
 
@@ -550,6 +717,46 @@ private fun MonthlyTrendChart(
                         fontSize = 8.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DisplayModeToggle(
+    mode: StatsDisplayMode,
+    onModeChanged: (StatsDisplayMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardBackground)
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        StatsDisplayMode.entries.forEach { m ->
+            val selected = m == mode
+            val label = when (m) {
+                StatsDisplayMode.PERCENTAGE -> stringResource(Res.string.stats_mode_percent)
+                StatsDisplayMode.ABSOLUTE -> stringResource(Res.string.stats_mode_absolute)
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(17.dp))
+                    .then(
+                        if (selected) Modifier.background(Color(0xFF1A73E8))
+                        else Modifier
+                    )
+                    .clickable { onModeChanged(m) }
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                )
             }
         }
     }

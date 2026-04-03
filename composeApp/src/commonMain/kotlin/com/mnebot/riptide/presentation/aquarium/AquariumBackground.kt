@@ -266,15 +266,7 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
         )
     )
 
-    // ── LAYER 2: Shadow band ──────────────────────────────────────────────────
-    val shadowColor = Color.Black.copy(alpha = 0.12f)
-    drawRect(
-        color = shadowColor,
-        topLeft = Offset(0f, AquariumTerrain.terrainY(0f, h) - 3f.dp.toPx()),
-        size = androidx.compose.ui.geometry.Size(w, 6f.dp.toPx())
-    )
-
-    // ── LAYER 3: Sand ripple texture lines ─────────────────────────────────────
+    // ── LAYER 2: Sand ripple texture lines ─────────────────────────────────────
     val sandLineColor = SandMid.copy(alpha = 0.35f)
     val lineStroke = 1.dp.toPx()
     for (i in 1..3) {

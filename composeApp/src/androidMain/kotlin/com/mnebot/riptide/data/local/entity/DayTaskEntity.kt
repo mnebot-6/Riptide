@@ -30,5 +30,10 @@ data class DayTaskEntity(
     val hasBeenRewarded: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val updatedAt: String = "",
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0,
+    val notes: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
 )

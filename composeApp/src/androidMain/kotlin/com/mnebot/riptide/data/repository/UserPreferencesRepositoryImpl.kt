@@ -40,6 +40,8 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_USER_NAME = stringPreferencesKey("user_display_name")
         private val KEY_USER_AVATAR = stringPreferencesKey("user_avatar_url")
         private val KEY_LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
+        private val KEY_WALLPAPER_FPS = intPreferencesKey("wallpaper_fps")
+        private val KEY_TASK_ONBOARDING_SHOWN = booleanPreferencesKey("task_creation_onboarding_shown")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val DISABLED = -1          // sentinel for "no morning reminder"
@@ -193,6 +195,31 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
 
     override fun isLoggedIn(): Flow<Boolean> =
         context.dataStore.data.map { prefs -> prefs[KEY_ACCESS_TOKEN] != null }
+
+    // ── Wallpaper FPS ──────────────────────────────────────────────────────────
+
+    override fun getWallpaperFps(): Flow<Int> =
+        context.dataStore.data.map { prefs -> prefs[KEY_WALLPAPER_FPS] ?: 30 }
+
+    override suspend fun setWallpaperFps(fps: Int) {
+        context.dataStore.edit { prefs -> prefs[KEY_WALLPAPER_FPS] = fps }
+    }
+
+    // ── Task creation onboarding ────────────────────────────────────────────────
+
+    override suspend fun hasShownTaskCreationOnboarding(): Boolean =
+        context.dataStore.data.first()[KEY_TASK_ONBOARDING_SHOWN] ?: false
+
+    override suspend fun setTaskCreationOnboardingShown() {
+        context.dataStore.edit { prefs -> prefs[KEY_TASK_ONBOARDING_SHOWN] = true }
+    }
+
+    override suspend fun resetOnboarding() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_ONBOARDING_COMPLETED)
+            prefs.remove(KEY_TASK_ONBOARDING_SHOWN)
+        }
+    }
 
     // ── Sync ────────────────────────────────────────────────────────────────────
 

@@ -56,14 +56,15 @@ class RiptideWallpaperService : WallpaperService() {
         private val canvasDrawScope = CanvasDrawScope()
         private lateinit var density: Density
 
+        @Volatile
         private var creatureData: WallpaperCreatureData? = null
         private var startNs = System.nanoTime()
         private var visible = false
 
-        // Target: 30fps. We re-register at every vsync (60fps) but only draw
+        // FPS-based frame pacing: re-register at every vsync (60fps) but only draw
         // when ≥1 target interval has elapsed since the last rendered frame.
-        // This keeps frames always vsync-aligned (smooth) while halving GPU work.
-        private val targetIntervalNs = 33_333_333L  // 1/30s in nanoseconds
+        // This keeps frames always vsync-aligned (smooth) while reducing GPU work.
+        private var targetIntervalNs = 33_333_333L  // 1/30s default, updated from prefs
         private var lastDrawnFrameNs = 0L
 
         private val frameCallback = object : Choreographer.FrameCallback {
@@ -86,7 +87,7 @@ class RiptideWallpaperService : WallpaperService() {
             density = Density(dm.density, dm.scaledDensity)
 
             // Load creature data from DB
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 try {
                     creatureData = dataProvider.loadCreatureData()
                 } catch (e: Exception) {
@@ -94,8 +95,15 @@ class RiptideWallpaperService : WallpaperService() {
                 }
             }
 
-            // Periodic refresh to pick up newly unlocked creatures
+            // Observe FPS preference changes
             scope.launch {
+                wallpaperPrefs.getWallpaperFps().collect { fps ->
+                    targetIntervalNs = 1_000_000_000L / fps.toLong().coerceIn(15, 60)
+                }
+            }
+
+            // Periodic refresh to pick up newly unlocked creatures
+            scope.launch(Dispatchers.IO) {
                 while (true) {
                     delay(DATA_REFRESH_INTERVAL_MS)
                     try {
@@ -129,7 +137,11 @@ class RiptideWallpaperService : WallpaperService() {
         private fun drawFrame(frameTimeNs: Long) {
             val holder = surfaceHolder ?: return
             val canvas = try {
-                holder.lockCanvas()
+                if (android.os.Build.VERSION.SDK_INT >= 26) {
+                    holder.lockHardwareCanvas()
+                } else {
+                    holder.lockCanvas()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error locking canvas", e)
                 return

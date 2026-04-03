@@ -3,7 +3,6 @@ package com.mnebot.riptide.presentation.aquarium
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -190,7 +191,7 @@ private fun EcosystemCategorySection(
                     tint = SectionLabel,
                     modifier = Modifier.size(11.dp)
                 )
-            } else {
+            } else if (category != MarineCategory.DECORATION && category != MarineCategory.COMPANION) {
                 Text(
                     text = stringResource(Res.string.label_category_level, categoryLevel),
                     color = SectionLabel,
@@ -234,7 +235,7 @@ private fun EcosystemCategorySection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .heightIn(min = 120.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 rowSpecs.forEach { spec ->
@@ -342,10 +343,13 @@ private fun LockedCreatureCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = spec.emoji,
-            fontSize = 32.sp,
-            color = Color.White.copy(alpha = 0.25f)
+        CreatureIcon(
+            spec = spec,
+            level = 1,
+            modifier = Modifier
+                .size(40.dp)
+                .blur(4.dp)
+                .graphicsLayer { alpha = 0.22f }
         )
         Spacer(modifier = Modifier.height(4.dp))
         // Rarity chip tenue
@@ -370,9 +374,7 @@ private fun LockedCreatureCard(
                 color = SectionLabel,
                 fontSize = 9.sp,
                 textAlign = TextAlign.Center,
-                lineHeight = 12.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                lineHeight = 12.sp
             )
         } else {
             Icon(

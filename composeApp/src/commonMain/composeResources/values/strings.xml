@@ -199,6 +199,8 @@
     <string name="onboarding_how_morning">Morning: assign tasks to your day.</string>
     <string name="onboarding_how_day">During the day: mark them as completed.</string>
     <string name="onboarding_how_night">Night: receive an emotional summary of your day.</string>
+    <string name="onboarding_how_summary">You can customize the summary time from the settings drawer.</string>
+    <string name="onboarding_how_sync">Sign in to keep your data synced across devices.</string>
     <string name="onboarding_ecosystem_title">Your marine ecosystem</string>
     <string name="onboarding_ecosystem_body">Completing tasks makes your tank grow.</string>
     <string name="onboarding_ecosystem_lootbox">Level up and earn lootboxes.</string>
@@ -235,6 +237,12 @@
     <string name="stats_vs_last_month">vs last month</string>
     <string name="stats_streaks_title">STREAKS BY BLOCK</string>
     <string name="stats_no_streaks">No active streaks yet</string>
+    <string name="stat_perfect_days">Perfect days</string>
+    <string name="stat_avg_completion">Avg. completion</string>
+    <string name="stat_total_tasks">Total tasks</string>
+    <string name="stat_perfect_rate">Perfect rate</string>
+    <string name="stats_mode_percent">%</string>
+    <string name="stats_mode_absolute">#</string>
     <string name="msg_loading">Loading…</string>
 
     <!-- HistoryScreen -->
@@ -319,4 +327,38 @@
     <string name="month_oct">Oct</string>
     <string name="month_nov">Nov</string>
     <string name="month_dec">Dec</string>
+    <string name="label_notes">Notes</string>
+    <string name="label_edit">Edit</string>
+    <string name="label_priority">Priority</string>
+    <string name="label_countable">Countable</string>
+    <string name="label_timer">Timer</string>
+    <string name="label_target">TARGET</string>
+    <string name="label_duration">DURATION</string>
+    <string name="label_templates">TEMPLATES</string>
+    <string name="label_other">Other</string>
+    <string name="btn_remove_config">Remove configuration</string>
+    <string name="btn_accept">Accept</string>
+    <string name="placeholder_notes">Write notes…</string>
+    <string name="tmpl_list">List</string>
+    <string name="tmpl_description">Description</string>
+    <string name="tmpl_journal">Journal</string>
+    <string name="tmpl_info">Info</string>
+    <string name="tmpl_date">Date</string>
+    <string name="tmpl_mood">Mood</string>
+    <string name="tmpl_reflection">Reflection</string>
+    <string name="tmpl_key">Key</string>
+    <string name="tmpl_value">Value</string>
+
+    <!-- Task creation onboarding -->
+    <string name="onboarding_task_title">Tips for your tasks</string>
+    <string name="onboarding_task_body">• Swipe right to complete or increment\n• Swipe left to undo or decrement\n• Mark tasks as countable to track progress (e.g. \"Drink 8 glasses\")\n• Add a timer for focused work sessions\n• Attach notes with checklists\n• Star important tasks to highlight them</string>
+    <string name="onboarding_task_ok">Got it!</string>
+
+    <!-- Wallpaper quality dialog -->
+    <string name="wallpaper_quality_title">Wallpaper Quality</string>
+    <string name="wallpaper_quality_hint">Higher FPS = smoother animation, more battery usage</string>
+    <string name="wallpaper_quality_apply">Apply</string>
+
+    <!-- Reset onboarding -->
+    <string name="btn_reset_onboarding">Reset tutorial</string>
 </resources>

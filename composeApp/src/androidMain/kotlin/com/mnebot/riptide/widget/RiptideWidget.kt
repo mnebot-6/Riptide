@@ -75,7 +75,9 @@ class RiptideWidget : GlanceAppWidget() {
                         blockName = entity.blockId?.let { blockMap[it]?.name },
                         blockColor = parsedColor,
                         isCompleted = entity.status == "COMPLETED",
-                        time = entity.time
+                        time = entity.time,
+                        targetCount = entity.targetCount,
+                        currentCount = entity.currentCount
                     )
                 }
                 .sortedWith(compareBy({ it.isCompleted }, { it.time ?: "99:99" }, { it.title }))
@@ -106,7 +108,9 @@ data class WidgetTask(
     val blockName: String?,
     val blockColor: Color,
     val isCompleted: Boolean,
-    val time: String?
+    val time: String?,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0
 )
 
 @Composable
@@ -290,8 +294,13 @@ private fun WidgetTaskRow(task: WidgetTask) {
 
             // Task title + block name
             Column(modifier = GlanceModifier.defaultWeight()) {
+                val displayTitle = if (task.targetCount != null) {
+                    "${task.title} ${task.currentCount}/${task.targetCount}"
+                } else {
+                    task.title
+                }
                 Text(
-                    text = task.title,
+                    text = displayTitle,
                     style = TextStyle(
                         color = ColorProvider(if (task.isCompleted) TextSecondary else TextPrimary),
                         fontSize = 13.sp

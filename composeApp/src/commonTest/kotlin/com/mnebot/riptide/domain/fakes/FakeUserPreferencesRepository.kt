@@ -54,6 +54,17 @@ class FakeUserPreferencesRepository : UserPreferencesRepository {
     override suspend fun saveUser(user: LoggedInUser) { loggedInUser = user }
     override fun isLoggedIn(): Flow<Boolean> = flowOf(accessToken != null)
 
+    // Wallpaper FPS
+    override fun getWallpaperFps(): Flow<Int> = flowOf(30)
+    override suspend fun setWallpaperFps(fps: Int) {}
+
+    // Task creation onboarding
+    private var taskOnboardingShown = false
+    override suspend fun hasShownTaskCreationOnboarding(): Boolean = taskOnboardingShown
+    override suspend fun setTaskCreationOnboardingShown() { taskOnboardingShown = true }
+
+    override suspend fun resetOnboarding() { taskOnboardingShown = false }
+
     // Sync
     override suspend fun getLastSyncTime(): String? = lastSyncTime
     override suspend fun setLastSyncTime(time: String) { lastSyncTime = time }

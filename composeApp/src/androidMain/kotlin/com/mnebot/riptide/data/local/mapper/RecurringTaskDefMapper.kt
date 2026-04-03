@@ -18,7 +18,11 @@ fun RecurringTaskDefEntity.toDomain(): RecurringTaskDef = RecurringTaskDef(
     time = time?.let { LocalTime.parse(it) },
     recurrence = Json.decodeFromString<Recurrence>(recurrence),
     isActive = isActive,
-    notificationsEnabled = notificationsEnabled
+    notificationsEnabled = notificationsEnabled,
+    targetCount = targetCount,
+    noteTemplate = noteTemplate,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )
 
 fun RecurringTaskDef.toEntity(): RecurringTaskDefEntity = RecurringTaskDefEntity(
@@ -28,5 +32,9 @@ fun RecurringTaskDef.toEntity(): RecurringTaskDefEntity = RecurringTaskDefEntity
     time = time?.toString(),
     recurrence = Json.encodeToString<Recurrence>(this.recurrence),
     isActive = isActive,
-    notificationsEnabled = notificationsEnabled
+    notificationsEnabled = notificationsEnabled,
+    targetCount = targetCount,
+    noteTemplate = noteTemplate,
+    timerDurationMinutes = timerDurationMinutes,
+    isPriority = isPriority
 )

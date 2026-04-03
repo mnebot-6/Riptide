@@ -28,5 +28,12 @@ data class DayTask(
     val postponedTo: LocalDateTime?,
     val sourceTaskId: String?,
     val hasBeenRewarded: Boolean = false,
-    val notificationsEnabled: Boolean = false
-)
+    val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0,
+    val notes: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false
+) {
+    val isCountable: Boolean get() = targetCount != null && targetCount > 0
+}

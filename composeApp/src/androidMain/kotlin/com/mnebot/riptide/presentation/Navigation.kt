@@ -208,7 +208,6 @@ fun NavGraphBuilder.mainGraph(
         HistoryScreen(
             uiState = uiState,
             onNavigateBack = { navController.popBackStack() },
-            onRangeSelected = historyViewModel::selectRange,
             onSearchQueryChanged = historyViewModel::setSearchQuery,
             onBlockFilterChanged = historyViewModel::setBlockFilter
         )

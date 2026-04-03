@@ -42,6 +42,17 @@ interface UserPreferencesRepository {
     suspend fun saveUser(user: LoggedInUser)
     fun isLoggedIn(): Flow<Boolean>
 
+    // Wallpaper FPS
+    fun getWallpaperFps(): Flow<Int>
+    suspend fun setWallpaperFps(fps: Int)
+
+    // Task creation onboarding
+    suspend fun hasShownTaskCreationOnboarding(): Boolean
+    suspend fun setTaskCreationOnboardingShown()
+
+    // Reset onboarding
+    suspend fun resetOnboarding()
+
     // Sync
     suspend fun getLastSyncTime(): String?
     suspend fun setLastSyncTime(time: String)

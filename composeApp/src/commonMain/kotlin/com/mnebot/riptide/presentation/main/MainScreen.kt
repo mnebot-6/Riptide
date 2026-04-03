@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,8 +27,10 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.mnebot.riptide.NightSummaryScheduler
@@ -51,6 +54,8 @@ import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.displayNameRes
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
@@ -60,7 +65,7 @@ import riptide.composeapp.generated.resources.*
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
 private val OceanLight = Color(0xFF2E5F9E)
-private val CardBackground = Color(0x55FFFFFF)
+private val CardBackground = Color(0x44FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 
@@ -72,9 +77,9 @@ private fun sortedBlocks(
     val dayOfWeek = date.dayOfWeek.isoDayNumber
     return blocks.sortedWith(compareBy(
         { block ->
-            // Hora de la tarea no completada más temprana con hora definida
+            // Hora más temprana de cualquier tarea (estable: no cambia al completar)
             val earliestTaskTime = tasksByBlock[block.id]
-                ?.filter { it.status != TaskStatus.COMPLETED && it.status != TaskStatus.POSTPONED }
+                ?.filter { it.status != TaskStatus.POSTPONED }
                 ?.mapNotNull { (it.schedule as? TaskSchedule.OneTime)?.time }
                 ?.minOrNull()
                 ?.toSecondOfDay()
@@ -141,6 +146,7 @@ fun MainScreen(
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
     var quickTaskBlock by remember { mutableStateOf<WorkBlock?>(null) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
     var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
     val creatureFreezeState = rememberCreatureFreezeState()
 
@@ -255,6 +261,8 @@ fun MainScreen(
                         onWeekChange = { viewModel.selectDate(it) }
                     )
 
+                    val timerStates by viewModel.timerStates.collectAsState()
+
                     // Contenido scrollable
                     MainContent(
                         blocks = sorted,
@@ -269,7 +277,18 @@ fun MainScreen(
                             showTaskSheet = true
                         },
                         streaksByBlock = uiState.streaksByBlock,
-                        onAquariumClick = { showAquarium = true }
+                        onAquariumClick = { showAquarium = true },
+                        onIncrement = { viewModel.incrementTaskCount(it) },
+                        onDecrement = { viewModel.decrementTaskCount(it) },
+                        onPriorityToggle = { viewModel.toggleTaskPriority(it) },
+                        timerStates = timerStates,
+                        onTimerStart = { task ->
+                            task.timerDurationMinutes?.let { viewModel.startTimer(task.id, it) }
+                        },
+                        onTimerPause = { viewModel.pauseTimer(it) },
+                        onTimerResume = { viewModel.resumeTimer(it) },
+                        onTimerCancel = { viewModel.cancelTimer(it) },
+                        onNotesChanged = { task, notes -> viewModel.updateTaskNotes(task, notes) }
                     )
                 }
             }
@@ -281,10 +300,28 @@ fun MainScreen(
                 onDismissRequest = { contextMenuTask = null },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { contextMenuTask = null },
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    var sheetDragY by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .offset { IntOffset(0, sheetDragY.roundToInt().coerceAtLeast(0)) }
+                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragEnd = {
+                                        if (sheetDragY > 100f) contextMenuTask = null
+                                        sheetDragY = 0f
+                                    }
+                                ) { _, dragAmount ->
+                                    sheetDragY = (sheetDragY + dragAmount.y).coerceAtLeast(0f)
+                                }
+                            }
                             .background(
                                 Brush.verticalGradient(listOf(OceanDeep, OceanMid)),
                                 RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
@@ -646,7 +683,7 @@ fun MainScreen(
                             drawerOffsetY.animateTo(0f, animationSpec = tween(250))
                             showDrawer = false
                         }
-                        onSetLiveWallpaper()
+                        showWallpaperDialog = true
                     },
                     onNavigateToStats = {
                         scope.launch {
@@ -678,7 +715,10 @@ fun MainScreen(
                         }
                         viewModel.signOut()
                     },
-                    onSyncNow = { viewModel.syncNow() }
+                    onSyncNow = { viewModel.syncNow() },
+                    wallpaperFps = uiState.wallpaperFps,
+                    onWallpaperFpsChanged = { viewModel.setWallpaperFps(it) },
+                    onResetOnboarding = {}
                 )
             }
         }
@@ -695,29 +735,109 @@ fun MainScreen(
             )
         }
 
+        // Wallpaper FPS quality dialog
+        if (showWallpaperDialog) {
+            var selectedFps by remember { mutableIntStateOf(uiState.wallpaperFps) }
+            AlertDialog(
+                onDismissRequest = { showWallpaperDialog = false },
+                containerColor = Color(0xFF1B3A6B),
+                title = { Text(stringResource(Res.string.wallpaper_quality_title), color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                text = {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(15, 30, 60).forEach { fps ->
+                                val isSelected = selectedFps == fps
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Color(0xFF1A73E8) else Color(0x33FFFFFF))
+                                        .clickable { selectedFps = fps }
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "${fps} fps",
+                                        color = if (isSelected) TextPrimary else TextSecondary,
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            stringResource(Res.string.wallpaper_quality_hint),
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.setWallpaperFps(selectedFps)
+                        showWallpaperDialog = false
+                        onSetLiveWallpaper()
+                    }) {
+                        Text(stringResource(Res.string.wallpaper_quality_apply), color = Color(0xFF1A73E8), fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showWallpaperDialog = false }) {
+                        Text(stringResource(Res.string.btn_cancel), color = TextSecondary)
+                    }
+                }
+            )
+        }
+
         // TaskFormSheet — nueva tarea desde header
         if (showTaskSheet) {
             Dialog(
                 onDismissRequest = { showTaskSheet = false; quickTaskBlock = null },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { showTaskSheet = false; quickTaskBlock = null },
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    var formDragY by remember { mutableFloatStateOf(0f) }
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(0, formDragY.roundToInt().coerceAtLeast(0)) }
+                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragEnd = {
+                                        if (formDragY > 100f) { showTaskSheet = false; quickTaskBlock = null }
+                                        formDragY = 0f
+                                    }
+                                ) { _, dragAmount ->
+                                    formDragY = (formDragY + dragAmount.y).coerceAtLeast(0f)
+                                }
+                            }
+                    ) {
                     TaskFormSheet(
                         blocks = uiState.blocks,
                         initialDate = uiState.selectedDate,
                         initialBlockId = quickTaskBlock?.id,
-                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled ->
-                            viewModel.addOneTimeTask(title, blockId, date, time, notificationsEnabled)
+                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled, targetCount, notes, timerDuration, isPriority ->
+                            viewModel.addOneTimeTask(title, blockId, date, time, notificationsEnabled, targetCount, notes, timerDuration, isPriority)
                             showTaskSheet = false
                             quickTaskBlock = null
                         },
-                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled ->
-                            viewModel.addRecurringTask(title, blockId, time, recurrence, notificationsEnabled)
+                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled, targetCount, noteTemplate, timerDuration, isPriority ->
+                            viewModel.addRecurringTask(title, blockId, time, recurrence, notificationsEnabled, targetCount, noteTemplate, timerDuration, isPriority)
                             showTaskSheet = false
                             quickTaskBlock = null
                         },
                         onDismiss = { showTaskSheet = false; quickTaskBlock = null }
                     )
+                    }
                 }
             }
         }
@@ -741,21 +861,42 @@ fun MainScreen(
                 onDismissRequest = { editingTask = null; editingTaskDef = null },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { editingTask = null; editingTaskDef = null },
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    var editDragY by remember { mutableFloatStateOf(0f) }
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(0, editDragY.roundToInt().coerceAtLeast(0)) }
+                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragEnd = {
+                                        if (editDragY > 100f) { editingTask = null; editingTaskDef = null }
+                                        editDragY = 0f
+                                    }
+                                ) { _, dragAmount ->
+                                    editDragY = (editDragY + dragAmount.y).coerceAtLeast(0f)
+                                }
+                            }
+                    ) {
                     TaskFormSheet(
                         blocks = uiState.blocks,
                         initialDate = uiState.selectedDate,
                         existingTask = taskForForm,
                         existingDef = if (isRecurringEdit) editingTaskDef else null,
                         forceRecurring = isRecurringEdit,
-                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled ->
-                            viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time, notificationsEnabled)
+                        onSaveOneTime = { title, blockId, date, time, notificationsEnabled, targetCount, notes, timerDuration, isPriority ->
+                            viewModel.updateOneTimeTask(taskForForm, title, blockId, date, time, notificationsEnabled, targetCount, notes, timerDuration, isPriority)
                             editingTask = null
                             editingTaskDef = null
                         },
-                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled ->
+                        onSaveRecurring = { title, blockId, time, recurrence, notificationsEnabled, targetCount, noteTemplate, timerDuration, isPriority ->
                             val sourceId = realSourceId ?: return@TaskFormSheet
-                            viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence, notificationsEnabled)
+                            viewModel.updateRecurringTask(sourceId, title, blockId, time, recurrence, notificationsEnabled, targetCount, noteTemplate, timerDuration, isPriority)
                             editingTask = null
                             editingTaskDef = null
                         },
@@ -770,6 +911,7 @@ fun MainScreen(
                         },
                         onDismiss = { editingTask = null; editingTaskDef = null }
                     )
+                    }
                 }
             }
         }
@@ -956,9 +1098,22 @@ private fun MainContent(
     onBlockHeaderLongPress: (WorkBlock) -> Unit,
     onAquariumClick: () -> Unit,
     streaksByBlock: Map<String, Int>,
+    onIncrement: (DayTask) -> Unit = {},
+    onDecrement: (DayTask) -> Unit = {},
+    onPriorityToggle: (DayTask) -> Unit = {},
+    timerStates: Map<String, MainViewModel.TimerState> = emptyMap(),
+    onTimerStart: (DayTask) -> Unit = {},
+    onTimerPause: (String) -> Unit = {},
+    onTimerResume: (String) -> Unit = {},
+    onTimerCancel: (String) -> Unit = {},
+    onNotesChanged: (DayTask, String?) -> Unit = { _, _ -> },
 ) {
     val blocksWithTasks = remember(blocks, tasksByBlock) {
-        blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
+        val withTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
+        val (active, allDone) = withTasks.partition { block ->
+            tasksByBlock[block.id]?.any { it.status != TaskStatus.COMPLETED } == true
+        }
+        active + allDone
     }
     val listState = rememberLazyListState()
 
@@ -983,16 +1138,30 @@ private fun MainContent(
                 contentPadding = PaddingValues(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                val unassignedTasks = sortedTasks(tasksByBlock[null] ?: emptyList())
-                if (unassignedTasks.isNotEmpty()) {
+                val allUnassigned = sortedTasks(tasksByBlock[null] ?: emptyList())
+                val activeUnassigned = allUnassigned.filter { it.status != TaskStatus.COMPLETED }
+                val completedUnassigned = allUnassigned.filter { it.status == TaskStatus.COMPLETED }
+
+                // Active unassigned tasks first
+                if (activeUnassigned.isNotEmpty()) {
                     item {
                         UnassignedSection(
-                            tasks = unassignedTasks,
+                            tasks = activeUnassigned,
                             onTaskToggle = onTaskToggle,
-                            onTaskLongPress = onTaskLongPress
+                            onTaskLongPress = onTaskLongPress,
+                            onIncrement = onIncrement,
+                            onDecrement = onDecrement,
+                            onPriorityToggle = onPriorityToggle,
+                            timerStates = timerStates,
+                            onTimerStart = onTimerStart,
+                            onTimerPause = onTimerPause,
+                            onTimerResume = onTimerResume,
+                            onTimerCancel = onTimerCancel,
+                            onNotesChanged = onNotesChanged
                         )
                     }
                 }
+                // Blocks (active first, all-completed last — handled by blocksWithTasks)
                 items(blocksWithTasks, key = { it.id }) { block ->
                     val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
                     val streak = streaksByBlock[block.id] ?: 0
@@ -1003,8 +1172,36 @@ private fun MainContent(
                         streak = streak,
                         onTaskToggle = onTaskToggle,
                         onTaskLongPress = onTaskLongPress,
-                        onHeaderLongPress = onBlockHeaderLongPress
+                        onHeaderLongPress = onBlockHeaderLongPress,
+                        onIncrement = onIncrement,
+                        onDecrement = onDecrement,
+                        onPriorityToggle = onPriorityToggle,
+                        timerStates = timerStates,
+                        onTimerStart = onTimerStart,
+                        onTimerPause = onTimerPause,
+                        onTimerResume = onTimerResume,
+                        onTimerCancel = onTimerCancel,
+                        onNotesChanged = onNotesChanged
                     )
+                }
+                // Completed unassigned tasks at the very bottom
+                if (completedUnassigned.isNotEmpty()) {
+                    item {
+                        UnassignedSection(
+                            tasks = completedUnassigned,
+                            onTaskToggle = onTaskToggle,
+                            onTaskLongPress = onTaskLongPress,
+                            onIncrement = onIncrement,
+                            onDecrement = onDecrement,
+                            onPriorityToggle = onPriorityToggle,
+                            timerStates = timerStates,
+                            onTimerStart = onTimerStart,
+                            onTimerPause = onTimerPause,
+                            onTimerResume = onTimerResume,
+                            onTimerCancel = onTimerCancel,
+                            onNotesChanged = onNotesChanged
+                        )
+                    }
                 }
                 item {
                     Text(
@@ -1066,7 +1263,16 @@ private fun BlockSection(
     streak: Int,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
-    onHeaderLongPress: (WorkBlock) -> Unit
+    onHeaderLongPress: (WorkBlock) -> Unit,
+    onIncrement: (DayTask) -> Unit = {},
+    onDecrement: (DayTask) -> Unit = {},
+    onPriorityToggle: (DayTask) -> Unit = {},
+    timerStates: Map<String, MainViewModel.TimerState> = emptyMap(),
+    onTimerStart: (DayTask) -> Unit = {},
+    onTimerPause: (String) -> Unit = {},
+    onTimerResume: (String) -> Unit = {},
+    onTimerCancel: (String) -> Unit = {},
+    onNotesChanged: (DayTask, String?) -> Unit = { _, _ -> }
 ) {
     Column {
         BlockHeader(
@@ -1077,11 +1283,20 @@ private fun BlockSection(
         )
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
-            TaskCard(
+            SwipeableTaskCard(
                 task = task,
                 blockColor = parseColor(block.color),
                 onToggle = { onTaskToggle(task) },
-                onLongPress = { onTaskLongPress(task) }
+                onLongPress = { onTaskLongPress(task) },
+                onIncrement = { onIncrement(task) },
+                onDecrement = { onDecrement(task) },
+                onPriorityToggle = { onPriorityToggle(task) },
+                timerState = timerStates[task.id],
+                onTimerStart = { onTimerStart(task) },
+                onTimerPause = { onTimerPause(task.id) },
+                onTimerResume = { onTimerResume(task.id) },
+                onTimerCancel = { onTimerCancel(task.id) },
+                onNotesChanged = { onNotesChanged(task, it) }
             )
             Spacer(modifier = Modifier.height(6.dp))
         }
@@ -1139,36 +1354,153 @@ private fun BlockHeader(
     }
 }
 
+@Composable
+private fun SwipeableTaskCard(
+    task: DayTask,
+    blockColor: Color,
+    onToggle: () -> Unit,
+    onLongPress: () -> Unit,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onPriorityToggle: () -> Unit,
+    timerState: MainViewModel.TimerState?,
+    onTimerStart: () -> Unit,
+    onTimerPause: () -> Unit,
+    onTimerResume: () -> Unit,
+    onTimerCancel: () -> Unit = {},
+    onNotesChanged: (String?) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val swipeThreshold = 300f // px
+
+    Box(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+    ) {
+        // Background color behind the card during swipe
+        val swipeBg = when {
+            offsetX.value > 30f -> Color(0xFF4CAF50).copy(alpha = (offsetX.value / swipeThreshold).coerceIn(0f, 0.4f))
+            offsetX.value < -30f -> Color(0xFF9E9E9E).copy(alpha = (-offsetX.value / swipeThreshold).coerceIn(0f, 0.4f))
+            else -> Color.Transparent
+        }
+        Box(
+            modifier = Modifier.matchParentSize().background(swipeBg, RoundedCornerShape(12.dp)),
+            contentAlignment = if (offsetX.value > 0) Alignment.CenterStart else Alignment.CenterEnd
+        ) {
+            if (kotlin.math.abs(offsetX.value) > 30f) {
+                Text(
+                    text = if (offsetX.value > 0) {
+                        if (task.isCountable) "+1" else "✓"
+                    } else {
+                        if (task.isCountable) "-1" else "✗"
+                    },
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .pointerInput(task.id) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val isCompleted = task.status == TaskStatus.COMPLETED
+                            if (offsetX.value > swipeThreshold) {
+                                // Right: +1 or complete (noop if already completed)
+                                if (!isCompleted) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (task.isCountable) onIncrement() else onToggle()
+                                }
+                            } else if (offsetX.value < -swipeThreshold) {
+                                // Left: -1 or uncomplete (noop if not completed for non-countable)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (task.isCountable) onDecrement() else if (isCompleted) onToggle()
+                            }
+                            scope.launch { offsetX.animateTo(0f, animationSpec = tween(200)) }
+                        },
+                        onDragCancel = {
+                            scope.launch { offsetX.animateTo(0f, animationSpec = tween(200)) }
+                        }
+                    ) { _, dragAmount ->
+                        scope.launch { offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-400f, 400f)) }
+                    }
+                }
+        ) {
+            TaskCard(
+                task = task,
+                blockColor = blockColor,
+                onToggle = onToggle,
+                onLongPress = onLongPress,
+                onIncrement = onIncrement,
+                onDecrement = onDecrement,
+                onPriorityToggle = onPriorityToggle,
+                timerState = timerState,
+                onTimerStart = onTimerStart,
+                onTimerPause = onTimerPause,
+                onTimerResume = onTimerResume,
+                onTimerCancel = onTimerCancel,
+                onNotesChanged = onNotesChanged
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskCard(
     task: DayTask,
     blockColor: Color,
     onToggle: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    onIncrement: () -> Unit = {},
+    onDecrement: () -> Unit = {},
+    onPriorityToggle: () -> Unit = {},
+    timerState: MainViewModel.TimerState? = null,
+    onTimerStart: () -> Unit = {},
+    onTimerPause: () -> Unit = {},
+    onTimerResume: () -> Unit = {},
+    onTimerCancel: () -> Unit = {},
+    onNotesChanged: (String?) -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     val isCompleted = task.status == TaskStatus.COMPLETED
     val isExpired = task.status == TaskStatus.EXPIRED
     val isPostponed = task.status == TaskStatus.POSTPONED
     val taskTime = (task.schedule as? TaskSchedule.OneTime)?.time
+    var showNotesDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(52.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(CardBackground)
-            .combinedClickable(onClick = {}, onLongClick = onLongPress)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .combinedClickable(onClick = {
+                if (task.isCountable && !isCompleted) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onIncrement()
+                }
+            }, onLongClick = onLongPress)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(4.dp, 32.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(if (isExpired) Color(0x66FFFFFF) else blockColor)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+        // Priority star (not clickable — read-only indicator)
+        if (task.isPriority) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_star),
+                contentDescription = null,
+                tint = Color(0xFFFFB347),
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+
+        // Content column
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = task.title,
@@ -1178,8 +1510,11 @@ private fun TaskCard(
                 },
                 fontSize = 14.sp,
                 fontWeight = if (isCompleted || isExpired || isPostponed) FontWeight.Normal else FontWeight.Medium,
-                textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                maxLines = 1
             )
+
+            // Time display
             if (taskTime != null) {
                 Text(
                     text = "${taskTime.hour.toString().padStart(2, '0')}:${
@@ -1189,6 +1524,8 @@ private fun TaskCard(
                     fontSize = 11.sp
                 )
             }
+
+            // Postponed info
             if (isPostponed && task.postponedTo != null) {
                 Text(
                     text = "→ ${task.postponedTo.date} ${
@@ -1199,6 +1536,19 @@ private fun TaskCard(
                 )
             }
         }
+
+        // Notes icon — opens NotesDialog
+        if (task.notes != null) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_file_text),
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(16.dp).clickable { showNotesDialog = true }
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+
+        // Right side: timer, countable progress, or checkbox
         when {
             isPostponed -> Icon(
                 painter = painterResource(Res.drawable.ic_clock),
@@ -1206,6 +1556,95 @@ private fun TaskCard(
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp)
             )
+            // Timer display
+            task.timerDurationMinutes != null && !isCompleted -> {
+                if (timerState != null) {
+                    // Timer running or paused
+                    val mins = timerState.remainingSeconds / 60
+                    val secs = timerState.remainingSeconds % 60
+                    val progress = 1f - timerState.remainingSeconds.toFloat() / timerState.totalSeconds.toFloat()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.size(28.dp),
+                                color = blockColor,
+                                trackColor = Color(0x33FFFFFF),
+                                strokeWidth = 3.dp
+                            )
+                            Text(
+                                text = "${mins}:${secs.toString().padStart(2, '0')}",
+                                color = TextPrimary,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            painter = painterResource(
+                                if (timerState.isRunning) Res.drawable.ic_pause else Res.drawable.ic_play
+                            ),
+                            contentDescription = null,
+                            tint = TextPrimary,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable {
+                                    if (timerState.isRunning) onTimerPause() else onTimerResume()
+                                }
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_x),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp).clickable { onTimerCancel() }
+                        )
+                    }
+                } else {
+                    // Timer not started — show play button with duration
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0x22FFFFFF))
+                            .clickable { onTimerStart() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_play),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "${task.timerDurationMinutes}m",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+            // Countable tasks: show progress instead of checkbox
+            task.isCountable -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isExpired) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_clock),
+                            contentDescription = stringResource(Res.string.a11y_task_expired),
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = "${task.currentCount}/${task.targetCount}",
+                        color = if (isCompleted) blockColor else TextSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isExpired) {
@@ -1232,13 +1671,222 @@ private fun TaskCard(
             }
         }
     }
+
+    // NotesDialog
+    if (showNotesDialog && task.notes != null) {
+        NotesDialog(
+            notes = task.notes,
+            onNotesChanged = onNotesChanged,
+            onDismiss = { showNotesDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun NotesDialog(
+    notes: String,
+    onNotesChanged: (String?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editText by remember { mutableStateOf(notes) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1A2A4A))
+                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEditing) stringResource(Res.string.label_edit) else stringResource(Res.string.label_notes),
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row {
+                        Icon(
+                            painter = painterResource(if (isEditing) Res.drawable.ic_check else Res.drawable.ic_pencil),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp).clickable {
+                                if (isEditing) {
+                                    onNotesChanged(editText.ifBlank { null })
+                                    isEditing = false
+                                } else {
+                                    editText = notes
+                                    isEditing = true
+                                }
+                            }
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_x),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp).clickable { onDismiss() }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                if (isEditing) {
+                    // Markdown helper buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val helpers = listOf(
+                            "- [ ] " to "☐",
+                            "- " to "•",
+                            "**" to "B",
+                            "# " to "H"
+                        )
+                        helpers.forEach { (insert, label) ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0x33FFFFFF))
+                                    .clickable {
+                                        editText = if (editText.isNotEmpty() && !editText.endsWith("\n")) {
+                                            "$editText\n$insert"
+                                        } else {
+                                            "$editText$insert"
+                                        }
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(label, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                    BasicTextField(
+                        value = editText,
+                        onValueChange = { editText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0x22FFFFFF))
+                            .padding(12.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = TextPrimary,
+                            fontSize = 13.sp
+                        ),
+                        cursorBrush = Brush.verticalGradient(listOf(TextPrimary, TextPrimary))
+                    )
+                } else {
+                    InteractiveMarkdownText(
+                        text = notes,
+                        onToggleCheckbox = { lineIndex ->
+                            val lines = notes.lines().toMutableList()
+                            if (lineIndex in lines.indices) {
+                                val line = lines[lineIndex]
+                                lines[lineIndex] = when {
+                                    line.startsWith("- [ ] ") -> line.replaceFirst("- [ ] ", "- [x] ")
+                                    line.startsWith("- [x] ") || line.startsWith("- [X] ") ->
+                                        line.replaceFirst(Regex("- \\[[xX]] "), "- [ ] ")
+                                    else -> line
+                                }
+                                onNotesChanged(lines.joinToString("\n"))
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InteractiveMarkdownText(
+    text: String,
+    onToggleCheckbox: (lineIndex: Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        text.lines().forEachIndexed { index, line ->
+            when {
+                line.startsWith("- [x] ") || line.startsWith("- [X] ") -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onToggleCheckbox(index) }
+                    ) {
+                        Text("☑ ", color = Color(0xFF4CAF50), fontSize = 13.sp)
+                        Text(line.removePrefix("- [x] ").removePrefix("- [X] "), color = TextSecondary, fontSize = 13.sp, textDecoration = TextDecoration.LineThrough)
+                    }
+                }
+                line.startsWith("- [ ] ") -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onToggleCheckbox(index) }
+                    ) {
+                        Text("☐ ", color = TextSecondary, fontSize = 13.sp)
+                        Text(line.removePrefix("- [ ] "), color = TextPrimary, fontSize = 13.sp)
+                    }
+                }
+                line.startsWith("- ") -> {
+                    Row {
+                        Text("• ", color = TextSecondary, fontSize = 13.sp)
+                        Text(line.removePrefix("- "), color = TextPrimary, fontSize = 13.sp)
+                    }
+                }
+                line.startsWith("## ") -> {
+                    Text(line.removePrefix("## "), color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+                line.startsWith("**") && line.endsWith("**") -> {
+                    Text(line.removeSurrounding("**"), color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+                line.contains("**") -> {
+                    Row {
+                        var remaining = line
+                        while (remaining.contains("**")) {
+                            val before = remaining.substringBefore("**")
+                            if (before.isNotEmpty()) Text(before, color = TextPrimary, fontSize = 13.sp)
+                            remaining = remaining.substringAfter("**")
+                            val bold = remaining.substringBefore("**", "")
+                            if (bold.isNotEmpty()) Text(bold, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            remaining = remaining.substringAfter("**", "")
+                        }
+                        if (remaining.isNotEmpty()) Text(remaining, color = TextPrimary, fontSize = 13.sp)
+                    }
+                }
+                line.isBlank() -> Spacer(modifier = Modifier.height(4.dp))
+                else -> Text(line, color = TextPrimary, fontSize = 13.sp)
+            }
+        }
+    }
 }
 
 @Composable
 private fun UnassignedSection(
     tasks: List<DayTask>,
     onTaskToggle: (DayTask) -> Unit,
-    onTaskLongPress: (DayTask) -> Unit
+    onTaskLongPress: (DayTask) -> Unit,
+    onIncrement: (DayTask) -> Unit = {},
+    onDecrement: (DayTask) -> Unit = {},
+    onPriorityToggle: (DayTask) -> Unit = {},
+    timerStates: Map<String, MainViewModel.TimerState> = emptyMap(),
+    onTimerStart: (DayTask) -> Unit = {},
+    onTimerPause: (String) -> Unit = {},
+    onTimerResume: (String) -> Unit = {},
+    onTimerCancel: (String) -> Unit = {},
+    onNotesChanged: (DayTask, String?) -> Unit = { _, _ -> }
 ) {
     Column {
         Row(
@@ -1264,11 +1912,20 @@ private fun UnassignedSection(
         }
         Spacer(modifier = Modifier.height(8.dp))
         tasks.forEach { task ->
-            TaskCard(
+            SwipeableTaskCard(
                 task = task,
                 blockColor = Color(0x66FFFFFF),
                 onToggle = { onTaskToggle(task) },
-                onLongPress = { onTaskLongPress(task) }
+                onLongPress = { onTaskLongPress(task) },
+                onIncrement = { onIncrement(task) },
+                onDecrement = { onDecrement(task) },
+                onPriorityToggle = { onPriorityToggle(task) },
+                timerState = timerStates[task.id],
+                onTimerStart = { onTimerStart(task) },
+                onTimerPause = { onTimerPause(task.id) },
+                onTimerResume = { onTimerResume(task.id) },
+                onTimerCancel = { onTimerCancel(task.id) },
+                onNotesChanged = { onNotesChanged(task, it) }
             )
             Spacer(modifier = Modifier.height(6.dp))
         }
