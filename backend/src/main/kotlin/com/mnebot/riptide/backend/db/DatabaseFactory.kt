@@ -12,16 +12,50 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 object DatabaseFactory {
 
+    /**
+     * Parse a Railway/Heroku-style database URL:
+     *   postgresql://user:password@host:port/dbname
+     * into JDBC format + separate user/password for HikariCP.
+     */
+    private data class ParsedDbUrl(val jdbcUrl: String, val user: String, val password: String)
+
+    private fun parsePostgresUrl(url: String): ParsedDbUrl? {
+        // Match: postgresql://user:pass@host:port/db or postgres://user:pass@host:port/db
+        val regex = Regex("""postgres(?:ql)?://([^:]+):([^@]+)@([^/]+)/(.+)""")
+        val match = regex.matchEntire(url) ?: return null
+        val (user, password, hostPort, dbName) = match.destructured
+        return ParsedDbUrl(
+            jdbcUrl = "jdbc:postgresql://$hostPort/$dbName?sslmode=require",
+            user = user,
+            password = password
+        )
+    }
+
     fun init(config: ApplicationConfig) {
-        val url = config.property("database.url").getString()
-        val user = config.property("database.user").getString()
-        val password = config.property("database.password").getString()
+        val rawUrl = config.property("database.url").getString()
         val maxPoolSize = config.property("database.maxPoolSize").getString().toInt()
 
+        // Support Railway-style URLs (postgresql://user:pass@host/db)
+        // and traditional JDBC URLs (jdbc:postgresql://host/db)
+        val parsed = parsePostgresUrl(rawUrl)
+        val jdbcUrl: String
+        val dbUser: String
+        val dbPassword: String
+
+        if (parsed != null) {
+            jdbcUrl = parsed.jdbcUrl
+            dbUser = parsed.user
+            dbPassword = parsed.password
+        } else {
+            jdbcUrl = rawUrl
+            dbUser = config.property("database.user").getString()
+            dbPassword = config.property("database.password").getString()
+        }
+
         val hikariConfig = HikariConfig().apply {
-            jdbcUrl = url
-            username = user
-            this.password = password
+            this.jdbcUrl = jdbcUrl
+            username = dbUser
+            password = dbPassword
             maximumPoolSize = maxPoolSize
             isAutoCommit = false
 
