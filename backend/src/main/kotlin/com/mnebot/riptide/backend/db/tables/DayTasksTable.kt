@@ -19,6 +19,11 @@ object DayTasksTable : Table("day_tasks") {
     val sourceTaskId = varchar("source_task_id", 36).nullable()
     val hasBeenRewarded = bool("has_been_rewarded").default(false)
     val notificationsEnabled = bool("notifications_enabled").default(false)
+    val targetCount = integer("target_count").nullable()
+    val currentCount = integer("current_count").default(0)
+    val notes = text("notes").nullable()
+    val timerDurationMinutes = integer("timer_duration_minutes").nullable()
+    val isPriority = bool("is_priority").default(false)
     val updatedAt = datetime("updated_at").default(LocalDateTime.now())
     val isDeleted = bool("is_deleted").default(false)
 

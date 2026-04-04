@@ -156,6 +156,10 @@ private fun upsertRecurringTaskDefs(items: List<RecurringTaskDefDto>, uid: Strin
                 it[recurrence] = dto.recurrence
                 it[isActive] = dto.isActive
                 it[notificationsEnabled] = dto.notificationsEnabled
+                it[targetCount] = dto.targetCount
+                it[noteTemplate] = dto.noteTemplate
+                it[timerDurationMinutes] = dto.timerDurationMinutes
+                it[isPriority] = dto.isPriority
                 it[isDeleted] = dto.isDeleted
                 it[updatedAt] = now
             }
@@ -177,6 +181,10 @@ private fun upsertRecurringTaskDefs(items: List<RecurringTaskDefDto>, uid: Strin
                     it[recurrence] = dto.recurrence
                     it[isActive] = dto.isActive
                     it[notificationsEnabled] = dto.notificationsEnabled
+                    it[targetCount] = dto.targetCount
+                    it[noteTemplate] = dto.noteTemplate
+                    it[timerDurationMinutes] = dto.timerDurationMinutes
+                    it[isPriority] = dto.isPriority
                     it[isDeleted] = dto.isDeleted
                     it[updatedAt] = now
                 }
@@ -207,6 +215,11 @@ private fun upsertDayTasks(items: List<DayTaskDto>, uid: String, now: LocalDateT
                 it[sourceTaskId] = dto.sourceTaskId
                 it[hasBeenRewarded] = dto.hasBeenRewarded
                 it[notificationsEnabled] = dto.notificationsEnabled
+                it[targetCount] = dto.targetCount
+                it[currentCount] = dto.currentCount
+                it[notes] = dto.notes
+                it[timerDurationMinutes] = dto.timerDurationMinutes
+                it[isPriority] = dto.isPriority
                 it[isDeleted] = dto.isDeleted
                 it[updatedAt] = now
             }
@@ -238,6 +251,11 @@ private fun upsertDayTasks(items: List<DayTaskDto>, uid: String, now: LocalDateT
                     it[sourceTaskId] = dto.sourceTaskId
                     it[hasBeenRewarded] = mergedRewarded
                     it[notificationsEnabled] = dto.notificationsEnabled
+                    it[targetCount] = dto.targetCount
+                    it[currentCount] = dto.currentCount
+                    it[notes] = dto.notes
+                    it[timerDurationMinutes] = dto.timerDurationMinutes
+                    it[isPriority] = dto.isPriority
                     it[isDeleted] = dto.isDeleted
                     it[updatedAt] = now
                 }
@@ -464,6 +482,11 @@ private fun pullDayTasks(uid: String, since: LocalDateTime?): List<DayTaskDto> {
             sourceTaskId = row[DayTasksTable.sourceTaskId],
             hasBeenRewarded = row[DayTasksTable.hasBeenRewarded],
             notificationsEnabled = row[DayTasksTable.notificationsEnabled],
+            targetCount = row[DayTasksTable.targetCount],
+            currentCount = row[DayTasksTable.currentCount],
+            notes = row[DayTasksTable.notes],
+            timerDurationMinutes = row[DayTasksTable.timerDurationMinutes],
+            isPriority = row[DayTasksTable.isPriority],
             updatedAt = row[DayTasksTable.updatedAt].toString(),
             isDeleted = row[DayTasksTable.isDeleted]
         )
@@ -485,6 +508,10 @@ private fun pullRecurringTaskDefs(uid: String, since: LocalDateTime?): List<Recu
             recurrence = row[RecurringTaskDefsTable.recurrence],
             isActive = row[RecurringTaskDefsTable.isActive],
             notificationsEnabled = row[RecurringTaskDefsTable.notificationsEnabled],
+            targetCount = row[RecurringTaskDefsTable.targetCount],
+            noteTemplate = row[RecurringTaskDefsTable.noteTemplate],
+            timerDurationMinutes = row[RecurringTaskDefsTable.timerDurationMinutes],
+            isPriority = row[RecurringTaskDefsTable.isPriority],
             updatedAt = row[RecurringTaskDefsTable.updatedAt].toString(),
             isDeleted = row[RecurringTaskDefsTable.isDeleted]
         )

@@ -42,6 +42,11 @@ data class DayTaskDto(
     val sourceTaskId: String? = null,
     val hasBeenRewarded: Boolean = false,
     val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val currentCount: Int = 0,
+    val notes: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false,
     val updatedAt: String? = null,
     val isDeleted: Boolean = false
 )
@@ -57,6 +62,10 @@ data class RecurringTaskDefDto(
     val recurrence: String,
     val isActive: Boolean = true,
     val notificationsEnabled: Boolean = false,
+    val targetCount: Int? = null,
+    val noteTemplate: String? = null,
+    val timerDurationMinutes: Int? = null,
+    val isPriority: Boolean = false,
     val updatedAt: String? = null,
     val isDeleted: Boolean = false
 )

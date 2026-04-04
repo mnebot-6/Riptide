@@ -13,6 +13,10 @@ object RecurringTaskDefsTable : Table("recurring_task_defs") {
     val recurrence = text("recurrence")          // JSON
     val isActive = bool("is_active").default(true)
     val notificationsEnabled = bool("notifications_enabled").default(false)
+    val targetCount = integer("target_count").nullable()
+    val noteTemplate = text("note_template").nullable()
+    val timerDurationMinutes = integer("timer_duration_minutes").nullable()
+    val isPriority = bool("is_priority").default(false)
     val updatedAt = datetime("updated_at").default(LocalDateTime.now())
     val isDeleted = bool("is_deleted").default(false)
 

@@ -68,9 +68,9 @@ object DatabaseFactory {
         val dataSource = HikariDataSource(hikariConfig)
         Database.connect(dataSource)
 
-        // Create tables if not exist
+        // Create tables and add missing columns (e.g. enriched task fields)
         transaction {
-            SchemaUtils.create(
+            SchemaUtils.createMissingTablesAndColumns(
                 UsersTable,
                 RefreshTokensTable,
                 WorkBlocksTable,
