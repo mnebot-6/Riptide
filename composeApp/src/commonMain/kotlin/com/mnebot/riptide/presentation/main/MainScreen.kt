@@ -49,6 +49,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.LocalTime
 import kotlin.collections.mapKeys
 import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
+import com.mnebot.riptide.presentation.aquarium.CreatureIcon
 import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
 import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
@@ -551,7 +552,11 @@ fun MainScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(revealedSpecies.emoji, fontSize = 48.sp)
+                            CreatureIcon(
+                                spec = revealedSpecies,
+                                level = 1,
+                                modifier = Modifier.size(96.dp)
+                            )
                             Text(
                                 stringResource(revealedSpecies.species.displayNameRes()),
                                 color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
@@ -1548,16 +1553,17 @@ private fun TaskCard(
             Spacer(modifier = Modifier.width(6.dp))
         }
 
-        // Right side: timer, countable progress, or checkbox
-        when {
-            isPostponed -> Icon(
+        // Right side: all applicable indicators shown simultaneously
+        if (isPostponed) {
+            Icon(
                 painter = painterResource(Res.drawable.ic_clock),
                 contentDescription = stringResource(Res.string.a11y_task_postponed),
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp)
             )
-            // Timer display
-            task.timerDurationMinutes != null && !isCompleted -> {
+        } else {
+            // Timer controls (if task has timer and not completed)
+            if (task.timerDurationMinutes != null && !isCompleted) {
                 if (timerState != null) {
                     // Timer running or paused
                     val mins = timerState.remainingSeconds / 60
@@ -1624,11 +1630,12 @@ private fun TaskCard(
                         )
                     }
                 }
+                if (task.isCountable) Spacer(Modifier.width(6.dp))
             }
-            // Countable tasks: show progress instead of checkbox
-            task.isCountable -> {
+            // Countable progress (if applicable)
+            if (task.isCountable) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isExpired) {
+                    if (isExpired && task.timerDurationMinutes == null) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_clock),
                             contentDescription = stringResource(Res.string.a11y_task_expired),
@@ -1645,7 +1652,8 @@ private fun TaskCard(
                     )
                 }
             }
-            else -> {
+            // Checkbox (only for simple tasks: not countable AND not timer)
+            if (!task.isCountable && task.timerDurationMinutes == null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isExpired) {
                         Icon(

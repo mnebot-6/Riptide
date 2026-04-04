@@ -284,7 +284,8 @@ class MainViewModel(
             val tasks = _uiState.value.tasksByBlock.values.flatten()
             val task = tasks.find { it.id == taskId }
             if (task != null && task.status != TaskStatus.COMPLETED) {
-                toggleTaskCompleted(task)
+                if (task.isCountable) incrementTaskCount(task)
+                else toggleTaskCompleted(task)
             }
         }
     }
