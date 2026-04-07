@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.mnebot.riptide.data.remote.AuthManager
+import com.mnebot.riptide.data.remote.RiptideApi
 import com.mnebot.riptide.data.sync.InitialSyncPreparer
 import com.mnebot.riptide.data.sync.SyncManager
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
@@ -26,7 +27,8 @@ fun App(
     userPreferencesRepository: UserPreferencesRepository,
     authManager: AuthManager? = null,
     syncManager: SyncManager? = null,
-    initialSyncPreparer: InitialSyncPreparer? = null
+    initialSyncPreparer: InitialSyncPreparer? = null,
+    api: RiptideApi? = null
 ) {
     val onboardingCompleted by remember { userPreferencesRepository.hasCompletedOnboarding() }
         .collectAsState(initial = null)
@@ -55,7 +57,9 @@ fun App(
             navController = navController,
             authManager = authManager,
             syncManager = syncManager,
-            initialSyncPreparer = initialSyncPreparer
+            initialSyncPreparer = initialSyncPreparer,
+            api = api,
+            userPreferences = userPreferencesRepository
         )
     }
 }

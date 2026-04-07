@@ -68,4 +68,9 @@ class FakeUserPreferencesRepository : UserPreferencesRepository {
     // Sync
     override suspend fun getLastSyncTime(): String? = lastSyncTime
     override suspend fun setLastSyncTime(time: String) { lastSyncTime = time }
+
+    // Initial sync conflict guard
+    private var pendingInitialSync = false
+    override suspend fun hasPendingInitialSync(): Boolean = pendingInitialSync
+    override suspend fun setPendingInitialSync(pending: Boolean) { pendingInitialSync = pending }
 }

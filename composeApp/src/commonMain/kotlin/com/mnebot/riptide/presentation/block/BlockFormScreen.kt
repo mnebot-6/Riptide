@@ -58,6 +58,7 @@ fun BlockFormScreen(
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf(existingBlock?.name ?: "") }
+    var nameError by remember { mutableStateOf(false) }
     var icon by remember { mutableStateOf(existingBlock?.icon ?: "") }
     var selectedColor by remember { mutableStateOf(existingBlock?.color ?: colorPalette.first()) }
     var hasSchedule by remember {
@@ -120,6 +121,7 @@ fun BlockFormScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(CardBackground)
                         .clickable {
+                            nameError = name.isBlank()
                             if (name.isNotBlank()) {
                                 onSave(
                                     buildBlock(
@@ -151,10 +153,18 @@ fun BlockFormScreen(
             Spacer(modifier = Modifier.height(8.dp))
             FormTextField(
                 value = name,
-                onValueChange = { if (it.length <= 200) name = it },
+                onValueChange = { if (it.length <= 200) { name = it; nameError = false } },
                 placeholder = stringResource(Res.string.placeholder_block_name),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+            if (nameError) {
+                Text(
+                    text = stringResource(Res.string.error_field_required),
+                    color = Color(0xFFEA4335),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -446,6 +456,7 @@ private fun FormTextField(
             color = TextPrimary,
             fontSize = 15.sp
         ),
+        singleLine = true,
         decorationBox = { inner ->
             if (value.isEmpty()) {
                 Text(placeholder, color = SectionLabel, fontSize = 15.sp)

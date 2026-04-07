@@ -6,6 +6,7 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 
 /**
  * API service wrapping all HTTP calls to the Riptide backend.
@@ -31,6 +32,15 @@ class RiptideApi(private val client: HttpClient) {
             throw RuntimeException("Sync failed: HTTP ${response.status.value} — $errorBody")
         }
         return response.body()
+    }
+
+    /** Hard-delete all user data on the server (for "keep local" sync choice). */
+    suspend fun deleteUserData() {
+        val response = client.delete("/api/user-data")
+        if (response.status.value !in 200..299) {
+            val errorBody = response.bodyAsText()
+            throw RuntimeException("Delete user data failed: HTTP ${response.status.value} — $errorBody")
+        }
     }
 
     /** Revoke all refresh tokens for current user. */

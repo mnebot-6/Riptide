@@ -31,8 +31,18 @@ class SyncManager(
     private val _status = MutableStateFlow(SyncStatus.IDLE)
     val status: StateFlow<SyncStatus> = _status.asStateFlow()
 
-    suspend fun sync(): SyncResult {
+    private var lastSyncAttempt: Long = 0
+    private companion object {
+        const val MIN_SYNC_INTERVAL_MS = 30_000L
+    }
+
+    suspend fun sync(force: Boolean = false): SyncResult {
         if (userPrefs.getAccessToken() == null) return SyncResult.NotLoggedIn
+        if (userPrefs.hasPendingInitialSync()) return SyncResult.NotLoggedIn
+
+        val now = System.currentTimeMillis()
+        if (!force && now - lastSyncAttempt < MIN_SYNC_INTERVAL_MS) return SyncResult.Success
+        lastSyncAttempt = now
 
         _status.value = SyncStatus.SYNCING
         return try {

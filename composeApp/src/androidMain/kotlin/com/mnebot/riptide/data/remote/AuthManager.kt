@@ -9,6 +9,11 @@ import com.mnebot.riptide.BuildConfig
 import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository
 
+data class SignInResult(
+    val user: LoggedInUser,
+    val hasExistingServerData: Boolean
+)
+
 /**
  * Manages Google Sign-In flow and JWT token lifecycle.
  */
@@ -33,7 +38,7 @@ class AuthManager(
      * Process the result from the Google Sign-In Activity.
      * Sends the ID token to the backend, stores JWT pair + user info.
      */
-    suspend fun handleSignInResult(data: Intent?): Result<LoggedInUser> = runCatching {
+    suspend fun handleSignInResult(data: Intent?): Result<SignInResult> = runCatching {
         val task = GoogleSignIn.getSignedInAccountFromIntent(data)
         val account = task.getResult(ApiException::class.java)
         val idToken = account.idToken
@@ -50,7 +55,7 @@ class AuthManager(
             avatarUrl = response.user.avatarUrl
         )
         userPrefs.saveUser(user)
-        user
+        SignInResult(user = user, hasExistingServerData = response.hasExistingData)
     }
 
     /** Sign out: revoke server tokens + clear local storage. */

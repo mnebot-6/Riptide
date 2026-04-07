@@ -259,6 +259,7 @@
     <!-- TaskFormSheet — validación -->
     <string name="error_field_required">Este campo es obligatorio</string>
     <string name="error_block_required">Selecciona un bloque para continuar</string>
+    <string name="error_days_required">Selecciona al menos un día</string>
     <string name="dialog_confirm_delete_title">¿Eliminar tarea?</string>
     <string name="dialog_confirm_delete_body">Esta acción no se puede deshacer.</string>
 
@@ -313,6 +314,12 @@
     <string name="sync_status_success">Sincronizado</string>
     <string name="sync_status_error">Error de sincronización</string>
     <string name="sync_status_offline">Sin conexión</string>
+
+    <!-- Sync conflict dialog -->
+    <string name="sync_conflict_title">Datos existentes encontrados</string>
+    <string name="sync_conflict_body">Esta cuenta ya tiene datos en el servidor. ¿Qué quieres hacer?</string>
+    <string name="sync_conflict_keep_local">Mantener datos locales</string>
+    <string name="sync_conflict_restore_server">Restaurar del servidor</string>
 
     <!-- Nombres cortos de meses (gráficos y fechas del historial) -->
     <string name="month_jan">Ene</string>

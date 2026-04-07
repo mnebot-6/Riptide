@@ -20,4 +20,11 @@ class InitialSyncPreparer(private val db: RiptideDatabase) {
         db.ecosystemStateDao().stampUpdatedAt(now)
         db.marineCreatureDao().stampUpdatedAt(now)
     }
+
+    suspend fun hasLocalData(): Boolean =
+        db.workBlockDao().getAll().isNotEmpty()
+
+    suspend fun clearAllLocalData() {
+        db.clearAllTables()
+    }
 }

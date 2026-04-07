@@ -27,6 +27,6 @@ class SyncTrigger(
     /** Force immediate sync (e.g., user taps "Sync Now"). */
     fun syncNow() {
         debounceJob?.cancel()
-        scope.launch { syncManager.sync() }
+        scope.launch { syncManager.sync(force = true) }
     }
 }

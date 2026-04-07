@@ -3,7 +3,6 @@ package com.mnebot.riptide.presentation.pond
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -15,14 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mnebot.riptide.domain.model.DecorationProgress
 import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
 import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
-import com.mnebot.riptide.presentation.aquarium.EcosystemScreen
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*

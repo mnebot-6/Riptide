@@ -56,4 +56,8 @@ interface UserPreferencesRepository {
     // Sync
     suspend fun getLastSyncTime(): String?
     suspend fun setLastSyncTime(time: String)
+
+    // Initial sync conflict guard
+    suspend fun hasPendingInitialSync(): Boolean
+    suspend fun setPendingInitialSync(pending: Boolean)
 }

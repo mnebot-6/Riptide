@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +25,7 @@ import com.mnebot.riptide.presentation.history.HistoryViewModel
 import com.mnebot.riptide.presentation.history.HistoryViewModelFactory
 import com.mnebot.riptide.presentation.main.MainShellScreen
 import com.mnebot.riptide.presentation.main.MainViewModel
+import com.mnebot.riptide.presentation.main.SyncConflictDialog
 import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
 import com.mnebot.riptide.presentation.settings.SettingsScreen
 import com.mnebot.riptide.presentation.stats.StatsViewModel
@@ -33,10 +35,11 @@ import android.content.ComponentName
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.collectAsState
 import com.mnebot.riptide.data.remote.AuthManager
+import com.mnebot.riptide.data.remote.RiptideApi
 import com.mnebot.riptide.data.sync.InitialSyncPreparer
 import com.mnebot.riptide.data.sync.SyncManager
+import com.mnebot.riptide.domain.repository.UserPreferencesRepository as UserPrefs
 import com.mnebot.riptide.wallpaper.RiptideWallpaperService
 import kotlinx.coroutines.launch
 
@@ -70,34 +73,52 @@ fun NavGraphBuilder.mainGraph(
     navController: NavController,
     authManager: AuthManager? = null,
     syncManager: SyncManager? = null,
-    initialSyncPreparer: InitialSyncPreparer? = null
+    initialSyncPreparer: InitialSyncPreparer? = null,
+    api: RiptideApi? = null,
+    userPreferences: UserPrefs? = null
 ) {
     composable(ROUTE_MAIN) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
-        val signInLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            scope.launch {
-                authManager?.let { am ->
-                    val loginResult = am.handleSignInResult(result.data)
-                    loginResult.onSuccess { user ->
-                        mainViewModel.onSignInCompleted(user)
-                        initialSyncPreparer?.stampAllEntities()
-                        syncManager?.sync()
-                    }
-                }
-            }
-        }
+        val signInLauncher = rememberSignInLauncher(
+            authManager, syncManager, initialSyncPreparer, mainViewModel, userPreferences
+        )
 
         // Stats ViewModel
         val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(context))
-        val statsUiState by statsViewModel.uiState.collectAsState()
+        val statsUiState by statsViewModel.uiState.collectAsStateWithLifecycle()
 
         // History ViewModel
         val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(context))
-        val historyUiState by historyViewModel.uiState.collectAsState()
+        val historyUiState by historyViewModel.uiState.collectAsStateWithLifecycle()
+
+        val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
+
+        // Sync conflict dialog
+        if (uiState.pendingSyncConflict) {
+            SyncConflictDialog(
+                onKeepLocal = {
+                    mainViewModel.dismissSyncConflict()
+                    scope.launch {
+                        api?.deleteUserData()
+                        initialSyncPreparer?.stampAllEntities()
+                        syncManager?.sync(force = true)
+                        userPreferences?.setPendingInitialSync(false)
+                    }
+                },
+                onRestoreServer = {
+                    mainViewModel.dismissSyncConflict()
+                    scope.launch {
+                        initialSyncPreparer?.clearAllLocalData()
+                        userPreferences?.setLastSyncTime("")
+                        syncManager?.sync(force = true)
+                        userPreferences?.setPendingInitialSync(false)
+                        mainViewModel.reload()
+                    }
+                }
+            )
+        }
 
         MainShellScreen(
             viewModel = mainViewModel,
@@ -156,7 +177,12 @@ fun NavGraphBuilder.mainGraph(
         popExitTransition   = { slideOutVertically(tween(300)) { it } }
     ) { backStackEntry ->
         val blockId = backStackEntry.arguments?.getString("blockId") ?: return@composable
-        val block = mainViewModel.uiState.collectAsState().value.blocks.firstOrNull { it.id == blockId }
+        val block = mainViewModel.uiState.collectAsStateWithLifecycle().value.blocks.firstOrNull { it.id == blockId }
+
+        if (block == null) {
+            LaunchedEffect(Unit) { navController.popBackStack() }
+            return@composable
+        }
 
         val context = LocalContext.current
         val database = DatabaseProvider.getDatabase(context)
@@ -180,7 +206,7 @@ fun NavGraphBuilder.mainGraph(
     }
 
     composable(ROUTE_ECOSYSTEM) {
-        val uiState by mainViewModel.uiState.collectAsState()
+        val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
         EcosystemScreen(
             ecosystemByCategory = uiState.ecosystemByCategory,
             creaturesData = uiState.creaturesData,
@@ -194,26 +220,15 @@ fun NavGraphBuilder.mainGraph(
     composable(ROUTE_SETTINGS) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
-        val uiState by mainViewModel.uiState.collectAsState()
+        val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
         val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
-            .collectAsState(initial = kotlinx.datetime.LocalTime(23, 30))
+            .collectAsStateWithLifecycle(initialValue = kotlinx.datetime.LocalTime(23, 30))
         val morningReminderTime by nightSummaryScheduler.getMorningReminderTime()
-            .collectAsState(initial = null)
+            .collectAsStateWithLifecycle(initialValue = null)
 
-        val signInLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            scope.launch {
-                authManager?.let { am ->
-                    val loginResult = am.handleSignInResult(result.data)
-                    loginResult.onSuccess { user ->
-                        mainViewModel.onSignInCompleted(user)
-                        initialSyncPreparer?.stampAllEntities()
-                        syncManager?.sync()
-                    }
-                }
-            }
-        }
+        val signInLauncher = rememberSignInLauncher(
+            authManager, syncManager, initialSyncPreparer, mainViewModel, userPreferences
+        )
 
         SettingsScreen(
             nightSummaryTime = nightSummaryTime,
@@ -246,5 +261,51 @@ fun NavGraphBuilder.mainGraph(
             onSyncNow = { mainViewModel.syncNow() },
             onNavigateBack = { navController.popBackStack() }
         )
+    }
+}
+
+@Composable
+private fun rememberSignInLauncher(
+    authManager: AuthManager?,
+    syncManager: SyncManager?,
+    initialSyncPreparer: InitialSyncPreparer?,
+    mainViewModel: MainViewModel,
+    userPreferences: UserPrefs?
+): androidx.activity.result.ActivityResultLauncher<android.content.Intent> {
+    val scope = rememberCoroutineScope()
+    return rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        scope.launch {
+            authManager?.let { am ->
+                val loginResult = am.handleSignInResult(result.data)
+                loginResult.onSuccess { signInResult ->
+                    mainViewModel.onSignInCompleted(signInResult.user)
+
+                    val hasServer = signInResult.hasExistingServerData
+                    val hasLocal = initialSyncPreparer?.hasLocalData() ?: false
+
+                    when {
+                        // Both have data → conflict dialog
+                        hasServer && hasLocal -> {
+                            userPreferences?.setPendingInitialSync(true)
+                            mainViewModel.showSyncConflict()
+                        }
+                        // Only local → stamp + push
+                        !hasServer && hasLocal -> {
+                            initialSyncPreparer?.stampAllEntities()
+                            syncManager?.sync(force = true)
+                        }
+                        // Only server → pull-only
+                        hasServer && !hasLocal -> {
+                            syncManager?.sync(force = true)
+                            mainViewModel.reload()
+                        }
+                        // Neither → just schedule periodic sync
+                        else -> { /* SyncWorker handles periodic sync */ }
+                    }
+                }
+            }
+        }
     }
 }

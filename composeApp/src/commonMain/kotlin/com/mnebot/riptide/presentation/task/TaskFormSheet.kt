@@ -47,6 +47,8 @@ private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 private val SectionLabel = Color(0xB3FFFFFF)
 
+private data class NoteTemplate(val label: String, val content: String)
+
 @Composable
 fun TaskFormSheet(
     blocks: List<WorkBlock>,
@@ -65,6 +67,7 @@ fun TaskFormSheet(
     var isRecurring by remember { mutableStateOf(forceRecurring) }
     var titleError by remember { mutableStateOf(false) }
     var blockError by remember { mutableStateOf(false) }
+    var daysError by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val initialSchedule = existingTask?.schedule as? TaskSchedule.OneTime
@@ -136,7 +139,7 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(8.dp))
             SheetTextField(
                 value = title,
-                onValueChange = { if (it.length <= 500) title = it },
+                onValueChange = { if (it.length <= 500) { title = it; titleError = false } },
                 placeholder = stringResource(Res.string.placeholder_task_title)
             )
 
@@ -276,6 +279,7 @@ fun TaskFormSheet(
                                 .clickable {
                                     if (isSelected) selectedDays.remove(dayNum)
                                     else selectedDays[dayNum] = Unit
+                                    daysError = false
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -477,7 +481,6 @@ fun TaskFormSheet(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                data class NoteTemplate(val label: String, val content: String)
                                 val templates = listOf(
                                     NoteTemplate(stringResource(Res.string.tmpl_list), "- [ ] \n- [ ] \n- [ ] \n"),
                                     NoteTemplate(stringResource(Res.string.tmpl_description), "## ${stringResource(Res.string.tmpl_description)}\n\n"),
@@ -591,6 +594,14 @@ fun TaskFormSheet(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
+            if (daysError) {
+                Text(
+                    text = stringResource(Res.string.error_days_required),
+                    color = Color(0xFFEA4335),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -628,6 +639,7 @@ fun TaskFormSheet(
                             } else {
                                 blockError = selectedBlockId == null
                                 if (title.isBlank() || selectedBlockId == null) return@clickable
+                                daysError = selectedDays.isEmpty()
                                 if (selectedDays.isEmpty()) return@clickable
                                 val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
                                 onSaveRecurring(title, selectedBlockId!!, recurringTime, Recurrence.Weekly(slots), notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
@@ -742,6 +754,7 @@ private fun SheetTextField(
             .background(CardBackground)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+        singleLine = true,
         decorationBox = { inner ->
             if (value.isEmpty()) Text(placeholder, color = SectionLabel, fontSize = 15.sp)
             inner()

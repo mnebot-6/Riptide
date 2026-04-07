@@ -121,6 +121,16 @@ class MainViewModel(
         onSyncNow?.invoke()
     }
 
+    /** Show the initial sync conflict dialog. */
+    fun showSyncConflict() {
+        _uiState.update { it.copy(pendingSyncConflict = true) }
+    }
+
+    /** Dismiss the initial sync conflict dialog. */
+    fun dismissSyncConflict() {
+        _uiState.update { it.copy(pendingSyncConflict = false) }
+    }
+
     fun selectDate(date: LocalDate) {
         _uiState.update { it.copy(selectedDate = date) }
         loadDay(date)

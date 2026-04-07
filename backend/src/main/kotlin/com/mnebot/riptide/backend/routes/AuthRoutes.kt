@@ -7,6 +7,7 @@ import com.google.api.client.json.gson.GsonFactory
 import com.mnebot.riptide.backend.db.DatabaseFactory.dbQuery
 import com.mnebot.riptide.backend.db.tables.RefreshTokensTable
 import com.mnebot.riptide.backend.db.tables.UsersTable
+import com.mnebot.riptide.backend.db.tables.WorkBlocksTable
 import com.mnebot.riptide.backend.models.*
 import com.mnebot.riptide.backend.plugins.JwtConfig
 import com.mnebot.riptide.backend.plugins.RateLimitException
@@ -99,6 +100,13 @@ fun Route.authRoutes() {
                 }
             }
 
+            // Check if user already has data on the server
+            val hasData = dbQuery {
+                WorkBlocksTable.selectAll()
+                    .where { (WorkBlocksTable.userId eq user.id) and (WorkBlocksTable.isDeleted eq false) }
+                    .limit(1).count() > 0
+            }
+
             val accessToken = JwtConfig.generateAccessToken(user.id, user.email)
             val refreshToken = JwtConfig.generateRefreshToken(user.id)
 
@@ -109,7 +117,8 @@ fun Route.authRoutes() {
                 accessToken = accessToken,
                 refreshToken = refreshToken,
                 expiresIn = JwtConfig.expirationSeconds,
-                user = user
+                user = user,
+                hasExistingData = hasData
             ))
         }
 

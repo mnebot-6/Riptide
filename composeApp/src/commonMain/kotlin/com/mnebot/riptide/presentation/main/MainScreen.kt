@@ -47,12 +47,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
 import com.mnebot.riptide.presentation.aquarium.CreatureIcon
-import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
-import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
-import com.mnebot.riptide.domain.model.MarineCreature
-import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.displayNameRes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -134,8 +129,6 @@ fun MainScreen(
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
     var quickTaskBlock by remember { mutableStateOf<WorkBlock?>(null) }
-    var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
-    val creatureFreezeState = rememberCreatureFreezeState()
 
     val scope = rememberCoroutineScope()
 
@@ -218,7 +211,7 @@ fun MainScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { contextMenuTask = null },
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { contextMenuTask = null },
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     var sheetDragY by remember { mutableFloatStateOf(0f) }
@@ -226,7 +219,7 @@ fun MainScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .offset { IntOffset(0, sheetDragY.roundToInt().coerceAtLeast(0)) }
-                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
                             .pointerInput(Unit) {
                                 detectDragGestures(
                                     onDragEnd = {
@@ -298,20 +291,6 @@ fun MainScreen(
                     }
                 }
             }
-        }
-
-        selectedCreature?.let { (creature, spec) ->
-            CreatureDetailDialog(
-                creature = creature,
-                spec = spec,
-                onDismiss = {
-                    creatureFreezeState.unfreeze(creature.species)
-                    selectedCreature = null
-                },
-                onNicknameChanged = { nickname ->
-                    viewModel.updateCreatureNickname(creature.id, nickname)
-                }
-            )
         }
 
         // Diálogo scope edición recurrente
@@ -550,14 +529,14 @@ fun MainScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { showTaskSheet = false; quickTaskBlock = null },
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { showTaskSheet = false; quickTaskBlock = null },
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     var formDragY by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(0, formDragY.roundToInt().coerceAtLeast(0)) }
-                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
                             .pointerInput(Unit) {
                                 detectDragGestures(
                                     onDragEnd = {
@@ -612,14 +591,14 @@ fun MainScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { editingTask = null; editingTaskDef = null },
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { editingTask = null; editingTaskDef = null },
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     var editDragY by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(0, editDragY.roundToInt().coerceAtLeast(0)) }
-                            .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {}
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
                             .pointerInput(Unit) {
                                 detectDragGestures(
                                     onDragEnd = {
@@ -711,9 +690,6 @@ private fun MainHeader(
             .filterKeys { it != null }
             .mapKeys { it.key!! }
     }
-    val totalTasks = allTasksToday.size
-    val completedTasks = allTasksToday.count { it.status == TaskStatus.COMPLETED }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -745,25 +721,6 @@ private fun MainHeader(
                     fontWeight = FontWeight.Bold,
                 )
 
-                // Progreso del día (X/Y hechas)
-                /* if (totalTasks > 0) {
-                    val allDone = completedTasks == totalTasks
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (allDone) Color(0x331A73E8) else CardBackground)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.msg_day_progress, completedTasks, totalTasks),
-                            color = if (allDone) Color(0xFF7EC8E3) else TextSecondary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                } */
             }
 
             // Volver a hoy (solo visible si no estamos en hoy)
@@ -1368,9 +1325,12 @@ private fun TaskCard(
                 painter = painterResource(Res.drawable.ic_file_text),
                 contentDescription = null,
                 tint = TextSecondary,
-                modifier = Modifier.size(16.dp).clickable { showNotesDialog = true }
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickable { showNotesDialog = true }
+                    .padding(6.dp)
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(2.dp))
         }
 
         // Right side: all applicable indicators shown simultaneously
@@ -1413,17 +1373,20 @@ private fun TaskCard(
                             contentDescription = null,
                             tint = TextPrimary,
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(28.dp)
                                 .clickable {
                                     if (timerState.isRunning) onTimerPause() else onTimerResume()
                                 }
+                                .padding(5.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
                         Icon(
                             painter = painterResource(Res.drawable.ic_x),
                             contentDescription = null,
                             tint = TextSecondary,
-                            modifier = Modifier.size(16.dp).clickable { onTimerCancel() }
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickable { onTimerCancel() }
+                                .padding(6.dp)
                         )
                     }
                 } else {

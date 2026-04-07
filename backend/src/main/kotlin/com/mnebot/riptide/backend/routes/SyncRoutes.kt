@@ -115,6 +115,26 @@ fun Route.syncRoutes() {
 
             call.respond(HttpStatusCode.OK, response)
         }
+
+        // DELETE /api/user-data — Hard-delete all user data (for "keep local" sync choice)
+        delete("/api/user-data") {
+            val uid = call.principal<JWTPrincipal>()!!.userId
+            rateLimitApi(uid)
+
+            dbQuery {
+                // FK order: dependents first
+                MarineCreaturesTable.deleteWhere { userId eq uid }
+                EcosystemStatesTable.deleteWhere { userId eq uid }
+                BlockStreaksTable.deleteWhere { userId eq uid }
+                DaySummariesTable.deleteWhere { userId eq uid }
+                DayTasksTable.deleteWhere { userId eq uid }
+                RecurringTaskDefsTable.deleteWhere { userId eq uid }
+                BlockCategoriesTable.deleteWhere { userId eq uid }
+                WorkBlocksTable.deleteWhere { userId eq uid }
+            }
+
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        }
     }
 }
 

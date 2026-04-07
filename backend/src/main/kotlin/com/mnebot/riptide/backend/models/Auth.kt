@@ -12,7 +12,8 @@ data class TokenResponse(
     val accessToken: String,
     val refreshToken: String,
     val expiresIn: Long,
-    val user: UserResponse
+    val user: UserResponse,
+    val hasExistingData: Boolean = false
 )
 
 @Serializable

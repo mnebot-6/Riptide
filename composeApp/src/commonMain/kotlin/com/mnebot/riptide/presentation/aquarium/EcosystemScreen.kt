@@ -304,7 +304,7 @@ private fun UnlockedCreatureCard(
                 text = stringResource(spec.rarity.displayNameRes()).uppercase(),
                 color = rarityColor(spec.rarity),
                 fontSize = 8.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
         }
@@ -363,7 +363,7 @@ private fun LockedCreatureCard(
                 text = stringResource(spec.rarity.displayNameRes()).uppercase(),
                 color = rarityColor(spec.rarity).copy(alpha = 0.5f),
                 fontSize = 8.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
         }

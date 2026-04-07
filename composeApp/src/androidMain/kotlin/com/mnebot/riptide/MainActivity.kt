@@ -74,9 +74,10 @@ class MainActivity : ComponentActivity() {
         val syncManager = SyncManager(dbForSync, api, userPreferencesRepository)
         val initialSyncPreparer = InitialSyncPreparer(dbForSync)
 
-        // Launch sync on startup if logged in
+        // Launch sync on startup if logged in and no pending conflict
         lifecycleScope.launch {
-            if (userPreferencesRepository.getAccessToken() != null) {
+            if (userPreferencesRepository.getAccessToken() != null &&
+                !userPreferencesRepository.hasPendingInitialSync()) {
                 SyncWorker.schedulePeriodic(applicationContext)
                 syncManager.sync()
             }
@@ -128,10 +129,14 @@ class MainActivity : ComponentActivity() {
             viewModel.reload()
         }
 
-        // Refresh widget whenever the app comes to the foreground
+        // Refresh widget and sync whenever the app comes to the foreground
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 WidgetUpdater.refreshAll(applicationContext)
+                if (userPreferencesRepository.getAccessToken() != null &&
+                    !userPreferencesRepository.hasPendingInitialSync()) {
+                    syncManager.sync()  // throttled — won't spam
+                }
             }
         }
 
@@ -142,7 +147,8 @@ class MainActivity : ComponentActivity() {
                 userPreferencesRepository = userPreferencesRepository,
                 authManager = authManager,
                 syncManager = syncManager,
-                initialSyncPreparer = initialSyncPreparer
+                initialSyncPreparer = initialSyncPreparer,
+                api = api
             )
         }
     }

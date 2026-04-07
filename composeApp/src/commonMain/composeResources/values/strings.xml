@@ -259,6 +259,7 @@
     <!-- TaskFormSheet — validation -->
     <string name="error_field_required">This field is required</string>
     <string name="error_block_required">Select a block to continue</string>
+    <string name="error_days_required">Select at least one day</string>
     <string name="dialog_confirm_delete_title">Delete task?</string>
     <string name="dialog_confirm_delete_body">This action cannot be undone.</string>
 
@@ -313,6 +314,12 @@
     <string name="sync_status_success">Synced</string>
     <string name="sync_status_error">Sync error</string>
     <string name="sync_status_offline">Offline</string>
+
+    <!-- Sync conflict dialog -->
+    <string name="sync_conflict_title">Existing data found</string>
+    <string name="sync_conflict_body">This account already has data on the server. What would you like to do?</string>
+    <string name="sync_conflict_keep_local">Keep local data</string>
+    <string name="sync_conflict_restore_server">Restore from server</string>
 
     <!-- Short month names (charts and history dates) -->
     <string name="month_jan">Jan</string>

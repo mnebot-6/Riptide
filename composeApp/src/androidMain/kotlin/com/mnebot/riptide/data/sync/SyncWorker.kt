@@ -28,8 +28,9 @@ class SyncWorker(
     override suspend fun doWork(): Result {
         val userPrefs = UserPreferencesRepositoryImpl(applicationContext)
 
-        // Skip if not logged in
+        // Skip if not logged in or pending initial sync decision
         if (userPrefs.getAccessToken() == null) return Result.success()
+        if (userPrefs.hasPendingInitialSync()) return Result.success()
 
         val tokenProvider = DataStoreTokenProvider(userPrefs)
         val client = ApiClient.create(tokenProvider)

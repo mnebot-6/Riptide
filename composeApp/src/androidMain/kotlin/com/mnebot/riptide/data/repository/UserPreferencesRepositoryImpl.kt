@@ -42,6 +42,7 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
         private val KEY_WALLPAPER_FPS = intPreferencesKey("wallpaper_fps")
         private val KEY_TASK_ONBOARDING_SHOWN = booleanPreferencesKey("task_creation_onboarding_shown")
+        private val KEY_PENDING_INITIAL_SYNC = booleanPreferencesKey("pending_initial_sync")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val DISABLED = -1          // sentinel for "no morning reminder"
@@ -170,6 +171,7 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
             prefs.remove(KEY_USER_NAME)
             prefs.remove(KEY_USER_AVATAR)
             prefs.remove(KEY_LAST_SYNC_TIME)
+            prefs.remove(KEY_PENDING_INITIAL_SYNC)
         }
     }
 
@@ -229,6 +231,18 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
     override suspend fun setLastSyncTime(time: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_LAST_SYNC_TIME] = time
+        }
+    }
+
+    // ── Initial sync conflict guard ────────────────────────────────────────────
+
+    override suspend fun hasPendingInitialSync(): Boolean =
+        context.dataStore.data.first()[KEY_PENDING_INITIAL_SYNC] ?: false
+
+    override suspend fun setPendingInitialSync(pending: Boolean) {
+        context.dataStore.edit { prefs ->
+            if (pending) prefs[KEY_PENDING_INITIAL_SYNC] = true
+            else prefs.remove(KEY_PENDING_INITIAL_SYNC)
         }
     }
 }
