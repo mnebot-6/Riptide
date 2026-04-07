@@ -35,6 +35,9 @@ backend/.env.local
 *.key
 *.p12
 
+# Privacy policy site (separate deploy)
+riptide-privacy/
+
 # Claude worktrees (efimeros, nunca commitear)
 .claude/worktrees/
 
