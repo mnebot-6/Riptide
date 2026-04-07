@@ -136,7 +136,7 @@ fun TaskFormSheet(
             Spacer(modifier = Modifier.height(8.dp))
             SheetTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = { if (it.length <= 500) title = it },
                 placeholder = stringResource(Res.string.placeholder_task_title)
             )
 
@@ -501,7 +501,7 @@ fun TaskFormSheet(
                             Spacer(modifier = Modifier.height(8.dp))
                             BasicTextField(
                                 value = notesText,
-                                onValueChange = { notesText = it },
+                                onValueChange = { if (it.length <= 5000) notesText = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 100.dp)

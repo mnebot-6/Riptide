@@ -18,13 +18,18 @@ fun Application.configureRouting() {
         ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
         ?: emptyList()
 
-    if (allowedHosts.isEmpty()) {
+    val isDev = appEnv.config.propertyOrNull("ktor.deployment.environment")?.getString() == "development"
+    if (allowedHosts.isEmpty() && isDev) {
         appEnv.log.warn("CORS: No allowedHosts configured — allowing all origins (dev mode)")
+    } else if (allowedHosts.isEmpty()) {
+        appEnv.log.warn("CORS: No allowedHosts configured in production — CORS will reject cross-origin requests")
     }
 
     install(CORS) {
-        if (allowedHosts.isEmpty()) {
+        if (allowedHosts.isEmpty() && isDev) {
             anyHost()
+        } else if (allowedHosts.isEmpty()) {
+            // Production with no config: no cross-origin allowed (mobile app doesn't need CORS)
         } else {
             allowedHosts.forEach { host ->
                 allowHost(host, schemes = listOf("https"))

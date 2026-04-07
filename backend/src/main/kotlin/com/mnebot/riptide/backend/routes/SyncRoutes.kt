@@ -23,6 +23,66 @@ fun Route.syncRoutes() {
             rateLimitApi(uid)
 
             val request = call.receive<SyncRequest>()
+
+            // ── Validate batch sizes ──
+            val maxBatch = 500
+            if (request.workBlocks.size > maxBatch) throw ValidationException("workBlocks exceeds max batch size of $maxBatch")
+            if (request.blockCategories.size > maxBatch) throw ValidationException("blockCategories exceeds max batch size of $maxBatch")
+            if (request.dayTasks.size > maxBatch) throw ValidationException("dayTasks exceeds max batch size of $maxBatch")
+            if (request.recurringTaskDefs.size > maxBatch) throw ValidationException("recurringTaskDefs exceeds max batch size of $maxBatch")
+            if (request.daySummaries.size > maxBatch) throw ValidationException("daySummaries exceeds max batch size of $maxBatch")
+            if (request.blockStreaks.size > maxBatch) throw ValidationException("blockStreaks exceeds max batch size of $maxBatch")
+            if (request.ecosystemStates.size > maxBatch) throw ValidationException("ecosystemStates exceeds max batch size of $maxBatch")
+            if (request.marineCreatures.size > maxBatch) throw ValidationException("marineCreatures exceeds max batch size of $maxBatch")
+
+            // ── Validate all items before any DB writes ──
+            request.workBlocks.forEach { dto ->
+                Validation.validateWorkBlock(dto.id, dto.name, dto.color, dto.icon, dto.recurrenceJson)
+            }
+            request.blockCategories.forEach { dto ->
+                Validation.validateBlockCategory(dto.blockId, dto.category)
+            }
+            request.recurringTaskDefs.forEach { dto ->
+                Validation.validateRecurringTaskDef(
+                    dto.id, dto.blockId, dto.title, dto.time, dto.recurrence,
+                    noteTemplate = dto.noteTemplate, targetCount = dto.targetCount,
+                    timerDurationMinutes = dto.timerDurationMinutes
+                )
+            }
+            request.dayTasks.forEach { dto ->
+                Validation.validateDayTask(
+                    dto.id, dto.title, dto.scheduleType, dto.blockId,
+                    dto.date, dto.time, dto.status,
+                    dto.completedAt, dto.postponedTo, dto.sourceTaskId,
+                    recurrence = dto.recurrence, notes = dto.notes,
+                    targetCount = dto.targetCount, currentCount = dto.currentCount,
+                    timerDurationMinutes = dto.timerDurationMinutes
+                )
+            }
+            request.daySummaries.forEach { dto ->
+                Validation.validateDaySummary(dto.id, dto.date, dto.feedbackMessage)
+            }
+            request.blockStreaks.forEach { dto ->
+                Validation.validateBlockStreak(
+                    dto.blockId, dto.lastActiveDate,
+                    currentStreak = dto.currentStreak, longestStreak = dto.longestStreak
+                )
+            }
+            request.ecosystemStates.forEach { dto ->
+                Validation.validateEcosystemState(
+                    dto.id, dto.category, dto.lastUpdated,
+                    totalExperience = dto.totalExperience, currentLevel = dto.currentLevel
+                )
+            }
+            request.marineCreatures.forEach { dto ->
+                Validation.validateMarineCreature(
+                    dto.id, dto.ecosystemId, dto.category, dto.species,
+                    dto.nickname, dto.unlockedAt,
+                    unlockedAtLevel = dto.unlockedAtLevel, experience = dto.experience,
+                    creatureLevel = dto.creatureLevel
+                )
+            }
+
             val since = request.lastSyncTime?.let {
                 LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME)
             }

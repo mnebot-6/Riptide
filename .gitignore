@@ -27,6 +27,11 @@ keystore.properties
 backend/.env
 backend/.env.local
 
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+
 # Claude worktrees (efimeros, nunca commitear)
 .claude/worktrees/
 

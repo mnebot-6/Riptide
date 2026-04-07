@@ -72,7 +72,10 @@ fun Route.dayTaskRoutes() {
                 Validation.validateDayTask(
                     dto.id, dto.title, dto.scheduleType, dto.blockId,
                     dto.date, dto.time, dto.status,
-                    dto.completedAt, dto.postponedTo, dto.sourceTaskId
+                    dto.completedAt, dto.postponedTo, dto.sourceTaskId,
+                    recurrence = dto.recurrence, notes = dto.notes,
+                    targetCount = dto.targetCount, currentCount = dto.currentCount,
+                    timerDurationMinutes = dto.timerDurationMinutes
                 )
 
                 dbQuery {
@@ -91,6 +94,11 @@ fun Route.dayTaskRoutes() {
                         it[sourceTaskId] = dto.sourceTaskId
                         it[hasBeenRewarded] = dto.hasBeenRewarded
                         it[notificationsEnabled] = dto.notificationsEnabled
+                        it[targetCount] = dto.targetCount
+                        it[currentCount] = dto.currentCount
+                        it[notes] = dto.notes
+                        it[timerDurationMinutes] = dto.timerDurationMinutes
+                        it[isPriority] = dto.isPriority
                         it[updatedAt] = LocalDateTime.now()
                         it[isDeleted] = false
                     }
@@ -109,7 +117,10 @@ fun Route.dayTaskRoutes() {
                 Validation.validateDayTask(
                     dto.id, dto.title, dto.scheduleType, dto.blockId,
                     dto.date, dto.time, dto.status,
-                    dto.completedAt, dto.postponedTo, dto.sourceTaskId
+                    dto.completedAt, dto.postponedTo, dto.sourceTaskId,
+                    recurrence = dto.recurrence, notes = dto.notes,
+                    targetCount = dto.targetCount, currentCount = dto.currentCount,
+                    timerDurationMinutes = dto.timerDurationMinutes
                 )
 
                 val updated = dbQuery {
@@ -128,6 +139,11 @@ fun Route.dayTaskRoutes() {
                         it[sourceTaskId] = dto.sourceTaskId
                         it[hasBeenRewarded] = dto.hasBeenRewarded
                         it[notificationsEnabled] = dto.notificationsEnabled
+                        it[targetCount] = dto.targetCount
+                        it[currentCount] = dto.currentCount
+                        it[notes] = dto.notes
+                        it[timerDurationMinutes] = dto.timerDurationMinutes
+                        it[isPriority] = dto.isPriority
                         it[updatedAt] = LocalDateTime.now()
                     }
                 }
@@ -172,6 +188,11 @@ private fun ResultRow.toDayTaskDto() = DayTaskDto(
     sourceTaskId = this[DayTasksTable.sourceTaskId],
     hasBeenRewarded = this[DayTasksTable.hasBeenRewarded],
     notificationsEnabled = this[DayTasksTable.notificationsEnabled],
+    targetCount = this[DayTasksTable.targetCount],
+    currentCount = this[DayTasksTable.currentCount],
+    notes = this[DayTasksTable.notes],
+    timerDurationMinutes = this[DayTasksTable.timerDurationMinutes],
+    isPriority = this[DayTasksTable.isPriority],
     updatedAt = this[DayTasksTable.updatedAt].toString(),
     isDeleted = this[DayTasksTable.isDeleted]
 )

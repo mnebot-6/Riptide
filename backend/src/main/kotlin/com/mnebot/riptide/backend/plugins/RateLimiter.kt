@@ -42,8 +42,8 @@ class RateLimiter(
 
 /** Global rate limiters */
 object RateLimiters {
-    /** Auth endpoints: 10 requests per minute per IP */
-    val auth = RateLimiter(maxRequests = 10, windowMs = 60_000)
+    /** Auth endpoints: 5 requests per 15 minutes per IP */
+    val auth = RateLimiter(maxRequests = 5, windowMs = 900_000)
 
     /** API endpoints: 120 requests per minute per user */
     val api = RateLimiter(maxRequests = 120, windowMs = 60_000)

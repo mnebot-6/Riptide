@@ -151,7 +151,7 @@ fun BlockFormScreen(
             Spacer(modifier = Modifier.height(8.dp))
             FormTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = { if (it.length <= 200) name = it },
                 placeholder = stringResource(Res.string.placeholder_block_name),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )

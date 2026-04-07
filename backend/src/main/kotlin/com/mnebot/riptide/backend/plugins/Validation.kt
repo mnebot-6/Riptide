@@ -21,6 +21,20 @@ object Validation {
     private const val MAX_ICON_LENGTH = 50
     private const val MAX_JSON_LENGTH = 10_000
     private const val MAX_FEEDBACK_LENGTH = 2_000
+    private const val MAX_NOTES_LENGTH = 5_000
+    private const val MAX_NOTE_TEMPLATE_LENGTH = 2_000
+
+    fun requireNonNegativeInt(value: Int, max: Int, field: String) {
+        if (value < 0 || value > max) {
+            throw ValidationException("$field must be between 0 and $max")
+        }
+    }
+
+    fun requirePositiveIntOrNull(value: Int?, max: Int, field: String) {
+        if (value != null && (value < 1 || value > max)) {
+            throw ValidationException("$field must be between 1 and $max")
+        }
+    }
 
     fun requireUuid(value: String, field: String) {
         if (!UUID_REGEX.matches(value)) {
@@ -88,7 +102,10 @@ object Validation {
     fun validateDayTask(
         id: String, title: String, scheduleType: String, blockId: String?,
         date: String?, time: String?, status: String,
-        completedAt: String?, postponedTo: String?, sourceTaskId: String?
+        completedAt: String?, postponedTo: String?, sourceTaskId: String?,
+        recurrence: String? = null, notes: String? = null,
+        targetCount: Int? = null, currentCount: Int = 0,
+        timerDurationMinutes: Int? = null
     ) {
         requireUuid(id, "id")
         requireUuidOrNull(blockId, "blockId")
@@ -101,15 +118,26 @@ object Validation {
         requireIsoDateTime(completedAt, "completedAt")
         requireIsoDateTime(postponedTo, "postponedTo")
         requireUuidOrNull(sourceTaskId, "sourceTaskId")
+        if (recurrence != null) requireMaxLength(recurrence, MAX_JSON_LENGTH, "recurrence")
+        if (notes != null) requireMaxLength(notes, MAX_NOTES_LENGTH, "notes")
+        requirePositiveIntOrNull(targetCount, 9999, "targetCount")
+        requireNonNegativeInt(currentCount, 9999, "currentCount")
+        requirePositiveIntOrNull(timerDurationMinutes, 1440, "timerDurationMinutes")
     }
 
-    fun validateRecurringTaskDef(id: String, blockId: String, title: String, time: String?, recurrence: String) {
+    fun validateRecurringTaskDef(
+        id: String, blockId: String, title: String, time: String?, recurrence: String,
+        noteTemplate: String? = null, targetCount: Int? = null, timerDurationMinutes: Int? = null
+    ) {
         requireUuid(id, "id")
         requireUuid(blockId, "blockId")
         requireNotBlank(title, "title")
         requireMaxLength(title, MAX_TITLE_LENGTH, "title")
         requireIsoTime(time, "time")
         requireMaxLength(recurrence, MAX_JSON_LENGTH, "recurrence")
+        if (noteTemplate != null) requireMaxLength(noteTemplate, MAX_NOTE_TEMPLATE_LENGTH, "noteTemplate")
+        requirePositiveIntOrNull(targetCount, 9999, "targetCount")
+        requirePositiveIntOrNull(timerDurationMinutes, 1440, "timerDurationMinutes")
     }
 
     fun validateDaySummary(id: String, date: String, feedbackMessage: String) {
@@ -118,18 +146,26 @@ object Validation {
         requireMaxLength(feedbackMessage, MAX_FEEDBACK_LENGTH, "feedbackMessage")
     }
 
-    fun validateBlockStreak(blockId: String, lastActiveDate: String) {
+    fun validateBlockStreak(blockId: String, lastActiveDate: String, currentStreak: Int = 0, longestStreak: Int = 0) {
         requireUuid(blockId, "blockId")
         requireIsoDate(lastActiveDate, "lastActiveDate")
+        requireNonNegativeInt(currentStreak, 100_000, "currentStreak")
+        requireNonNegativeInt(longestStreak, 100_000, "longestStreak")
     }
 
-    fun validateEcosystemState(id: String, category: String, lastUpdated: String) {
+    fun validateEcosystemState(id: String, category: String, lastUpdated: String, totalExperience: Int = 0, currentLevel: Int = 0) {
         requireUuid(id, "id")
         requireEnum(category, VALID_CATEGORIES, "category")
         requireIsoDateTime(lastUpdated, "lastUpdated")
+        requireNonNegativeInt(totalExperience, 10_000_000, "totalExperience")
+        requireNonNegativeInt(currentLevel, 1_000, "currentLevel")
     }
 
-    fun validateMarineCreature(id: String, ecosystemId: String, category: String, species: String, nickname: String?, unlockedAt: String) {
+    fun validateMarineCreature(
+        id: String, ecosystemId: String, category: String, species: String,
+        nickname: String?, unlockedAt: String,
+        unlockedAtLevel: Int = 0, experience: Int = 0, creatureLevel: Int = 0
+    ) {
         requireUuid(id, "id")
         requireUuid(ecosystemId, "ecosystemId")
         requireEnum(category, VALID_CATEGORIES, "category")
@@ -137,6 +173,9 @@ object Validation {
         requireMaxLength(species, MAX_ICON_LENGTH, "species")
         if (nickname != null) requireMaxLength(nickname, MAX_NICKNAME_LENGTH, "nickname")
         requireIsoDateTime(unlockedAt, "unlockedAt")
+        requireNonNegativeInt(unlockedAtLevel, 1_000, "unlockedAtLevel")
+        requireNonNegativeInt(experience, 10_000_000, "experience")
+        requireNonNegativeInt(creatureLevel, 1_000, "creatureLevel")
     }
 
     fun validateBlockCategory(blockId: String, category: String) {
