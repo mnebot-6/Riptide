@@ -8,12 +8,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,9 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,8 +38,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.domain.model.*
-import com.mnebot.riptide.presentation.aquarium.AquariumBackground
-import com.mnebot.riptide.presentation.aquarium.AquariumCreatures
 import com.mnebot.riptide.presentation.components.DatePickerDialogWrapper
 import com.mnebot.riptide.presentation.task.PostponeSheet
 import com.mnebot.riptide.presentation.task.TaskFormSheet
@@ -46,8 +47,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.LocalTime
-import kotlin.collections.mapKeys
 import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
 import com.mnebot.riptide.presentation.aquarium.CreatureIcon
 import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
@@ -55,10 +54,6 @@ import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.presentation.displayNameRes
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
@@ -124,22 +119,14 @@ fun MainScreen(
     nightSummaryScheduler: NightSummaryScheduler,
     onNavigateToCreateBlock: () -> Unit,
     onNavigateToEditBlock: (String) -> Unit,
-    onNavigateToEcosystem: () -> Unit,
-    onSetLiveWallpaper: () -> Unit,
-    onNavigateToStats: () -> Unit,
-    onNavigateToHistory: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onSignIn: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
-    val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
-        .collectAsState(initial = LocalTime(23, 30))
-    val morningReminderTime by nightSummaryScheduler.getMorningReminderTime()
-        .collectAsState(initial = null)
-    var showAquarium by remember { mutableStateOf(false) }
-    var showDrawer by remember { mutableStateOf(false) }
     var showTaskSheet by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showBlocksSheet by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<DayTask?>(null) }
     var postponingTask by remember { mutableStateOf<DayTask?>(null) }
     var contextMenuTask by remember { mutableStateOf<DayTask?>(null) }
@@ -147,66 +134,23 @@ fun MainScreen(
     var editingScopeTask by remember { mutableStateOf<DayTask?>(null) }
     var editingTaskDef by remember { mutableStateOf<RecurringTaskDef?>(null) }
     var quickTaskBlock by remember { mutableStateOf<WorkBlock?>(null) }
-    var showWallpaperDialog by remember { mutableStateOf(false) }
     var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
     val creatureFreezeState = rememberCreatureFreezeState()
 
-    val drawerOffsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(showDrawer, uiState.selectedDate) {
-                detectDragGestures(
-                    onDragEnd = {
-                        scope.launch {
-                            if (!showDrawer && drawerOffsetY.value > 0.3f) {
-                                drawerOffsetY.animateTo(1f, animationSpec = tween(250))
-                                showDrawer = true
-                            } else if (showDrawer && drawerOffsetY.value < 0.7f) {
-                                drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                                showDrawer = false
-                            } else {
-                                drawerOffsetY.animateTo(
-                                    if (showDrawer) 1f else 0f,
-                                    animationSpec = tween(250)
-                                )
-                            }
-                        }
-                    },
-                    onDragCancel = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(
-                                if (showDrawer) 1f else 0f,
-                                animationSpec = tween(250)
-                            )
-                        }
-                    }
-                ) { _, dragAmount ->
-                    val isVertical = kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x)
-                    val isHorizontal = kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y)
+            .pointerInput(uiState.selectedDate) {
+                detectHorizontalDragGestures { _, dragAmount ->
                     when {
-                        isVertical && !showDrawer && dragAmount.y > 0 -> {
-                            scope.launch {
-                                drawerOffsetY.snapTo(
-                                    (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
-                                )
-                            }
-                        }
-                        isVertical && showDrawer && dragAmount.y < 0 -> {
-                            scope.launch {
-                                drawerOffsetY.snapTo(
-                                    (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
-                                )
-                            }
-                        }
-                        isHorizontal && !showDrawer && dragAmount.x < -40 -> {
+                        dragAmount < -40 -> {
                             scope.launch {
                                 viewModel.selectDate(uiState.selectedDate.plus(1, DateTimeUnit.DAY))
                             }
                         }
-                        isHorizontal && !showDrawer && dragAmount.x > 40 -> {
+                        dragAmount > 40 -> {
                             scope.launch {
                                 viewModel.selectDate(uiState.selectedDate.minus(1, DateTimeUnit.DAY))
                             }
@@ -215,84 +159,54 @@ fun MainScreen(
                 }
             }
     ) {
-        AquariumBackground()
-        AquariumCreatures(
-            ecosystemByCategory = uiState.ecosystemByCategory,
-            creatureLevelBySpecies = uiState.creatureLevelBySpecies,
-            creaturesData = uiState.creaturesData,
-            freezeState = creatureFreezeState,
-            onCreatureTap = { creature, spec ->
-                selectedCreature = creature to spec
-            }
-        )
+        // Aquarium background is rendered by MainShellScreen
 
-        when {
-            showAquarium -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-                    FloatingActionButton(
-                        onClick = { showAquarium = false },
-                        modifier = Modifier.padding(24.dp),
-                        containerColor = CardBackground,
-                        contentColor = TextPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                    ) { Icon(painter = painterResource(Res.drawable.ic_x), contentDescription = stringResource(Res.string.a11y_close_aquarium), modifier = Modifier.size(20.dp)) }
-                }
-            }
-            else -> {
-                val sorted = sortedBlocks(uiState.blocks, uiState.tasksByBlock, uiState.selectedDate)
+        val sorted = sortedBlocks(uiState.blocks, uiState.tasksByBlock, uiState.selectedDate)
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Header fijo
-                    MainHeader(
-                        selectedDate = uiState.selectedDate,
-                        today = currentDate(),
-                        tasksByBlock = uiState.tasksByBlock,
-                        globalStreak = uiState.globalStreak,
-                        onCalendarClick = { showDatePicker = true },
-                        onTodayClick = { viewModel.selectDate(currentDate()) },
-                        onAddTaskClick = { showTaskSheet = true },
-                        onDrawerClick = {
-                            scope.launch {
-                                drawerOffsetY.animateTo(1f, animationSpec = tween(250))
-                                showDrawer = true
-                            }
-                        },
-                        onDateSelected = { viewModel.selectDate(it) },
-                        onWeekChange = { viewModel.selectDate(it) }
-                    )
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header fijo
+            MainHeader(
+                selectedDate = uiState.selectedDate,
+                today = currentDate(),
+                tasksByBlock = uiState.tasksByBlock,
+                globalStreak = uiState.globalStreak,
+                onCalendarClick = { showDatePicker = true },
+                onTodayClick = { viewModel.selectDate(currentDate()) },
+                onAddTaskClick = { showTaskSheet = true },
+                onBlocksClick = { showBlocksSheet = true },
+                onSettingsClick = onNavigateToSettings,
+                onDateSelected = { viewModel.selectDate(it) },
+                onWeekChange = { viewModel.selectDate(it) }
+            )
 
-                    val timerStates by viewModel.timerStates.collectAsState()
+            val timerStates by viewModel.timerStates.collectAsState()
 
-                    // Contenido scrollable
-                    MainContent(
-                        blocks = sorted,
-                        tasksByBlock = uiState.tasksByBlock,
-                        selectedDate = uiState.selectedDate,
-                        isLoading = uiState.isLoading,
-                        error = uiState.error,
-                        onTaskToggle = { viewModel.toggleTaskCompleted(it) },
-                        onTaskLongPress = { contextMenuTask = it },
-                        onBlockHeaderLongPress = { block ->
-                            quickTaskBlock = block
-                            showTaskSheet = true
-                        },
-                        streaksByBlock = uiState.streaksByBlock,
-                        onAquariumClick = { showAquarium = true },
-                        onIncrement = { viewModel.incrementTaskCount(it) },
-                        onDecrement = { viewModel.decrementTaskCount(it) },
-                        onPriorityToggle = { viewModel.toggleTaskPriority(it) },
-                        timerStates = timerStates,
-                        onTimerStart = { task ->
-                            task.timerDurationMinutes?.let { viewModel.startTimer(task.id, it) }
-                        },
-                        onTimerPause = { viewModel.pauseTimer(it) },
-                        onTimerResume = { viewModel.resumeTimer(it) },
-                        onTimerCancel = { viewModel.cancelTimer(it) },
-                        onNotesChanged = { task, notes -> viewModel.updateTaskNotes(task, notes) }
-                    )
-                }
-            }
+            // Contenido scrollable
+            MainContent(
+                blocks = sorted,
+                tasksByBlock = uiState.tasksByBlock,
+                selectedDate = uiState.selectedDate,
+                isLoading = uiState.isLoading,
+                error = uiState.error,
+                onTaskToggle = { viewModel.toggleTaskCompleted(it) },
+                onTaskLongPress = { contextMenuTask = it },
+                onBlockHeaderLongPress = { block ->
+                    quickTaskBlock = block
+                    showTaskSheet = true
+                },
+                streaksByBlock = uiState.streaksByBlock,
+                onIncrement = { viewModel.incrementTaskCount(it) },
+                onDecrement = { viewModel.decrementTaskCount(it) },
+                onPriorityToggle = { viewModel.toggleTaskPriority(it) },
+                timerStates = timerStates,
+                onTimerStart = { task ->
+                    task.timerDurationMinutes?.let { viewModel.startTimer(task.id, it) }
+                },
+                onTimerPause = { viewModel.pauseTimer(it) },
+                onTimerResume = { viewModel.resumeTimer(it) },
+                onTimerCancel = { viewModel.cancelTimer(it) },
+                onNotesChanged = { task, notes -> viewModel.updateTaskNotes(task, notes) }
+            )
         }
 
         // Menú contextual — BottomSheet
@@ -599,133 +513,20 @@ fun MainScreen(
             }
         }
 
-        // Drawer
-        if (showDrawer || drawerOffsetY.value > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f * drawerOffsetY.value))
-                    .clickable {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                    }
+        // Blocks management bottom sheet
+        if (showBlocksSheet) {
+            BlocksBottomSheet(
+                blocks = uiState.blocks,
+                onAddBlock = {
+                    showBlocksSheet = false
+                    onNavigateToCreateBlock()
+                },
+                onEditBlock = { blockId ->
+                    showBlocksSheet = false
+                    onNavigateToEditBlock(blockId)
+                },
+                onDismiss = { showBlocksSheet = false }
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        translationY = -size.height * (1f - drawerOffsetY.value)
-                    }
-                    .pointerInput(showDrawer) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                scope.launch {
-                                    if (drawerOffsetY.value < 0.7f) {
-                                        drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                                        showDrawer = false
-                                    } else {
-                                        drawerOffsetY.animateTo(1f, animationSpec = tween(250))
-                                    }
-                                }
-                            },
-                            onDragCancel = {
-                                scope.launch {
-                                    drawerOffsetY.animateTo(
-                                        if (showDrawer) 1f else 0f,
-                                        animationSpec = tween(250)
-                                    )
-                                }
-                            }
-                        ) { _, dragAmount ->
-                            val isVertical = kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x)
-                            if (isVertical && dragAmount.y < 0) {
-                                scope.launch {
-                                    drawerOffsetY.snapTo(
-                                        (drawerOffsetY.value + dragAmount.y / 600f).coerceIn(0f, 1f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-            ) {
-                MainDrawer(
-                    blocks = uiState.blocks,
-                    nightSummaryTime = nightSummaryTime,
-                    morningReminderTime = morningReminderTime,
-                    onAddBlock = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onNavigateToCreateBlock()
-                    },
-                    onEditBlock = { blockId ->
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onNavigateToEditBlock(blockId)
-                    },
-                    onNightSummaryTimeChanged = { time ->
-                        nightSummaryScheduler.scheduleWorker(time)
-                        viewModel.updateNightSummaryTime(time)
-                    },
-                    onMorningReminderTimeChanged = { time ->
-                        scope.launch { nightSummaryScheduler.setMorningReminderTime(time) }
-                        nightSummaryScheduler.scheduleMorningReminder(time)
-                    },
-                    onNavigateToEcosystem = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onNavigateToEcosystem()
-                    },
-                    onSetLiveWallpaper = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        showWallpaperDialog = true
-                    },
-                    onNavigateToStats = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onNavigateToStats()
-                    },
-                    onNavigateToHistory = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onNavigateToHistory()
-                    },
-                    loggedInUser = uiState.loggedInUser,
-                    syncStatus = uiState.syncStatus,
-                    onSignIn = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        onSignIn()
-                    },
-                    onSignOut = {
-                        scope.launch {
-                            drawerOffsetY.animateTo(0f, animationSpec = tween(250))
-                            showDrawer = false
-                        }
-                        viewModel.signOut()
-                    },
-                    onSyncNow = { viewModel.syncNow() },
-                    wallpaperFps = uiState.wallpaperFps,
-                    onWallpaperFpsChanged = { viewModel.setWallpaperFps(it) },
-                    onResetOnboarding = {}
-                )
-            }
         }
 
         // DatePicker para ir a día concreto
@@ -737,64 +538,6 @@ fun MainScreen(
                     showDatePicker = false
                 },
                 onDismiss = { showDatePicker = false }
-            )
-        }
-
-        // Wallpaper FPS quality dialog
-        if (showWallpaperDialog) {
-            var selectedFps by remember { mutableIntStateOf(uiState.wallpaperFps) }
-            AlertDialog(
-                onDismissRequest = { showWallpaperDialog = false },
-                containerColor = Color(0xFF1B3A6B),
-                title = { Text(stringResource(Res.string.wallpaper_quality_title), color = TextPrimary, fontWeight = FontWeight.SemiBold) },
-                text = {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(15, 30, 60).forEach { fps ->
-                                val isSelected = selectedFps == fps
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) Color(0xFF1A73E8) else Color(0x33FFFFFF))
-                                        .clickable { selectedFps = fps }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        "${fps} fps",
-                                        color = if (isSelected) TextPrimary else TextSecondary,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            stringResource(Res.string.wallpaper_quality_hint),
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.setWallpaperFps(selectedFps)
-                        showWallpaperDialog = false
-                        onSetLiveWallpaper()
-                    }) {
-                        Text(stringResource(Res.string.wallpaper_quality_apply), color = Color(0xFF1A73E8), fontWeight = FontWeight.SemiBold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showWallpaperDialog = false }) {
-                        Text(stringResource(Res.string.btn_cancel), color = TextSecondary)
-                    }
-                }
             )
         }
 
@@ -951,7 +694,8 @@ private fun MainHeader(
     onCalendarClick: () -> Unit,
     onTodayClick: () -> Unit,
     onAddTaskClick: () -> Unit,
-    onDrawerClick: () -> Unit,
+    onBlocksClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onWeekChange: (LocalDate) -> Unit
 ) {
@@ -1056,7 +800,9 @@ private fun MainHeader(
             Spacer(modifier = Modifier.width(4.dp))
             HeaderIconButton(painter = painterResource(Res.drawable.ic_plus), contentDescription = stringResource(Res.string.a11y_add_task), onClick = onAddTaskClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(painter = painterResource(Res.drawable.ic_waves), contentDescription = stringResource(Res.string.a11y_open_menu), onClick = onDrawerClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_sliders), contentDescription = stringResource(Res.string.a11y_manage_blocks), onClick = onBlocksClick)
+            Spacer(modifier = Modifier.width(4.dp))
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_settings), contentDescription = stringResource(Res.string.a11y_open_settings), onClick = onSettingsClick)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -1101,7 +847,6 @@ private fun MainContent(
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
     onBlockHeaderLongPress: (WorkBlock) -> Unit,
-    onAquariumClick: () -> Unit,
     streaksByBlock: Map<String, Int>,
     onIncrement: (DayTask) -> Unit = {},
     onDecrement: (DayTask) -> Unit = {},
@@ -1140,7 +885,7 @@ private fun MainContent(
             else -> LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 80.dp),
+                contentPadding = PaddingValues(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 72.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 val allUnassigned = sortedTasks(tasksByBlock[null] ?: emptyList())
@@ -1222,14 +967,6 @@ private fun MainContent(
             }
         }
 
-        FloatingActionButton(
-            onClick = onAquariumClick,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = CardBackground,
-            contentColor = TextPrimary,
-            shape = CircleShape,
-            elevation = FloatingActionButtonDefaults.elevation(0.dp)
-        ) { Icon(painter = painterResource(Res.drawable.ic_fish), contentDescription = stringResource(Res.string.a11y_view_aquarium), modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -1257,6 +994,89 @@ private fun ContextMenuItem(
             Spacer(Modifier.width(10.dp))
         }
         Text(text = label, color = tint, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun BlocksBottomSheet(
+    blocks: List<WorkBlock>,
+    onAddBlock: () -> Unit,
+    onEditBlock: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() },
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+                    .background(
+                        Brush.verticalGradient(listOf(OceanDeep, OceanMid)),
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    )
+                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp, bottom = 32.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x55FFFFFF))
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(Res.string.section_blocks),
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    blocks.forEach { block ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onEditBlock(block.id) }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(block.icon, fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(text = block.name, color = TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                            Text("\u203A", color = TextSecondary, fontSize = 20.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAddBlock() }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_plus),
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(stringResource(Res.string.btn_add_block), color = TextSecondary, fontSize = 15.sp)
+                    }
+                }
+            }
+        }
     }
 }
 

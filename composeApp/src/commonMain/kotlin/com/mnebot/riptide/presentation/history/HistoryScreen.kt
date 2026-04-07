@@ -46,7 +46,7 @@ private val ChipBorder     = Color(0x44FFFFFF)
 @Composable
 fun HistoryScreen(
     uiState: HistoryUiState,
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     onSearchQueryChanged: (String) -> Unit,
     onBlockFilterChanged: (String?) -> Unit
 ) {
@@ -72,14 +72,16 @@ fun HistoryScreen(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(Res.string.btn_back),
-                    color = TextSecondary,
-                    fontSize = 20.sp,
-                    modifier = Modifier
-                        .clickable { onNavigateBack() }
-                        .padding(end = 16.dp, top = 4.dp, bottom = 4.dp)
-                )
+                if (onNavigateBack != null) {
+                    Text(
+                        text = stringResource(Res.string.btn_back),
+                        color = TextSecondary,
+                        fontSize = 20.sp,
+                        modifier = Modifier
+                            .clickable { onNavigateBack() }
+                            .padding(end = 16.dp, top = 4.dp, bottom = 4.dp)
+                    )
+                }
                 Text(
                     text = stringResource(Res.string.title_history),
                     color = TextPrimary,

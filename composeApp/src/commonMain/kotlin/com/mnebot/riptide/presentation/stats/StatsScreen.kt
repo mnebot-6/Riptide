@@ -53,7 +53,7 @@ private fun completionColor(pct: Float): Color = when {
 fun StatsScreen(
     uiState: StatsUiState,
     onRangeSelected: (StatsRange) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val today = currentDate()
     val days = when (uiState.range) {
@@ -86,14 +86,16 @@ fun StatsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(Res.string.btn_back),
-                    color = TextSecondary,
-                    fontSize = 20.sp,
-                    modifier = Modifier
-                        .clickable { onNavigateBack() }
-                        .padding(end = 16.dp, top = 4.dp, bottom = 4.dp)
-                )
+                if (onNavigateBack != null) {
+                    Text(
+                        text = stringResource(Res.string.btn_back),
+                        color = TextSecondary,
+                        fontSize = 20.sp,
+                        modifier = Modifier
+                            .clickable { onNavigateBack() }
+                            .padding(end = 16.dp, top = 4.dp, bottom = 4.dp)
+                    )
+                }
                 Text(
                     text = stringResource(Res.string.title_stats),
                     color = TextPrimary,

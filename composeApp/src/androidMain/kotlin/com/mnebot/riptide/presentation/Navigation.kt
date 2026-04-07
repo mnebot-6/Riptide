@@ -20,13 +20,12 @@ import com.mnebot.riptide.presentation.block.BlockFormResult
 import com.mnebot.riptide.presentation.block.BlockFormScreen
 import com.mnebot.riptide.presentation.block.BlockFormViewModel
 import com.mnebot.riptide.presentation.block.BlockFormViewModelFactory
-import com.mnebot.riptide.presentation.history.HistoryScreen
 import com.mnebot.riptide.presentation.history.HistoryViewModel
 import com.mnebot.riptide.presentation.history.HistoryViewModelFactory
-import com.mnebot.riptide.presentation.main.MainScreen
+import com.mnebot.riptide.presentation.main.MainShellScreen
 import com.mnebot.riptide.presentation.main.MainViewModel
 import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
-import com.mnebot.riptide.presentation.stats.StatsScreen
+import com.mnebot.riptide.presentation.settings.SettingsScreen
 import com.mnebot.riptide.presentation.stats.StatsViewModel
 import com.mnebot.riptide.presentation.stats.StatsViewModelFactory
 import android.app.WallpaperManager
@@ -46,8 +45,7 @@ const val ROUTE_MAIN = "main"
 const val ROUTE_BLOCK_CREATE = "block/create"
 const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
 const val ROUTE_ECOSYSTEM = "ecosystem"
-const val ROUTE_STATS = "stats"
-const val ROUTE_HISTORY = "history"
+const val ROUTE_SETTINGS = "settings"
 
 fun NavGraphBuilder.onboardingGraph(
     userPreferencesRepository: UserPreferencesRepository,
@@ -93,25 +91,28 @@ fun NavGraphBuilder.mainGraph(
             }
         }
 
-        MainScreen(
+        // Stats ViewModel
+        val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(context))
+        val statsUiState by statsViewModel.uiState.collectAsState()
+
+        // History ViewModel
+        val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(context))
+        val historyUiState by historyViewModel.uiState.collectAsState()
+
+        MainShellScreen(
             viewModel = mainViewModel,
             nightSummaryScheduler = nightSummaryScheduler,
+            statsUiState = statsUiState,
+            historyUiState = historyUiState,
             onNavigateToCreateBlock = { navController.navigate(ROUTE_BLOCK_CREATE) },
             onNavigateToEditBlock = { blockId ->
                 navController.navigate("block/edit/$blockId")
             },
             onNavigateToEcosystem = { navController.navigate(ROUTE_ECOSYSTEM) },
-            onSetLiveWallpaper = {
-                val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                    putExtra(
-                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                        ComponentName(context, RiptideWallpaperService::class.java)
-                    )
-                }
-                context.startActivity(intent)
-            },
-            onNavigateToStats = { navController.navigate(ROUTE_STATS) },
-            onNavigateToHistory = { navController.navigate(ROUTE_HISTORY) },
+            onNavigateToSettings = { navController.navigate(ROUTE_SETTINGS) },
+            onRangeSelected = { range -> statsViewModel.selectRange(range) },
+            onSearchQueryChanged = historyViewModel::setSearchQuery,
+            onBlockFilterChanged = historyViewModel::setBlockFilter,
             onSignIn = {
                 authManager?.let { am ->
                     signInLauncher.launch(am.getSignInIntent(context))
@@ -190,26 +191,60 @@ fun NavGraphBuilder.mainGraph(
         )
     }
 
-    composable(ROUTE_STATS) {
+    composable(ROUTE_SETTINGS) {
         val context = LocalContext.current
-        val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(context))
-        val uiState by statsViewModel.uiState.collectAsState()
-        StatsScreen(
-            uiState = uiState,
-            onRangeSelected = { range -> statsViewModel.selectRange(range) },
-            onNavigateBack = { navController.popBackStack() }
-        )
-    }
+        val scope = rememberCoroutineScope()
+        val uiState by mainViewModel.uiState.collectAsState()
+        val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
+            .collectAsState(initial = kotlinx.datetime.LocalTime(23, 30))
+        val morningReminderTime by nightSummaryScheduler.getMorningReminderTime()
+            .collectAsState(initial = null)
 
-    composable(ROUTE_HISTORY) {
-        val context = LocalContext.current
-        val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(context))
-        val uiState by historyViewModel.uiState.collectAsState()
-        HistoryScreen(
-            uiState = uiState,
-            onNavigateBack = { navController.popBackStack() },
-            onSearchQueryChanged = historyViewModel::setSearchQuery,
-            onBlockFilterChanged = historyViewModel::setBlockFilter
+        val signInLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            scope.launch {
+                authManager?.let { am ->
+                    val loginResult = am.handleSignInResult(result.data)
+                    loginResult.onSuccess { user ->
+                        mainViewModel.onSignInCompleted(user)
+                        initialSyncPreparer?.stampAllEntities()
+                        syncManager?.sync()
+                    }
+                }
+            }
+        }
+
+        SettingsScreen(
+            nightSummaryTime = nightSummaryTime,
+            morningReminderTime = morningReminderTime,
+            onNightSummaryTimeChanged = { time ->
+                nightSummaryScheduler.scheduleWorker(time)
+                mainViewModel.updateNightSummaryTime(time)
+            },
+            onMorningReminderTimeChanged = { time ->
+                scope.launch { nightSummaryScheduler.setMorningReminderTime(time) }
+                nightSummaryScheduler.scheduleMorningReminder(time)
+            },
+            onSetLiveWallpaper = {
+                val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                    putExtra(
+                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                        ComponentName(context, RiptideWallpaperService::class.java)
+                    )
+                }
+                context.startActivity(intent)
+            },
+            loggedInUser = uiState.loggedInUser,
+            syncStatus = uiState.syncStatus,
+            onSignIn = {
+                authManager?.let { am ->
+                    signInLauncher.launch(am.getSignInIntent(context))
+                }
+            },
+            onSignOut = { mainViewModel.signOut() },
+            onSyncNow = { mainViewModel.syncNow() },
+            onNavigateBack = { navController.popBackStack() }
         )
     }
 }

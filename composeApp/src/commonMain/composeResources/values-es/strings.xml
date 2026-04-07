@@ -361,4 +361,14 @@
 
     <!-- Reset onboarding -->
     <string name="btn_reset_onboarding">Reiniciar tutorial</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_today">Hoy</string>
+    <string name="tab_pond">Estanque</string>
+    <string name="tab_progress">Progreso</string>
+
+    <!-- Settings screen -->
+    <string name="title_settings">Ajustes</string>
+    <string name="a11y_open_settings">Abrir ajustes</string>
+    <string name="a11y_manage_blocks">Gestionar bloques</string>
 </resources>
