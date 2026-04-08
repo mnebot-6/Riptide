@@ -12,13 +12,14 @@ data class ErrorResponse(val error: String, val status: Int)
 fun Application.configureStatusPages() {
     install(StatusPages) {
         exception<ValidationException> { call, cause ->
+            call.application.environment.log.warn("Validation error [${call.request.local.method.value} ${call.request.local.uri}]: ${cause.message}")
             call.respond(
                 HttpStatusCode.BadRequest,
                 ErrorResponse(cause.message ?: "Validation error", 400)
             )
         }
-        exception<IllegalArgumentException> { call, _ ->
-            // Never leak internal exception messages to client
+        exception<IllegalArgumentException> { call, cause ->
+            call.application.environment.log.warn("Bad request (IllegalArgument) [${call.request.local.method.value} ${call.request.local.uri}]: ${cause.message}")
             call.respond(
                 HttpStatusCode.BadRequest,
                 ErrorResponse("Invalid request", 400)

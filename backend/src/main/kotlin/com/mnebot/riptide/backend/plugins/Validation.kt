@@ -12,7 +12,7 @@ object Validation {
     private val VALID_STATUSES = setOf("PENDING", "COMPLETED", "EXPIRED", "POSTPONED")
     private val VALID_CATEGORIES = setOf(
         "FISH", "FLORA", "CRUSTACEAN", "MOLLUSK", "PELAGIC",
-        "CEPHALOPOD", "REPTILE", "MAMMAL", "DECORATION"
+        "CEPHALOPOD", "REPTILE", "MAMMAL", "DECORATION", "COMPANION"
     )
 
     private const val MAX_TITLE_LENGTH = 500
