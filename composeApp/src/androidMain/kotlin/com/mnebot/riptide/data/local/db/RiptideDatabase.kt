@@ -7,6 +7,22 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mnebot.riptide.data.local.dao.*
 import com.mnebot.riptide.data.local.entity.*
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("""
+            CREATE TABLE IF NOT EXISTS personal_dates (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                date TEXT NOT NULL,
+                type TEXT NOT NULL,
+                recurrence TEXT NOT NULL,
+                notificationsEnabled INTEGER NOT NULL DEFAULT 0,
+                updatedAt TEXT NOT NULL DEFAULT ''
+            )
+        """.trimIndent())
+    }
+}
+
 val MIGRATION_12_13 = object : Migration(12, 13) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // DayTask: contable, notas, timer, prioridad
@@ -67,9 +83,10 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         DaySummaryEntity::class,
         BlockStreakEntity::class,
         EcosystemStateEntity::class,
-        MarineCreatureEntity::class
+        MarineCreatureEntity::class,
+        PersonalDateEntity::class
     ],
-    version = 13
+    version = 14
 )
 
 abstract class RiptideDatabase : RoomDatabase() {
@@ -81,4 +98,5 @@ abstract class RiptideDatabase : RoomDatabase() {
     abstract fun blockStreakDao(): BlockStreakDao
     abstract fun ecosystemStateDao(): EcosystemStateDao
     abstract fun marineCreatureDao(): MarineCreatureDao
+    abstract fun personalDateDao(): PersonalDateDao
 }

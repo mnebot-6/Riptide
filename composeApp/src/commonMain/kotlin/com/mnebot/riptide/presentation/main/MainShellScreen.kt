@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.mnebot.riptide.NightSummaryScheduler
 import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.model.SyncStatus
@@ -16,6 +17,9 @@ import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.rememberCreatureFreezeState
+import com.mnebot.riptide.presentation.calendar.CalendarTabContent
+import com.mnebot.riptide.presentation.calendar.CalendarUiState
+import com.mnebot.riptide.domain.model.PersonalDate
 import com.mnebot.riptide.presentation.history.HistoryUiState
 import com.mnebot.riptide.presentation.navigation.BottomNavTab
 import com.mnebot.riptide.presentation.navigation.RiptideBottomBar
@@ -37,7 +41,11 @@ fun MainShellScreen(
     onRangeSelected: (StatsRange) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onBlockFilterChanged: (String?) -> Unit,
-    onSignIn: () -> Unit = {}
+    onSignIn: () -> Unit = {},
+    calendarUiState: CalendarUiState = CalendarUiState(),
+    onCalendarMonthChanged: (Int, Int) -> Unit = { _, _ -> },
+    onAddPersonalDate: () -> Unit = {},
+    onDeletePersonalDate: (String) -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(BottomNavTab.TODAY) }
     val creatureFreezeState = rememberCreatureFreezeState()
@@ -47,7 +55,7 @@ fun MainShellScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Aquarium background — always rendered for TODAY and POND tabs
         if (selectedTab == BottomNavTab.TODAY || selectedTab == BottomNavTab.POND) {
-            AquariumBackground()
+            AquariumBackground(biomeTheme = uiState.selectedBiome)
             AquariumCreatures(
                 ecosystemByCategory = uiState.ecosystemByCategory,
                 creatureLevelBySpecies = uiState.creatureLevelBySpecies,
@@ -57,7 +65,8 @@ fun MainShellScreen(
                     if (selectedTab == BottomNavTab.POND) {
                         pondSelectedCreature = creature to spec
                     }
-                }
+                },
+                categoryFilter = if (selectedTab == BottomNavTab.POND) uiState.selectedPond else null
             )
         }
 
@@ -96,6 +105,12 @@ fun MainShellScreen(
                         viewModel.updateCreatureNickname(creatureId, nickname)
                     },
                     onNavigateToEcosystem = onNavigateToEcosystem
+                )
+                BottomNavTab.CALENDAR -> CalendarTabContent(
+                    uiState = calendarUiState,
+                    onMonthChanged = onCalendarMonthChanged,
+                    onAddPersonalDate = onAddPersonalDate,
+                    onDeletePersonalDate = onDeletePersonalDate
                 )
                 BottomNavTab.PROGRESS -> ProgressTabContent(
                     statsUiState = statsUiState,

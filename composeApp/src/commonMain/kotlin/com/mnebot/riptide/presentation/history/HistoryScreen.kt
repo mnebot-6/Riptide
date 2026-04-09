@@ -65,11 +65,11 @@ fun HistoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                .then(if (onNavigateBack != null) Modifier.statusBarsPadding() else Modifier)
         ) {
             // Header
             Row(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = if (onNavigateBack != null) 16.dp else 0.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (onNavigateBack != null) {
@@ -151,7 +151,7 @@ fun HistoryScreen(
                                 blocksById = blocksById
                             )
                         }
-                        item { Spacer(Modifier.height(24.dp)) }
+                        item { Spacer(Modifier.height(80.dp)) }
                     }
                 }
             }

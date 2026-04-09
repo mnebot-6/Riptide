@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.stats
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,10 +78,10 @@ fun StatsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                .then(if (onNavigateBack != null) Modifier.statusBarsPadding() else Modifier)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(top = 16.dp, bottom = 40.dp)
+                .padding(top = if (onNavigateBack != null) 16.dp else 0.dp, bottom = 80.dp)
         ) {
             // Header
             Row(
@@ -446,7 +448,36 @@ private fun CompletionBarChart(
         }?.coerceAtLeast(1) ?: 1
     } else 0
 
+    // Tooltip state: index of selected bar, or -1
+    var selectedBarIdx by remember { mutableIntStateOf(-1) }
+
     Column(modifier = modifier) {
+        // Tooltip display
+        if (selectedBarIdx in dates.indices) {
+            val selDate = dates[selectedBarIdx]
+            val selSummary = summaryByDate[selDate]
+            val completed = selSummary?.tasksCompleted ?: 0
+            val total = selSummary?.tasksTotal ?: 0
+            val pct = if (total > 0) (completed.toFloat() / total * 100).toInt() else 0
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${selDate.day}/${selDate.month.ordinal + 1} — $completed/$total ($pct%)",
+                    color = TextPrimary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xAA1A73E8))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
             // Y-axis labels
             Column(
@@ -464,7 +495,18 @@ private fun CompletionBarChart(
                 }
             }
 
-            Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .pointerInput(dates.size) {
+                        detectTapGestures { offset ->
+                            val barSpacing = size.width.toFloat() / dates.size
+                            val tappedIdx = (offset.x / barSpacing).toInt().coerceIn(0, dates.size - 1)
+                            selectedBarIdx = if (selectedBarIdx == tappedIdx) -1 else tappedIdx
+                        }
+                    }
+            ) {
                 val barCount = dates.size
                 val totalWidth = size.width
                 val chartHeight = size.height
@@ -645,7 +687,31 @@ private fun MonthlyTrendChart(
         monthlyCompleted.values.maxOrNull()?.coerceAtLeast(1) ?: 1
     } else 0
 
+    var selectedIdx by remember { mutableIntStateOf(-1) }
+
     Column(modifier = modifier) {
+        // Tooltip
+        if (selectedIdx in trend.indices) {
+            val stat = trend[selectedIdx]
+            val completed = monthlyCompleted[stat.yearMonth] ?: 0
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${stat.label} — ${(stat.completionRate * 100).toInt()}%" +
+                            if (isAbsolute) " ($completed)" else "",
+                    color = TextPrimary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xAA1A73E8))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // Y-axis labels
             Column(
@@ -663,7 +729,19 @@ private fun MonthlyTrendChart(
                 }
             }
 
-            Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .pointerInput(trend.size) {
+                        detectTapGestures { offset ->
+                            if (trend.isEmpty()) return@detectTapGestures
+                            val barSpacing = size.width.toFloat() / trend.size
+                            val tappedIdx = (offset.x / barSpacing).toInt().coerceIn(0, trend.size - 1)
+                            selectedIdx = if (selectedIdx == tappedIdx) -1 else tappedIdx
+                        }
+                    }
+            ) {
                 val barCount = trend.size
                 if (barCount == 0) return@Canvas
                 val totalWidth = size.width

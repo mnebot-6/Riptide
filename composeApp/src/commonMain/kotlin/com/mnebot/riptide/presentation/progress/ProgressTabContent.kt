@@ -10,6 +10,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,9 +23,11 @@ import com.mnebot.riptide.presentation.stats.StatsUiState
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
+private val OceanDeep = Color(0xFF0A1628)
+private val OceanMid = Color(0xFF1B3A6B)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0x80FFFFFF)
-private val CardBackground = Color(0x44FFFFFF)
+private val CardBackground = Color(0x22FFFFFF)
 private val SelectedBackground = Color(0xFF1A73E8)
 
 enum class ProgressSubTab { STATS, HISTORY }
@@ -40,7 +43,11 @@ fun ProgressTabContent(
 ) {
     var selectedSubTab by rememberSaveable { mutableStateOf(ProgressSubTab.STATS) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(OceanDeep, OceanMid)))
+    ) {
         // Sub-tab toggle
         Row(
             modifier = Modifier

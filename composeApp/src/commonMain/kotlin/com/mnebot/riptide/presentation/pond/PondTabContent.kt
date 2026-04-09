@@ -1,10 +1,19 @@
 package com.mnebot.riptide.presentation.pond
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,10 +30,10 @@ import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
 import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import org.jetbrains.compose.resources.painterResource
+import com.mnebot.riptide.presentation.theme.rememberAdaptiveCardColor
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
 
-private val CardBackground = Color(0x44FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 
 @Composable
@@ -39,33 +48,80 @@ fun PondTabContent(
     onNavigateToEcosystem: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var fabExpanded by remember { mutableStateOf(false) }
+    val adaptiveBg = rememberAdaptiveCardColor()
+
     // Full-screen aquarium — background is rendered by MainShellScreen
-    // Only show the ecosystem button overlay
     Box(modifier = modifier.fillMaxSize()) {
-        // Ecosystem collection button at top-right
-        Box(
+        // Dismiss expanded FAB on tap anywhere
+        if (fabExpanded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(indication = null, interactionSource = null) {
+                        fabExpanded = false
+                    }
+            )
+        }
+
+        // FAB menu at bottom-right
+        Column(
+            horizontalAlignment = Alignment.End,
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 16.dp, end = 16.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardBackground)
-                .clickable { onNavigateToEcosystem() }
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 16.dp, bottom = 72.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Expandable option: Criaturas
+            AnimatedVisibility(
+                visible = fabExpanded,
+                enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { it / 2 },
+                exit = fadeOut(tween(100)) + slideOutVertically(tween(100)) { it / 2 }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Text(
+                        stringResource(Res.string.btn_my_ecosystem),
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(adaptiveBg)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    SmallFloatingActionButton(
+                        onClick = {
+                            fabExpanded = false
+                            onNavigateToEcosystem()
+                        },
+                        containerColor = adaptiveBg,
+                        contentColor = TextPrimary,
+                        shape = CircleShape
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_fish),
+                            contentDescription = stringResource(Res.string.btn_my_ecosystem),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Main FAB
+            FloatingActionButton(
+                onClick = { fabExpanded = !fabExpanded },
+                containerColor = adaptiveBg,
+                contentColor = TextPrimary,
+                shape = CircleShape
+            ) {
                 Icon(
-                    painter = painterResource(Res.drawable.ic_box),
-                    contentDescription = stringResource(Res.string.btn_my_ecosystem),
-                    tint = TextPrimary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    stringResource(Res.string.btn_my_ecosystem),
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    painter = painterResource(if (fabExpanded) Res.drawable.ic_x else Res.drawable.ic_plus),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

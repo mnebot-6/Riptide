@@ -42,13 +42,13 @@
     <string name="section_blocks">BLOCKS</string>
     <string name="btn_add_block">Add block</string>
     <string name="section_ecosystem">ECOSYSTEM</string>
-    <string name="btn_my_ecosystem">My ecosystem</string>
+    <string name="btn_my_ecosystem">Creatures</string>
     <string name="btn_live_wallpaper">Live wallpaper</string>
     <string name="section_settings">SETTINGS</string>
     <string name="label_night_summary">Night summary</string>
 
     <!-- EcosystemScreen -->
-    <string name="title_ecosystem">My ecosystem</string>
+    <string name="title_ecosystem">Creatures</string>
     <string name="label_category_level">Lv. %1$d</string>
     <string name="label_creature_level">Lv. %1$d</string>
     <string name="label_locked_creature">???</string>
@@ -370,12 +370,126 @@
     <string name="btn_reset_onboarding">Reset tutorial</string>
 
     <!-- Bottom navigation tabs -->
-    <string name="tab_today">Today</string>
-    <string name="tab_pond">Pond</string>
+    <string name="tab_today">Tasks</string>
+    <string name="tab_pond">Ecosystem</string>
     <string name="tab_progress">Progress</string>
 
     <!-- Settings screen -->
     <string name="title_settings">Settings</string>
     <string name="a11y_open_settings">Open settings</string>
     <string name="a11y_manage_blocks">Manage blocks</string>
+
+    <!-- Task Packages -->
+    <string name="title_packages">Task Packages</string>
+    <string name="btn_install">Install</string>
+    <string name="btn_uninstall">Uninstall</string>
+    <string name="label_installed">Installed</string>
+    <string name="label_tasks_count">%d tasks</string>
+    <string name="setting_packages">Task packages</string>
+    <string name="setting_packages_desc">Pre-built collections of blocks and tasks</string>
+
+    <string name="pkg_health_name">Health</string>
+    <string name="pkg_health_desc">Hydration, vitamins, meditation and health check-ups</string>
+    <string name="pkg_fitness_name">Fitness</string>
+    <string name="pkg_fitness_desc">Exercise routines, stretching and rest days</string>
+    <string name="pkg_study_name">Study</string>
+    <string name="pkg_study_desc">Study sessions, review and practice exercises</string>
+    <string name="pkg_mindfulness_name">Mindfulness</string>
+    <string name="pkg_mindfulness_desc">Meditation, gratitude journal and digital detox</string>
+    <string name="pkg_home_name">Home</string>
+    <string name="pkg_home_desc">Kitchen cleaning, laundry, groceries and plants</string>
+    <string name="pkg_finance_name">Finance</string>
+    <string name="pkg_finance_desc">Expense tracking, budgeting and bills</string>
+
+    <string name="task_drink_water">Drink 2L of water</string>
+    <string name="task_vitamins">Take vitamins</string>
+    <string name="task_meditate_10">Meditate 10 min</string>
+    <string name="task_health_checkup">Health check-up</string>
+    <string name="task_sleep_8h">Sleep 8 hours</string>
+    <string name="task_exercise_30">Exercise 30 min</string>
+    <string name="task_morning_stretch">Morning stretching</string>
+    <string name="task_leg_day">Leg day</string>
+    <string name="task_cardio">Cardio</string>
+    <string name="task_rest_day">Rest day</string>
+    <string name="task_study_2h">Study 2 hours</string>
+    <string name="task_review_notes">Review notes</string>
+    <string name="task_practice">Practice exercises</string>
+    <string name="task_read_30">Read 30 min</string>
+    <string name="task_meditation">Meditation</string>
+    <string name="task_gratitude">Gratitude journal</string>
+    <string name="task_breathing">Breathing 5 min</string>
+    <string name="task_digital_detox">Digital detox 1h</string>
+    <string name="task_clean_kitchen">Clean kitchen</string>
+    <string name="task_laundry">Laundry</string>
+    <string name="task_groceries">Weekly groceries</string>
+    <string name="task_plants">Water the plants</string>
+    <string name="task_review_expenses">Review expenses</string>
+    <string name="task_weekly_budget">Weekly budget</string>
+    <string name="task_savings">Monthly savings</string>
+    <string name="task_bills">Pay bills</string>
+
+    <!-- Calendar tab -->
+    <string name="tab_calendar">Calendar</string>
+    <string name="title_calendar">Calendar</string>
+    <string name="btn_today">Today</string>
+    <string name="btn_add_date">Add date</string>
+    <string name="dialog_personal_date_title">Personal date</string>
+    <string name="label_date_type">Type</string>
+    <string name="date_type_birthday">Birthday</string>
+    <string name="date_type_appointment">Appointment</string>
+    <string name="date_type_holiday">Holiday</string>
+    <string name="date_type_custom">Custom</string>
+    <string name="label_recurrence">Recurrence</string>
+    <string name="recurrence_once">Once</string>
+    <string name="recurrence_yearly">Yearly</string>
+    <string name="recurrence_monthly">Monthly</string>
+    <string name="setting_holiday_country">Holiday calendar</string>
+    <string name="country_spain">Spain</string>
+    <string name="country_none">None</string>
+
+    <!-- Onboarding quiz -->
+    <string name="quiz_welcome_title">Welcome to Riptide</string>
+    <string name="quiz_welcome_body">Let\'s set up your space. A few quick questions so we can create the perfect starting blocks and tasks for you.</string>
+    <string name="quiz_skip">Skip</string>
+    <string name="quiz_next">Next</string>
+    <string name="quiz_start">Let\'s go!</string>
+    <string name="quiz_occupation">What do you do?</string>
+    <string name="quiz_occ_student">Student</string>
+    <string name="quiz_occ_worker">Worker</string>
+    <string name="quiz_occ_freelancer">Freelancer</string>
+    <string name="quiz_occ_other">Other</string>
+    <string name="quiz_life_areas">What areas are important to you?</string>
+    <string name="quiz_area_health">Health</string>
+    <string name="quiz_area_fitness">Fitness</string>
+    <string name="quiz_area_study">Study</string>
+    <string name="quiz_area_work">Work</string>
+    <string name="quiz_area_personal">Personal</string>
+    <string name="quiz_area_creative">Creative</string>
+    <string name="quiz_area_mindfulness">Mindfulness</string>
+    <string name="quiz_wake_time">What time do you usually wake up?</string>
+    <string name="quiz_bed_time">What time do you usually go to bed?</string>
+    <string name="quiz_work_days">Which days do you work or study?</string>
+    <string name="quiz_structure">How do you prefer your tasks?</string>
+    <string name="quiz_struct_fixed">With set times</string>
+    <string name="quiz_struct_flexible">Flexible</string>
+    <string name="quiz_struct_mix">A mix of both</string>
+    <string name="quiz_task_count">How many tasks per day feels right?</string>
+    <string name="quiz_count_light">Few (3–5)</string>
+    <string name="quiz_count_moderate">Moderate (6–10)</string>
+    <string name="quiz_count_heavy">Many (10+)</string>
+    <string name="quiz_summary">Your setup is ready!</string>
+    <string name="quiz_summary_body">We\'ve created blocks and tasks based on your answers. You can always change them later.</string>
+    <string name="task_first_task">Complete your first task!</string>
+
+    <!-- Multi-pond -->
+    <string name="label_select_pond">Select pond</string>
+    <string name="biome_coral_reef">Coral Reef</string>
+    <string name="biome_kelp_forest">Kelp Forest</string>
+    <string name="biome_mangrove">Mangrove</string>
+    <string name="biome_sandy_floor">Sandy Floor</string>
+    <string name="biome_open_ocean">Open Ocean</string>
+    <string name="biome_abyss">Abyss</string>
+    <string name="biome_tropical_lagoon">Tropical Lagoon</string>
+    <string name="biome_arctic">Arctic</string>
+    <string name="biome_treasure_cave">Treasure Cave</string>
 </resources>

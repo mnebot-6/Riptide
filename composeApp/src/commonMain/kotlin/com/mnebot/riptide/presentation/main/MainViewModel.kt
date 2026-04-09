@@ -131,6 +131,16 @@ class MainViewModel(
         _uiState.update { it.copy(pendingSyncConflict = false) }
     }
 
+    /** Select a pond (biome) to display. */
+    fun selectPond(category: MarineCategory) {
+        _uiState.update {
+            it.copy(
+                selectedPond = category,
+                selectedBiome = com.mnebot.riptide.presentation.aquarium.BiomeThemes.forCategory(category)
+            )
+        }
+    }
+
     fun selectDate(date: LocalDate) {
         _uiState.update { it.copy(selectedDate = date) }
         loadDay(date)

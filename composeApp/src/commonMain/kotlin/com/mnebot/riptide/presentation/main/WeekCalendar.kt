@@ -41,10 +41,10 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.TaskStatus
+import com.mnebot.riptide.presentation.theme.rememberAdaptiveCardColor
 
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
-private val CardBackground = Color(0x33FFFFFF)
 private val SelectedDay = Color(0x55FFFFFF)
 private val TodayIndicator = Color(0xFF7EC8E3)
 private val BarBackground = Color(0x33FFFFFF)
@@ -74,7 +74,7 @@ fun WeekCalendar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(CardBackground)
+            .background(rememberAdaptiveCardColor())
             .padding(horizontal = 4.dp, vertical = 8.dp)
             .alpha(alpha)
             .pointerInput(weekStart) {

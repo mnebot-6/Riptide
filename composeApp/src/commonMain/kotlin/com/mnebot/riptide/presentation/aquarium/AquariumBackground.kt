@@ -102,7 +102,7 @@ private val bubbles = listOf(
 )
 
 @Composable
-fun AquariumBackground(modifier: Modifier = Modifier) {
+fun AquariumBackground(modifier: Modifier = Modifier, biomeTheme: BiomeTheme = BiomeTheme.DEFAULT) {
     // Hora fraccionaria con actualización cada 60s
     var hourFraction by remember { mutableFloatStateOf(getCurrentHourFraction()) }
     LaunchedEffect(Unit) {
@@ -152,7 +152,7 @@ fun AquariumBackground(modifier: Modifier = Modifier) {
     val weather = remember(elapsedMs / 1000) { weatherProvider.currentWeather(elapsedMs) }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        drawAquariumBackground(swayAngle, bubbleProgress, sky, weather, elapsedMs, hourFraction)
+        drawAquariumBackground(swayAngle, bubbleProgress, sky, weather, elapsedMs, hourFraction, biomeTheme)
     }
 }
 
@@ -173,7 +173,8 @@ internal fun DrawScope.drawAquariumBackground(
     sky: SkyColors,
     weather: WeatherState = WeatherState.Clear,
     elapsedMs: Long = 0L,
-    hourFraction: Float = 12f
+    hourFraction: Float = 12f,
+    biome: BiomeTheme = BiomeTheme.DEFAULT
 ) {
     val surfaceY = AquariumBounds.surfaceY(size.height)
     val floorY = AquariumBounds.floorY(size.height)
@@ -183,9 +184,9 @@ internal fun DrawScope.drawAquariumBackground(
         brush = Brush.verticalGradient(
             colorStops = arrayOf(
                 0.00f to sky.horizon,
-                AquariumBounds.SURFACE_FRACTION to OceanShallow,
-                0.45f to OceanMid,
-                AquariumBounds.FLOOR_FRACTION to OceanDeep,
+                AquariumBounds.SURFACE_FRACTION to biome.oceanShallow,
+                0.45f to biome.oceanMid,
+                AquariumBounds.FLOOR_FRACTION to biome.oceanDeep,
             ),
             startY = 0f,
             endY = floorY
@@ -209,10 +210,10 @@ internal fun DrawScope.drawAquariumBackground(
     drawRect(
         brush = Brush.horizontalGradient(
             colorStops = arrayOf(
-                0.00f to OceanDeep.copy(alpha = 0.42f),
+                0.00f to biome.oceanDeep.copy(alpha = 0.42f),
                 0.14f to Color.Transparent,
                 0.86f to Color.Transparent,
-                1.00f to OceanDeep.copy(alpha = 0.42f),
+                1.00f to biome.oceanDeep.copy(alpha = 0.42f),
             )
         )
     )
@@ -221,10 +222,15 @@ internal fun DrawScope.drawAquariumBackground(
         brush = Brush.verticalGradient(
             colorStops = arrayOf(
                 0.55f to Color.Transparent,
-                1.00f to OceanDeep.copy(alpha = 0.35f),
+                1.00f to biome.oceanDeep.copy(alpha = 0.35f),
             )
         )
     )
+
+    // Biome water tint overlay
+    if (biome.waterTint != Color.Transparent) {
+        drawRect(biome.waterTint)
+    }
 
     // 4. Clouds above the water surface
     drawClouds(elapsedMs, surfaceY, weather)
@@ -233,7 +239,7 @@ internal fun DrawScope.drawAquariumBackground(
     drawRain(elapsedMs, surfaceY, weather)
 
     // 5. Fondo marino elaborado
-    drawSeaFloor(floorY)
+    drawSeaFloor(floorY, biome)
 
     // 6. Sun rays (after floor, before creatures)
     drawSunRays(elapsedMs, surfaceY, floorY, hourFraction, weather)
@@ -249,9 +255,14 @@ internal fun DrawScope.drawAquariumBackground(
 
     // 10. Burbujas (nacen del suelo, se desvanecen antes de la superficie)
     drawBubbles(bubbleProgress, surfaceY, floorY)
+
+    // 11. Biome ambient overlay (e.g., bioluminescent glow, golden shimmer)
+    if (biome.ambientOverlay != Color.Transparent) {
+        drawRect(biome.ambientOverlay)
+    }
 }
 
-private fun DrawScope.drawSeaFloor(floorY: Float) {
+private fun DrawScope.drawSeaFloor(floorY: Float, biome: BiomeTheme = BiomeTheme.DEFAULT) {
     val w = size.width
     val h = size.height
 
@@ -260,14 +271,14 @@ private fun DrawScope.drawSeaFloor(floorY: Float) {
     drawPath(
         sandPath,
         brush = Brush.verticalGradient(
-            listOf(SandLight, SandMid, SandDark),
+            listOf(biome.sandLight, biome.sandMid, biome.sandDark),
             startY = AquariumTerrain.terrainY(0.35f, h) - h * 0.02f,
             endY = h
         )
     )
 
     // ── LAYER 2: Sand ripple texture lines ─────────────────────────────────────
-    val sandLineColor = SandMid.copy(alpha = 0.35f)
+    val sandLineColor = biome.sandMid.copy(alpha = 0.35f)
     val lineStroke = 1.dp.toPx()
     for (i in 1..3) {
         val yOffset = (h - floorY) * i / 4f

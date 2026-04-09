@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,6 +49,7 @@ import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import com.mnebot.riptide.presentation.aquarium.CreatureIcon
+import com.mnebot.riptide.presentation.theme.rememberAdaptiveCardColor
 import com.mnebot.riptide.presentation.displayNameRes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -56,7 +58,6 @@ import riptide.composeapp.generated.resources.*
 private val OceanDeep = Color(0xFF0A1628)
 private val OceanMid = Color(0xFF1B3A6B)
 private val OceanLight = Color(0xFF2E5F9E)
-private val CardBackground = Color(0x44FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
 
@@ -538,13 +539,13 @@ fun MainScreen(
                             .offset { IntOffset(0, formDragY.roundToInt().coerceAtLeast(0)) }
                             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
                             .pointerInput(Unit) {
-                                detectDragGestures(
+                                detectVerticalDragGestures(
                                     onDragEnd = {
                                         if (formDragY > 100f) { showTaskSheet = false; quickTaskBlock = null }
                                         formDragY = 0f
                                     }
                                 ) { _, dragAmount ->
-                                    formDragY = (formDragY + dragAmount.y).coerceAtLeast(0f)
+                                    formDragY = (formDragY + dragAmount).coerceAtLeast(0f)
                                 }
                             }
                     ) {
@@ -600,13 +601,13 @@ fun MainScreen(
                             .offset { IntOffset(0, editDragY.roundToInt().coerceAtLeast(0)) }
                             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
                             .pointerInput(Unit) {
-                                detectDragGestures(
+                                detectVerticalDragGestures(
                                     onDragEnd = {
                                         if (editDragY > 100f) { editingTask = null; editingTaskDef = null }
                                         editDragY = 0f
                                     }
                                 ) { _, dragAmount ->
-                                    editDragY = (editDragY + dragAmount.y).coerceAtLeast(0f)
+                                    editDragY = (editDragY + dragAmount).coerceAtLeast(0f)
                                 }
                             }
                     ) {
@@ -702,26 +703,7 @@ private fun MainHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_riptide_logo),
-                contentDescription = null,
-                tint = TextPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    stringResource(Res.string.app_name),
-                    color = TextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-
-            }
+            Spacer(modifier = Modifier.weight(1f))
 
             // Volver a hoy (solo visible si no estamos en hoy)
             if (selectedDate != today) {
@@ -733,7 +715,7 @@ private fun MainHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(CardBackground)
+                        .background(rememberAdaptiveCardColor())
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Icon(
@@ -757,7 +739,7 @@ private fun MainHeader(
             Spacer(modifier = Modifier.width(4.dp))
             HeaderIconButton(painter = painterResource(Res.drawable.ic_plus), contentDescription = stringResource(Res.string.a11y_add_task), onClick = onAddTaskClick)
             Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(painter = painterResource(Res.drawable.ic_sliders), contentDescription = stringResource(Res.string.a11y_manage_blocks), onClick = onBlocksClick)
+            HeaderIconButton(painter = painterResource(Res.drawable.ic_box), contentDescription = stringResource(Res.string.a11y_manage_blocks), onClick = onBlocksClick)
             Spacer(modifier = Modifier.width(4.dp))
             HeaderIconButton(painter = painterResource(Res.drawable.ic_settings), contentDescription = stringResource(Res.string.a11y_open_settings), onClick = onSettingsClick)
         }
@@ -781,7 +763,7 @@ private fun HeaderIconButton(painter: Painter, contentDescription: String?, onCl
         modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(CardBackground)
+            .background(rememberAdaptiveCardColor())
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -1255,13 +1237,14 @@ private fun TaskCard(
     val isPostponed = task.status == TaskStatus.POSTPONED
     val taskTime = (task.schedule as? TaskSchedule.OneTime)?.time
     var showNotesDialog by remember { mutableStateOf(false) }
+    val taskCardBg = rememberAdaptiveCardColor()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(CardBackground)
+            .background(taskCardBg)
             .combinedClickable(onClick = {
                 if (task.isCountable && !isCompleted) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)

@@ -12,7 +12,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,14 +50,86 @@ fun SettingsScreen(
     morningReminderTime: LocalTime?,
     onNightSummaryTimeChanged: (LocalTime) -> Unit,
     onMorningReminderTimeChanged: (LocalTime?) -> Unit,
+    wallpaperFps: Int,
+    onWallpaperFpsChanged: (Int) -> Unit,
     onSetLiveWallpaper: () -> Unit,
     loggedInUser: LoggedInUser?,
     syncStatus: SyncStatus,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncNow: () -> Unit,
+    onNavigateToPackages: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    var showFpsDialog by remember { mutableStateOf(false) }
+
+    if (showFpsDialog) {
+        var selectedFps by remember { mutableIntStateOf(wallpaperFps) }
+        AlertDialog(
+            onDismissRequest = { showFpsDialog = false },
+            containerColor = Color(0xFF1B3A6B),
+            title = {
+                Text(
+                    stringResource(Res.string.wallpaper_quality_title),
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(15, 30, 60).forEach { fps ->
+                            val isSelected = selectedFps == fps
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) Color(0xFF1A73E8) else Color(0x33FFFFFF))
+                                    .clickable { selectedFps = fps }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "${fps} fps",
+                                    color = if (isSelected) TextPrimary else TextSecondary,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        stringResource(Res.string.wallpaper_quality_hint),
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onWallpaperFpsChanged(selectedFps)
+                    showFpsDialog = false
+                    onSetLiveWallpaper()
+                }) {
+                    Text(
+                        stringResource(Res.string.wallpaper_quality_apply),
+                        color = Color(0xFF1A73E8),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFpsDialog = false }) {
+                    Text(stringResource(Res.string.btn_cancel), color = TextSecondary)
+                }
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -125,7 +204,13 @@ fun SettingsScreen(
                 SettingsItem(
                     painter = painterResource(Res.drawable.ic_waves),
                     label = stringResource(Res.string.btn_live_wallpaper),
-                    onClick = onSetLiveWallpaper
+                    onClick = { showFpsDialog = true }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsItem(
+                    painter = painterResource(Res.drawable.ic_box),
+                    label = stringResource(Res.string.setting_packages),
+                    onClick = onNavigateToPackages
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))

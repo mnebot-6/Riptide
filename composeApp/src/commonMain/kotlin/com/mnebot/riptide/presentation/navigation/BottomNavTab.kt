@@ -9,6 +9,7 @@ enum class BottomNavTab(
     val labelRes: StringResource
 ) {
     TODAY(Res.drawable.ic_check_square, Res.string.tab_today),
-    POND(Res.drawable.ic_fish, Res.string.tab_pond),
+    POND(Res.drawable.ic_waves, Res.string.tab_pond),
+    CALENDAR(Res.drawable.ic_calendar, Res.string.tab_calendar),
     PROGRESS(Res.drawable.ic_bar_chart, Res.string.tab_progress)
 }

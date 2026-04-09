@@ -60,4 +60,9 @@ interface UserPreferencesRepository {
     // Initial sync conflict guard
     suspend fun hasPendingInitialSync(): Boolean
     suspend fun setPendingInitialSync(pending: Boolean)
+
+    // Installed task packages
+    suspend fun getInstalledPackageIds(): Set<String>
+    suspend fun addInstalledPackageId(packageId: String)
+    suspend fun removeInstalledPackageId(packageId: String)
 }

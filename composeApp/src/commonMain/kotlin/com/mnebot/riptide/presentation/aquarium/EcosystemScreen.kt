@@ -27,6 +27,8 @@ import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.displayNameRes
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
@@ -52,6 +54,8 @@ fun EcosystemScreen(
     creaturesData: List<MarineCreature>,
     decorationProgress: DecorationProgress = DecorationProgress(0, 0, false),
     onCreatureNicknameChanged: (String, String) -> Unit,
+    selectedPond: MarineCategory = MarineCategory.FISH,
+    onPondSelected: (MarineCategory) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     var selectedCreature by remember { mutableStateOf<Pair<MarineCreature, CreatureSpec>?>(null) }
@@ -88,6 +92,50 @@ fun EcosystemScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+
+            // Pond selector
+            Text(
+                text = stringResource(Res.string.label_select_pond),
+                color = SectionLabel,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val selectableCategories = MarineCategory.entries.filter {
+                    it != MarineCategory.COMPANION &&
+                    ecosystemByCategory[it]?.isUnlocked == true
+                }
+                selectableCategories.forEach { category ->
+                    val isSelected = category == selectedPond
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .then(
+                                if (isSelected) Modifier.background(Accent.copy(alpha = 0.25f))
+                                else Modifier.border(1.dp, DividerColor, RoundedCornerShape(16.dp))
+                            )
+                            .clickable { onPondSelected(category) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = stringResource(category.displayNameRes()),
+                            color = if (isSelected) Accent else TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
 
             Column(
                 modifier = Modifier

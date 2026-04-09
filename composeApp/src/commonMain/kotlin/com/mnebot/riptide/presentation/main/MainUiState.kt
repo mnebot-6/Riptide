@@ -10,6 +10,8 @@ import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.domain.model.PendingLootbox
 import com.mnebot.riptide.domain.model.SyncStatus
 import com.mnebot.riptide.domain.model.WorkBlock
+import com.mnebot.riptide.presentation.aquarium.BiomeTheme
+import com.mnebot.riptide.presentation.aquarium.BiomeThemes
 import com.mnebot.riptide.presentation.aquarium.CreatureSpec
 import kotlinx.datetime.LocalDate
 
@@ -33,5 +35,8 @@ data class MainUiState(
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val wallpaperFps: Int = 30,
     // Initial sync conflict
-    val pendingSyncConflict: Boolean = false
+    val pendingSyncConflict: Boolean = false,
+    // Multi-pond
+    val selectedPond: MarineCategory = MarineCategory.FISH,
+    val selectedBiome: BiomeTheme = BiomeThemes.forCategory(MarineCategory.FISH)
 )

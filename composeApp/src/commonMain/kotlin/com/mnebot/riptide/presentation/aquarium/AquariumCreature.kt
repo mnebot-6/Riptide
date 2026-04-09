@@ -1045,11 +1045,18 @@ fun AquariumCreatures(
     creaturesData: List<MarineCreature> = emptyList(),
     freezeState: CreatureFreezeState = rememberCreatureFreezeState(),
     onCreatureTap: (MarineCreature, CreatureSpec) -> Unit = { _, _ -> },
+    categoryFilter: MarineCategory? = null,
     modifier: Modifier = Modifier
 ) {
-    val unlockedCreatures = remember(creaturesData) {
+    val unlockedCreatures = remember(creaturesData, categoryFilter) {
         val unlockedSpecies = creaturesData.map { it.species }.toSet()
-        allCreatures.filter { spec -> spec.species in unlockedSpecies }
+        allCreatures.filter { spec ->
+            spec.species in unlockedSpecies &&
+            (categoryFilter == null ||
+             spec.species.category == categoryFilter ||
+             spec.species.category == MarineCategory.DECORATION ||
+             spec.species.category == MarineCategory.COMPANION)
+        }
     }
 
     if (unlockedCreatures.isEmpty()) return

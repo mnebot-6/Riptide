@@ -1,7 +1,6 @@
 package com.mnebot.riptide.presentation.onboarding
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,21 +8,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -44,88 +35,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
-import riptide.composeapp.generated.resources.Res
-import riptide.composeapp.generated.resources.onboarding_btn_next
-import riptide.composeapp.generated.resources.onboarding_btn_skip
-import riptide.composeapp.generated.resources.onboarding_btn_start
-import riptide.composeapp.generated.resources.onboarding_ecosystem_body
-import riptide.composeapp.generated.resources.onboarding_ecosystem_lootbox
-import riptide.composeapp.generated.resources.onboarding_ecosystem_nopressure
-import riptide.composeapp.generated.resources.onboarding_ecosystem_species
-import riptide.composeapp.generated.resources.onboarding_ecosystem_title
-import riptide.composeapp.generated.resources.onboarding_how_body
-import riptide.composeapp.generated.resources.onboarding_how_day
-import riptide.composeapp.generated.resources.onboarding_how_morning
-import riptide.composeapp.generated.resources.onboarding_how_night
-import riptide.composeapp.generated.resources.onboarding_how_summary
-import riptide.composeapp.generated.resources.onboarding_how_sync
-import riptide.composeapp.generated.resources.onboarding_how_title
-import riptide.composeapp.generated.resources.onboarding_ready_body
-import riptide.composeapp.generated.resources.onboarding_ready_title
-import riptide.composeapp.generated.resources.onboarding_welcome_body
-import riptide.composeapp.generated.resources.onboarding_welcome_title
+import riptide.composeapp.generated.resources.*
 
-// ── Palette (matches MainScreen palette) ──────────────────────────────────────
-private val OceanDeep   = Color(0xFF0A1628)
-private val OceanMid    = Color(0xFF1B3A6B)
-private val OceanLight  = Color(0xFF2E5F9E)
-private val CardBg      = Color(0x33FFFFFF)
+private val OceanDeep = Color(0xFF0A1628)
+private val OceanMid = Color(0xFF1B3A6B)
+private val OceanLight = Color(0xFF2E5F9E)
+private val CardBg = Color(0x33FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
-private val AccentBlue  = Color(0xFF4A90D9)
+private val AccentBlue = Color(0xFF4A90D9)
+private val ChipSelected = Color(0xFF1A73E8)
+private val ChipBorder = Color(0x44FFFFFF)
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+private const val TOTAL_PAGES = 8  // Welcome + 5 quiz + summary + ready
 
-private data class OnboardingPage(
-    val emoji: String,
-    val title: String,
-    val body: String,
-    val extras: List<Pair<String, String>> = emptyList()
-)
-
-// ── Screen ────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalAnimationApi::class)
+/**
+ * Onboarding with integrated quiz. [onComplete] receives the quiz state
+ * if the user completed the quiz, or null if they skipped.
+ */
 @Composable
-fun OnboardingScreen(onComplete: () -> Unit) {
-
-    val pages = listOf(
-        OnboardingPage(
-            emoji = "🌊",
-            title = stringResource(Res.string.onboarding_welcome_title),
-            body  = stringResource(Res.string.onboarding_welcome_body)
-        ),
-        OnboardingPage(
-            emoji = "📅",
-            title = stringResource(Res.string.onboarding_how_title),
-            body  = stringResource(Res.string.onboarding_how_body),
-            extras = listOf(
-                "🌅" to stringResource(Res.string.onboarding_how_morning),
-                "✅" to stringResource(Res.string.onboarding_how_day),
-                "🌙" to stringResource(Res.string.onboarding_how_night),
-                "⏰" to stringResource(Res.string.onboarding_how_summary),
-                "🔄" to stringResource(Res.string.onboarding_how_sync)
-            )
-        ),
-        OnboardingPage(
-            emoji = "🐠",
-            title = stringResource(Res.string.onboarding_ecosystem_title),
-            body  = stringResource(Res.string.onboarding_ecosystem_body),
-            extras = listOf(
-                "🎁" to stringResource(Res.string.onboarding_ecosystem_lootbox),
-                "🐙" to stringResource(Res.string.onboarding_ecosystem_species),
-                "🔒" to stringResource(Res.string.onboarding_ecosystem_nopressure)
-            )
-        ),
-        OnboardingPage(
-            emoji = "✨",
-            title = stringResource(Res.string.onboarding_ready_title),
-            body  = stringResource(Res.string.onboarding_ready_body)
-        )
-    )
+fun OnboardingScreen(onComplete: (OnboardingQuizState?) -> Unit) {
 
     var currentStep by remember { mutableIntStateOf(0) }
     var goingForward by remember { mutableStateOf(true) }
+    var quizState by remember { mutableStateOf(OnboardingQuizState()) }
 
     Box(
         modifier = Modifier
@@ -136,25 +69,24 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 )
             )
     ) {
-
-        // ── Botón Saltar (esquina superior derecha, pasos 0–2) ────────────────
-        if (currentStep < pages.size - 1) {
+        // Skip button (not on last page)
+        if (currentStep < TOTAL_PAGES - 1) {
             TextButton(
-                onClick = { onComplete() },
+                onClick = { onComplete(null) },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
                     .padding(end = 8.dp, top = 8.dp)
             ) {
                 Text(
-                    text = stringResource(Res.string.onboarding_btn_skip),
+                    text = stringResource(Res.string.quiz_skip),
                     color = TextSecondary,
                     fontSize = 14.sp
                 )
             }
         }
 
-        // ── Page content ──────────────────────────────────────────────────────
+        // Page content
         AnimatedContent(
             targetState = currentStep,
             transitionSpec = {
@@ -170,10 +102,19 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 .fillMaxSize()
                 .padding(bottom = 156.dp)
         ) { step ->
-            OnboardingPageContent(page = pages[step])
+            when (step) {
+                0 -> WelcomePage()
+                1 -> OccupationPage(quizState) { quizState = quizState.copy(occupation = it) }
+                2 -> LifeAreasPage(quizState) { quizState = quizState.copy(lifeAreas = it) }
+                3 -> WakeTimePage(quizState) { quizState = quizState.copy(wakeHour = it) }
+                4 -> BedTimePage(quizState) { quizState = quizState.copy(bedHour = it) }
+                5 -> StructurePage(quizState) { quizState = quizState.copy(structure = it) }
+                6 -> SummaryPage(quizState)
+                7 -> ReadyPage()
+            }
         }
 
-        // ── Dot indicator ─────────────────────────────────────────────────────
+        // Dot indicator
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -181,7 +122,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            repeat(pages.size) { i ->
+            repeat(TOTAL_PAGES) { i ->
                 val active = i == currentStep
                 Box(
                     Modifier
@@ -194,7 +135,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             }
         }
 
-        // ── Navigation row ────────────────────────────────────────────────────
+        // Navigation row
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -211,7 +152,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         currentStep--
                     }
                 ) {
-                    Text("←", color = TextSecondary, fontSize = 18.sp)
+                    Text("\u2190", color = TextSecondary, fontSize = 18.sp)
                 }
             } else {
                 Spacer(Modifier.width(64.dp))
@@ -219,11 +160,11 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 
             Button(
                 onClick = {
-                    if (currentStep < pages.size - 1) {
+                    if (currentStep < TOTAL_PAGES - 1) {
                         goingForward = true
                         currentStep++
                     } else {
-                        onComplete()
+                        onComplete(quizState)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
@@ -231,10 +172,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
-                    text = if (currentStep == pages.size - 1)
-                        stringResource(Res.string.onboarding_btn_start)
-                    else
-                        stringResource(Res.string.onboarding_btn_next),
+                    text = when (currentStep) {
+                        TOTAL_PAGES - 1 -> stringResource(Res.string.quiz_start)
+                        else -> stringResource(Res.string.quiz_next)
+                    },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -243,10 +184,132 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     }
 }
 
-// ── Step content ──────────────────────────────────────────────────────────────
+// ── Pages ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun OnboardingPageContent(page: OnboardingPage) {
+private fun WelcomePage() {
+    CenteredPage(
+        emoji = "\uD83C\uDF0A",
+        title = stringResource(Res.string.quiz_welcome_title),
+        body = stringResource(Res.string.quiz_welcome_body)
+    )
+}
+
+@Composable
+private fun ReadyPage() {
+    CenteredPage(
+        emoji = "\u2728",
+        title = stringResource(Res.string.onboarding_ready_title),
+        body = stringResource(Res.string.onboarding_ready_body)
+    )
+}
+
+@Composable
+private fun OccupationPage(state: OnboardingQuizState, onChanged: (Occupation) -> Unit) {
+    QuizPage(title = stringResource(Res.string.quiz_occupation)) {
+        val options = listOf(
+            Occupation.STUDENT to stringResource(Res.string.quiz_occ_student),
+            Occupation.WORKER to stringResource(Res.string.quiz_occ_worker),
+            Occupation.FREELANCER to stringResource(Res.string.quiz_occ_freelancer),
+            Occupation.OTHER to stringResource(Res.string.quiz_occ_other)
+        )
+        options.forEach { (value, label) ->
+            SelectableChip(
+                text = label,
+                selected = state.occupation == value,
+                onClick = { onChanged(value) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun LifeAreasPage(state: OnboardingQuizState, onChanged: (Set<LifeArea>) -> Unit) {
+    QuizPage(title = stringResource(Res.string.quiz_life_areas)) {
+        val options = listOf(
+            LifeArea.HEALTH to stringResource(Res.string.quiz_area_health),
+            LifeArea.FITNESS to stringResource(Res.string.quiz_area_fitness),
+            LifeArea.STUDY to stringResource(Res.string.quiz_area_study),
+            LifeArea.WORK to stringResource(Res.string.quiz_area_work),
+            LifeArea.PERSONAL to stringResource(Res.string.quiz_area_personal),
+            LifeArea.CREATIVE to stringResource(Res.string.quiz_area_creative),
+            LifeArea.MINDFULNESS to stringResource(Res.string.quiz_area_mindfulness)
+        )
+        options.forEach { (value, label) ->
+            val selected = value in state.lifeAreas
+            SelectableChip(
+                text = label,
+                selected = selected,
+                onClick = {
+                    onChanged(
+                        if (selected) state.lifeAreas - value
+                        else state.lifeAreas + value
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun WakeTimePage(state: OnboardingQuizState, onChanged: (Int) -> Unit) {
+    QuizPage(title = stringResource(Res.string.quiz_wake_time)) {
+        val ranges = listOf(5 to "5-6", 6 to "6-7", 7 to "7-8", 8 to "8-9", 9 to "9+")
+        ranges.forEach { (hour, label) ->
+            SelectableChip(
+                text = label,
+                selected = state.wakeHour == hour,
+                onClick = { onChanged(hour) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BedTimePage(state: OnboardingQuizState, onChanged: (Int) -> Unit) {
+    QuizPage(title = stringResource(Res.string.quiz_bed_time)) {
+        val ranges = listOf(21 to "21-22", 22 to "22-23", 23 to "23-00", 0 to "00+")
+        ranges.forEach { (hour, label) ->
+            SelectableChip(
+                text = label,
+                selected = state.bedHour == hour,
+                onClick = { onChanged(hour) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StructurePage(state: OnboardingQuizState, onChanged: (TaskStructure) -> Unit) {
+    QuizPage(title = stringResource(Res.string.quiz_structure)) {
+        val options = listOf(
+            TaskStructure.FIXED to stringResource(Res.string.quiz_struct_fixed),
+            TaskStructure.FLEXIBLE to stringResource(Res.string.quiz_struct_flexible),
+            TaskStructure.MIX to stringResource(Res.string.quiz_struct_mix)
+        )
+        options.forEach { (value, label) ->
+            SelectableChip(
+                text = label,
+                selected = state.structure == value,
+                onClick = { onChanged(value) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryPage(state: OnboardingQuizState) {
+    CenteredPage(
+        emoji = "\uD83C\uDF89",
+        title = stringResource(Res.string.quiz_summary),
+        body = stringResource(Res.string.quiz_summary_body)
+    )
+}
+
+// ── Reusable components ─────────────────────────────────────────────────────
+
+@Composable
+private fun CenteredPage(emoji: String, title: String, body: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -254,58 +317,70 @@ private fun OnboardingPageContent(page: OnboardingPage) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = page.emoji,
-            fontSize = 72.sp,
-            textAlign = TextAlign.Center
-        )
-
+        Text(text = emoji, fontSize = 72.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(24.dp))
-
         Text(
-            text = page.title,
+            text = title,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center,
             lineHeight = 34.sp
         )
-
         Spacer(Modifier.height(14.dp))
-
         Text(
-            text = page.body,
+            text = body,
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 24.sp
         )
+    }
+}
 
-        if (page.extras.isNotEmpty()) {
-            Spacer(Modifier.height(28.dp))
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                page.extras.forEach { (emoji, text) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(CardBg, shape = RoundedCornerShape(12.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(emoji, fontSize = 22.sp)
-                        Text(
-                            text = text,
-                            fontSize = 14.sp,
-                            color = TextPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        }
+@Composable
+private fun QuizPage(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp)
+            .padding(top = 80.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = title,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            textAlign = TextAlign.Center,
+            lineHeight = 30.sp
+        )
+        Spacer(Modifier.height(28.dp))
+        content()
+    }
+}
+
+@Composable
+private fun SelectableChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .then(
+                if (selected) Modifier.background(ChipSelected)
+                else Modifier.border(1.dp, ChipBorder, RoundedCornerShape(14.dp))
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = text,
+            color = if (selected) TextPrimary else TextSecondary,
+            fontSize = 16.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
