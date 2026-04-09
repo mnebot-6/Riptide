@@ -38,6 +38,9 @@ backend/.env.local
 # Privacy policy site (separate deploy)
 riptide-privacy/
 
+# Claude local config (nunca commitear)
+.claude/settings.local.json
+
 # Claude worktrees (efimeros, nunca commitear)
 .claude/worktrees/
 
