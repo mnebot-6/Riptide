@@ -824,7 +824,12 @@ class CreatureFreezeState {
 @Composable
 fun rememberCreatureFreezeState() = remember { CreatureFreezeState() }
 
-private fun findHitCreature(
+/**
+ * Returns the [CreatureSpecies] whose hitbox covers the given [offset], or null if none.
+ * Made internal to the package so other composables (e.g. `PondTabContent`) can reuse the
+ * same hit-test logic when the `AquariumCreatures` overlay can't capture taps directly.
+ */
+internal fun findHitCreature(
     offset: Offset,
     positions: List<CreaturePosition>
 ): CreatureSpecies? = positions
@@ -1045,18 +1050,20 @@ fun AquariumCreatures(
     creaturesData: List<MarineCreature> = emptyList(),
     freezeState: CreatureFreezeState = rememberCreatureFreezeState(),
     onCreatureTap: (MarineCreature, CreatureSpec) -> Unit = { _, _ -> },
-    categoryFilter: MarineCategory? = null,
+    /**
+     * If non-null, creature positions are also published to this hoisted state
+     * so siblings (e.g. PondTabContent) can hit-test them. The internal pointer
+     * input is disabled when [tapEnabled] is false — the caller is expected to
+     * own the tap detection in that case.
+     */
+    positionsState: androidx.compose.runtime.MutableState<List<CreaturePosition>>? = null,
+    /** When false, the composable is decorative only (no tap detection). */
+    tapEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val unlockedCreatures = remember(creaturesData, categoryFilter) {
+    val unlockedCreatures = remember(creaturesData) {
         val unlockedSpecies = creaturesData.map { it.species }.toSet()
-        allCreatures.filter { spec ->
-            spec.species in unlockedSpecies &&
-            (categoryFilter == null ||
-             spec.species.category == categoryFilter ||
-             spec.species.category == MarineCategory.DECORATION ||
-             spec.species.category == MarineCategory.COMPANION)
-        }
+        allCreatures.filter { it.species in unlockedSpecies }
     }
 
     if (unlockedCreatures.isEmpty()) return
@@ -1095,18 +1102,22 @@ fun AquariumCreatures(
         content = {},
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { offset ->
-                        val hit = findHitCreature(offset, creaturePositions.value) ?: return@detectTapGestures
-                        val spec = unlockedCreatures.find { it.species == hit } ?: return@detectTapGestures
-                        val creature = creaturesData.find { it.species == hit } ?: return@detectTapGestures
-                        freezeState.freeze(hit)
-                        frozenTimeMap[hit] = elapsedMs.value
-                        onCreatureTap(creature, spec)
+            .then(
+                if (tapEnabled) {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { offset ->
+                                val hit = findHitCreature(offset, creaturePositions.value) ?: return@detectTapGestures
+                                val spec = unlockedCreatures.find { it.species == hit } ?: return@detectTapGestures
+                                val creature = creaturesData.find { it.species == hit } ?: return@detectTapGestures
+                                freezeState.freeze(hit)
+                                frozenTimeMap[hit] = elapsedMs.value
+                                onCreatureTap(creature, spec)
+                            }
+                        )
                     }
-                )
-            }
+                } else Modifier
+            )
             .drawWithContent {
                 drawContent()
                 val positions = mutableListOf<CreaturePosition>()
@@ -1298,6 +1309,8 @@ fun AquariumCreatures(
                 }
 
                 creaturePositions.value = positions
+                // Mirror to hoisted state if provided so siblings can hit-test.
+                positionsState?.value = positions
             }
     ) { _, constraints ->
         layout(constraints.maxWidth, constraints.maxHeight) {}

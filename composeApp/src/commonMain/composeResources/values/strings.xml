@@ -5,6 +5,7 @@
     <string name="btn_save">Save</string>
     <string name="btn_close">Close</string>
     <string name="btn_back">←</string>
+    <string name="label_completed_blocks">%1$d completed</string>
 
     <!-- MainScreen — dialogs -->
     <string name="dialog_edit_scope_title">What do you want to edit?</string>
@@ -314,6 +315,25 @@
     <string name="sync_status_success">Synced</string>
     <string name="sync_status_error">Sync error</string>
     <string name="sync_status_offline">Offline</string>
+    <string name="sync_last_synced">Last synced %1$s ago</string>
+    <string name="sync_last_error">Last error: %1$s</string>
+
+    <!-- Recurrence picker -->
+    <string name="label_recurrence_type">Recurrence</string>
+    <string name="recurrence_weekly">Weekly</string>
+    <string name="recurrence_monthly_day">Monthly</string>
+    <string name="recurrence_nth_weekday">Nth weekday</string>
+    <string name="recurrence_yearly">Yearly</string>
+    <string name="label_day_of_month">Day</string>
+    <string name="label_every_n_months">Every (months)</string>
+    <string name="label_month">Month</string>
+    <string name="label_yearly_date">Date (year ignored)</string>
+    <string name="label_nth_occurrence">Occurrence</string>
+    <string name="nth_1">1st</string>
+    <string name="nth_2">2nd</string>
+    <string name="nth_3">3rd</string>
+    <string name="nth_4">4th</string>
+    <string name="nth_last">Last</string>
 
     <!-- Sync conflict dialog -->
     <string name="sync_conflict_title">Existing data found</string>
@@ -379,74 +399,6 @@
     <string name="a11y_open_settings">Open settings</string>
     <string name="a11y_manage_blocks">Manage blocks</string>
 
-    <!-- Task Packages -->
-    <string name="title_packages">Task Packages</string>
-    <string name="btn_install">Install</string>
-    <string name="btn_uninstall">Uninstall</string>
-    <string name="label_installed">Installed</string>
-    <string name="label_tasks_count">%d tasks</string>
-    <string name="setting_packages">Task packages</string>
-    <string name="setting_packages_desc">Pre-built collections of blocks and tasks</string>
-
-    <string name="pkg_health_name">Health</string>
-    <string name="pkg_health_desc">Hydration, vitamins, meditation and health check-ups</string>
-    <string name="pkg_fitness_name">Fitness</string>
-    <string name="pkg_fitness_desc">Exercise routines, stretching and rest days</string>
-    <string name="pkg_study_name">Study</string>
-    <string name="pkg_study_desc">Study sessions, review and practice exercises</string>
-    <string name="pkg_mindfulness_name">Mindfulness</string>
-    <string name="pkg_mindfulness_desc">Meditation, gratitude journal and digital detox</string>
-    <string name="pkg_home_name">Home</string>
-    <string name="pkg_home_desc">Kitchen cleaning, laundry, groceries and plants</string>
-    <string name="pkg_finance_name">Finance</string>
-    <string name="pkg_finance_desc">Expense tracking, budgeting and bills</string>
-
-    <string name="task_drink_water">Drink 2L of water</string>
-    <string name="task_vitamins">Take vitamins</string>
-    <string name="task_meditate_10">Meditate 10 min</string>
-    <string name="task_health_checkup">Health check-up</string>
-    <string name="task_sleep_8h">Sleep 8 hours</string>
-    <string name="task_exercise_30">Exercise 30 min</string>
-    <string name="task_morning_stretch">Morning stretching</string>
-    <string name="task_leg_day">Leg day</string>
-    <string name="task_cardio">Cardio</string>
-    <string name="task_rest_day">Rest day</string>
-    <string name="task_study_2h">Study 2 hours</string>
-    <string name="task_review_notes">Review notes</string>
-    <string name="task_practice">Practice exercises</string>
-    <string name="task_read_30">Read 30 min</string>
-    <string name="task_meditation">Meditation</string>
-    <string name="task_gratitude">Gratitude journal</string>
-    <string name="task_breathing">Breathing 5 min</string>
-    <string name="task_digital_detox">Digital detox 1h</string>
-    <string name="task_clean_kitchen">Clean kitchen</string>
-    <string name="task_laundry">Laundry</string>
-    <string name="task_groceries">Weekly groceries</string>
-    <string name="task_plants">Water the plants</string>
-    <string name="task_review_expenses">Review expenses</string>
-    <string name="task_weekly_budget">Weekly budget</string>
-    <string name="task_savings">Monthly savings</string>
-    <string name="task_bills">Pay bills</string>
-
-    <!-- Calendar tab -->
-    <string name="tab_calendar">Calendar</string>
-    <string name="title_calendar">Calendar</string>
-    <string name="btn_today">Today</string>
-    <string name="btn_add_date">Add date</string>
-    <string name="dialog_personal_date_title">Personal date</string>
-    <string name="label_date_type">Type</string>
-    <string name="date_type_birthday">Birthday</string>
-    <string name="date_type_appointment">Appointment</string>
-    <string name="date_type_holiday">Holiday</string>
-    <string name="date_type_custom">Custom</string>
-    <string name="label_recurrence">Recurrence</string>
-    <string name="recurrence_once">Once</string>
-    <string name="recurrence_yearly">Yearly</string>
-    <string name="recurrence_monthly">Monthly</string>
-    <string name="setting_holiday_country">Holiday calendar</string>
-    <string name="country_spain">Spain</string>
-    <string name="country_none">None</string>
-
     <!-- Onboarding quiz -->
     <string name="quiz_welcome_title">Welcome to Riptide</string>
     <string name="quiz_welcome_body">Let\'s set up your space. A few quick questions so we can create the perfect starting blocks and tasks for you.</string>
@@ -479,10 +431,8 @@
     <string name="quiz_count_heavy">Many (10+)</string>
     <string name="quiz_summary">Your setup is ready!</string>
     <string name="quiz_summary_body">We\'ve created blocks and tasks based on your answers. You can always change them later.</string>
-    <string name="task_first_task">Complete your first task!</string>
 
-    <!-- Multi-pond -->
-    <string name="label_select_pond">Select pond</string>
+    <!-- Biomes -->
     <string name="biome_coral_reef">Coral Reef</string>
     <string name="biome_kelp_forest">Kelp Forest</string>
     <string name="biome_mangrove">Mangrove</string>

@@ -7,6 +7,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mnebot.riptide.data.local.dao.*
 import com.mnebot.riptide.data.local.entity.*
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Calendar feature was removed post-launch; drop the orphan table.
+        database.execSQL("DROP TABLE IF EXISTS personal_dates")
+    }
+}
+
 val MIGRATION_13_14 = object : Migration(13, 14) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("""
@@ -83,10 +90,9 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         DaySummaryEntity::class,
         BlockStreakEntity::class,
         EcosystemStateEntity::class,
-        MarineCreatureEntity::class,
-        PersonalDateEntity::class
+        MarineCreatureEntity::class
     ],
-    version = 14
+    version = 15
 )
 
 abstract class RiptideDatabase : RoomDatabase() {
@@ -98,5 +104,4 @@ abstract class RiptideDatabase : RoomDatabase() {
     abstract fun blockStreakDao(): BlockStreakDao
     abstract fun ecosystemStateDao(): EcosystemStateDao
     abstract fun marineCreatureDao(): MarineCreatureDao
-    abstract fun personalDateDao(): PersonalDateDao
 }

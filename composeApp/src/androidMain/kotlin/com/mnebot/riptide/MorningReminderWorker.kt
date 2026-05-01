@@ -6,11 +6,14 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
+import com.mnebot.riptide.domain.model.TaskSchedule
+import com.mnebot.riptide.domain.model.TaskStatus
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
@@ -21,7 +24,23 @@ class MorningReminderWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        NotificationHelper.sendMorningReminderNotification(context)
+        val today = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+        val untimedTitles = runCatching {
+            val db = DatabaseProvider.getDatabase(context)
+            val taskRepo = DayTaskRepositoryImpl(db.dayTaskDao())
+            taskRepo.getByDate(today)
+                .filter { task ->
+                    task.notificationsEnabled &&
+                        task.status != TaskStatus.COMPLETED &&
+                        task.status != TaskStatus.CANCELLED &&
+                        (task.schedule as? TaskSchedule.OneTime)?.time == null
+                }
+                .map { it.title }
+        }.getOrDefault(emptyList())
+
+        NotificationHelper.sendMorningReminderNotification(context, untimedTitles)
 
         // Reschedule for the same time tomorrow
         val prefs = com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl(context)

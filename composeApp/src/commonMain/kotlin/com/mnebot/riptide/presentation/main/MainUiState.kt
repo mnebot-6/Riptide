@@ -33,10 +33,10 @@ data class MainUiState(
     // Sync
     val loggedInUser: LoggedInUser? = null,
     val syncStatus: SyncStatus = SyncStatus.IDLE,
+    val lastSyncMillis: Long? = null,
+    val lastSyncError: String? = null,
     val wallpaperFps: Int = 30,
     // Initial sync conflict
     val pendingSyncConflict: Boolean = false,
-    // Multi-pond
-    val selectedPond: MarineCategory = MarineCategory.FISH,
     val selectedBiome: BiomeTheme = BiomeThemes.forCategory(MarineCategory.FISH)
 )

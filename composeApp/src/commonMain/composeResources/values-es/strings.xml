@@ -5,6 +5,7 @@
     <string name="btn_save">Guardar</string>
     <string name="btn_close">Cerrar</string>
     <string name="btn_back">←</string>
+    <string name="label_completed_blocks">%1$d completados</string>
 
     <!-- MainScreen — dialogs -->
     <string name="dialog_edit_scope_title">¿Qué quieres editar?</string>
@@ -314,6 +315,25 @@
     <string name="sync_status_success">Sincronizado</string>
     <string name="sync_status_error">Error de sincronización</string>
     <string name="sync_status_offline">Sin conexión</string>
+    <string name="sync_last_synced">Última sincronización hace %1$s</string>
+    <string name="sync_last_error">Último error: %1$s</string>
+
+    <!-- Recurrence picker -->
+    <string name="label_recurrence_type">Recurrencia</string>
+    <string name="recurrence_weekly">Semanal</string>
+    <string name="recurrence_monthly_day">Mensual</string>
+    <string name="recurrence_nth_weekday">Día de la semana</string>
+    <string name="recurrence_yearly">Anual</string>
+    <string name="label_day_of_month">Día</string>
+    <string name="label_every_n_months">Cada (meses)</string>
+    <string name="label_month">Mes</string>
+    <string name="label_yearly_date">Fecha (año irrelevante)</string>
+    <string name="label_nth_occurrence">Ocurrencia</string>
+    <string name="nth_1">1º</string>
+    <string name="nth_2">2º</string>
+    <string name="nth_3">3º</string>
+    <string name="nth_4">4º</string>
+    <string name="nth_last">Último</string>
 
     <!-- Sync conflict dialog -->
     <string name="sync_conflict_title">Datos existentes encontrados</string>
@@ -379,74 +399,6 @@
     <string name="a11y_open_settings">Abrir ajustes</string>
     <string name="a11y_manage_blocks">Gestionar bloques</string>
 
-    <!-- Task Packages -->
-    <string name="title_packages">Paquetes de tareas</string>
-    <string name="btn_install">Instalar</string>
-    <string name="btn_uninstall">Desinstalar</string>
-    <string name="label_installed">Instalado</string>
-    <string name="label_tasks_count">%d tareas</string>
-    <string name="setting_packages">Paquetes de tareas</string>
-    <string name="setting_packages_desc">Colecciones de bloques y tareas predefinidas</string>
-
-    <string name="pkg_health_name">Salud</string>
-    <string name="pkg_health_desc">Hidratacion, vitaminas, meditacion y revisiones medicas</string>
-    <string name="pkg_fitness_name">Fitness</string>
-    <string name="pkg_fitness_desc">Rutinas de ejercicio, estiramientos y dias de descanso</string>
-    <string name="pkg_study_name">Estudio</string>
-    <string name="pkg_study_desc">Sesiones de estudio, repaso y ejercicios practicos</string>
-    <string name="pkg_mindfulness_name">Mindfulness</string>
-    <string name="pkg_mindfulness_desc">Meditacion, diario de gratitud y desconexion digital</string>
-    <string name="pkg_home_name">Hogar</string>
-    <string name="pkg_home_desc">Limpieza de cocina, lavadora, compra y plantas</string>
-    <string name="pkg_finance_name">Finanzas</string>
-    <string name="pkg_finance_desc">Control de gastos, presupuesto y facturas</string>
-
-    <string name="task_drink_water">Beber 2L de agua</string>
-    <string name="task_vitamins">Tomar vitaminas</string>
-    <string name="task_meditate_10">Meditar 10 min</string>
-    <string name="task_health_checkup">Revision medica</string>
-    <string name="task_sleep_8h">Dormir 8 horas</string>
-    <string name="task_exercise_30">Ejercicio 30 min</string>
-    <string name="task_morning_stretch">Estiramientos manana</string>
-    <string name="task_leg_day">Dia de piernas</string>
-    <string name="task_cardio">Cardio</string>
-    <string name="task_rest_day">Dia de descanso</string>
-    <string name="task_study_2h">Estudiar 2 horas</string>
-    <string name="task_review_notes">Repasar apuntes</string>
-    <string name="task_practice">Ejercicios practicos</string>
-    <string name="task_read_30">Leer 30 min</string>
-    <string name="task_meditation">Meditacion</string>
-    <string name="task_gratitude">Diario de gratitud</string>
-    <string name="task_breathing">Respiracion 5 min</string>
-    <string name="task_digital_detox">Desconexion digital 1h</string>
-    <string name="task_clean_kitchen">Limpiar cocina</string>
-    <string name="task_laundry">Lavadora</string>
-    <string name="task_groceries">Compra semanal</string>
-    <string name="task_plants">Regar las plantas</string>
-    <string name="task_review_expenses">Revisar gastos</string>
-    <string name="task_weekly_budget">Presupuesto semanal</string>
-    <string name="task_savings">Ahorro mensual</string>
-    <string name="task_bills">Pagar facturas</string>
-
-    <!-- Calendar tab -->
-    <string name="tab_calendar">Calendario</string>
-    <string name="title_calendar">Calendario</string>
-    <string name="btn_today">Hoy</string>
-    <string name="btn_add_date">Anadir fecha</string>
-    <string name="dialog_personal_date_title">Fecha personal</string>
-    <string name="label_date_type">Tipo</string>
-    <string name="date_type_birthday">Cumpleanos</string>
-    <string name="date_type_appointment">Cita</string>
-    <string name="date_type_holiday">Festivo</string>
-    <string name="date_type_custom">Personalizado</string>
-    <string name="label_recurrence">Recurrencia</string>
-    <string name="recurrence_once">Una vez</string>
-    <string name="recurrence_yearly">Anual</string>
-    <string name="recurrence_monthly">Mensual</string>
-    <string name="setting_holiday_country">Calendario de festivos</string>
-    <string name="country_spain">Espana</string>
-    <string name="country_none">Ninguno</string>
-
     <!-- Onboarding quiz -->
     <string name="quiz_welcome_title">Bienvenido a Riptide</string>
     <string name="quiz_welcome_body">Vamos a configurar tu espacio. Unas preguntas rapidas para crear los bloques y tareas perfectos para ti.</string>
@@ -479,10 +431,8 @@
     <string name="quiz_count_heavy">Muchas (10+)</string>
     <string name="quiz_summary">Tu configuracion esta lista!</string>
     <string name="quiz_summary_body">Hemos creado bloques y tareas segun tus respuestas. Siempre puedes cambiarlos despues.</string>
-    <string name="task_first_task">Completa tu primera tarea!</string>
 
-    <!-- Multi-pond -->
-    <string name="label_select_pond">Seleccionar estanque</string>
+    <!-- Biomes -->
     <string name="biome_coral_reef">Arrecife de Coral</string>
     <string name="biome_kelp_forest">Bosque de Kelp</string>
     <string name="biome_mangrove">Manglar</string>

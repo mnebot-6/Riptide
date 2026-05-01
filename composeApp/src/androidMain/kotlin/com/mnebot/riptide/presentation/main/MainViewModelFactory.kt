@@ -68,6 +68,8 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
             ),
             onTaskMutated = { WidgetUpdater.refreshAll(context.applicationContext) },
             syncStatusFlow = syncManager.status,
+            syncErrorFlow = syncManager.lastError,
+            syncLastMillisFlow = syncManager.lastSyncMillis,
             onSyncMutation = {
                 // Lazily initialize SyncTrigger on first mutation
                 // (it needs the ViewModel's scope, but we approximate with the existing scope)

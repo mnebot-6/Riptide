@@ -1,6 +1,7 @@
 package com.mnebot.riptide.data.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -38,16 +39,19 @@ class SyncWorker(
         val db = DatabaseProvider.getDatabase(applicationContext)
         val syncManager = SyncManager(db, api, userPrefs)
 
-        return when (syncManager.sync()) {
+        Log.i(TAG, "Periodic sync attempt #${runAttemptCount + 1}")
+        return when (val result = syncManager.sync()) {
             is SyncManager.SyncResult.Success -> Result.success()
             is SyncManager.SyncResult.NotLoggedIn -> Result.success()
             is SyncManager.SyncResult.Error -> {
+                Log.w(TAG, "Periodic sync error: ${result.message}")
                 if (runAttemptCount < 3) Result.retry() else Result.failure()
             }
         }
     }
 
     companion object {
+        private const val TAG = "RiptideSync"
         private const val WORK_NAME = "riptide_periodic_sync"
 
         /** Schedule hourly background sync with network constraint. */

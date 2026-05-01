@@ -57,6 +57,10 @@ class MainViewModel(
     private val onTaskMutated: (suspend () -> Unit)? = null,
     /** Flow emitting SyncStatus from SyncManager (null when sync is not available). */
     private val syncStatusFlow: Flow<SyncStatus>? = null,
+    /** Flow emitting last sync error message (null on success). */
+    private val syncErrorFlow: Flow<String?>? = null,
+    /** Flow emitting timestamp (millis) of the last successful sync. */
+    private val syncLastMillisFlow: Flow<Long?>? = null,
     /** Notify debounced sync trigger after local mutations. */
     private val onSyncMutation: (() -> Unit)? = null,
     /** Force immediate sync (e.g., user taps "Sync Now"). */
@@ -89,6 +93,16 @@ class MainViewModel(
         viewModelScope.launch {
             syncStatusFlow?.collect { status ->
                 _uiState.update { it.copy(syncStatus = status) }
+            }
+        }
+        viewModelScope.launch {
+            syncErrorFlow?.collect { err ->
+                _uiState.update { it.copy(lastSyncError = err) }
+            }
+        }
+        viewModelScope.launch {
+            syncLastMillisFlow?.collect { millis ->
+                _uiState.update { it.copy(lastSyncMillis = millis) }
             }
         }
         // Observe wallpaper FPS
@@ -129,16 +143,6 @@ class MainViewModel(
     /** Dismiss the initial sync conflict dialog. */
     fun dismissSyncConflict() {
         _uiState.update { it.copy(pendingSyncConflict = false) }
-    }
-
-    /** Select a pond (biome) to display. */
-    fun selectPond(category: MarineCategory) {
-        _uiState.update {
-            it.copy(
-                selectedPond = category,
-                selectedBiome = com.mnebot.riptide.presentation.aquarium.BiomeThemes.forCategory(category)
-            )
-        }
     }
 
     fun selectDate(date: LocalDate) {

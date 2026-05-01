@@ -64,7 +64,14 @@ class NightSummaryProcessor(
 
         val total = evaluable.size
         val completed = evaluable.count { it.status == TaskStatus.COMPLETED }
-        val score = if (total > 0) completed.toFloat() / total.toFloat() else 0f
+        val score = Companion.computeScore(evaluable.map { task ->
+            ScoreInput(
+                isCompleted = task.status == TaskStatus.COMPLETED,
+                isPriority = task.isPriority,
+                targetCount = task.targetCount,
+                currentCount = task.currentCount
+            )
+        })
 
         val blockIds = evaluable.mapNotNull { it.blockId }.distinct()
         val streakUpdates = blockStreakProcessor?.processDay(date, blockIds) ?: emptyMap()
@@ -109,6 +116,42 @@ class NightSummaryProcessor(
 
         // Comprobar condiciones de desbloqueo de DECORATION al finalizar el día
         decorationUnlockChecker?.checkAll()
+    }
+
+    internal data class ScoreInput(
+        val isCompleted: Boolean,
+        val isPriority: Boolean,
+        val targetCount: Int?,
+        val currentCount: Int
+    )
+
+    companion object {
+        /**
+         * Weighted score in [0,1].
+         * - Normal: weight=1, value = if (completed) 1 else 0
+         * - Priority: weight=2, value = if (completed) 2 else 0
+         * - Countable (target>0): weight=1, value = (current/target).coerceIn(0,1)
+         *   Priority countable: both doubled.
+         * - Timer / notes: same as normal/priority depending on isPriority.
+         */
+        internal fun computeScore(tasks: List<ScoreInput>): Float {
+            if (tasks.isEmpty()) return 0f
+            var totalValue = 0f
+            var totalWeight = 0f
+            for (t in tasks) {
+                val priorityMultiplier = if (t.isPriority) 2f else 1f
+                val isCountable = t.targetCount != null && t.targetCount > 0
+                val baseWeight = 1f
+                val baseValue = if (isCountable) {
+                    (t.currentCount.toFloat() / t.targetCount!!.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    if (t.isCompleted) 1f else 0f
+                }
+                totalWeight += baseWeight * priorityMultiplier
+                totalValue += baseValue * priorityMultiplier
+            }
+            return if (totalWeight > 0f) totalValue / totalWeight else 0f
+        }
     }
 
     private fun buildMessage(

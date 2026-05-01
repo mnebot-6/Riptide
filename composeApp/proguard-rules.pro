@@ -42,6 +42,29 @@
 # ── Domain models (used with Room + serialization) ───────────────────────────
 -keep class com.mnebot.riptide.domain.model.** { *; }
 
+# ── Ktor Client ──────────────────────────────────────────────────────────────
+-keep class io.ktor.** { *; }
+-dontwarn io.ktor.**
+-keepnames class kotlinx.coroutines.** { *; }
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
+
+# ── OkHttp ───────────────────────────────────────────────────────────────────
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# ── DTOs (Sync API + Auth) ───────────────────────────────────────────────────
+-keep class com.mnebot.riptide.data.remote.dto.** { *; }
+-keep class com.mnebot.riptide.data.remote.** { *; }
+
+# ── Google Play Services Auth ────────────────────────────────────────────────
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
 # ── Kotlin ───────────────────────────────────────────────────────────────────
 -dontwarn kotlin.**
 -dontwarn kotlinx.**

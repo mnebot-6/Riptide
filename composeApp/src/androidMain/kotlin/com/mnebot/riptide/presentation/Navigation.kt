@@ -40,25 +40,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.mnebot.riptide.data.remote.AuthManager
 import com.mnebot.riptide.data.remote.RiptideApi
-import com.mnebot.riptide.data.repository.BlockCategoryRepositoryImpl
-import com.mnebot.riptide.data.repository.DayTaskRepositoryImpl
-import com.mnebot.riptide.data.repository.EcosystemStateRepositoryImpl
-import com.mnebot.riptide.data.repository.PersonalDateRepositoryImpl
-import com.mnebot.riptide.data.repository.RecurringTaskDefRepositoryImpl
-import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
-import com.mnebot.riptide.data.repository.WorkBlockRepositoryImpl
 import com.mnebot.riptide.data.sync.InitialSyncPreparer
 import com.mnebot.riptide.data.sync.SyncManager
-import com.mnebot.riptide.domain.HolidayCalendar
-import com.mnebot.riptide.domain.MarineCategoryAssigner
-import com.mnebot.riptide.domain.PackageInstaller
-import com.mnebot.riptide.domain.RecurringTaskGenerator
-import com.mnebot.riptide.domain.SmartSeeder
-import com.mnebot.riptide.domain.TaskPackages
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository as UserPrefs
-import com.mnebot.riptide.presentation.calendar.CalendarUiState
-import com.mnebot.riptide.presentation.calendar.PersonalDateDialog
-import com.mnebot.riptide.presentation.packages.PackageBrowserScreen
 import com.mnebot.riptide.wallpaper.RiptideWallpaperService
 import kotlinx.coroutines.launch
 
@@ -68,36 +52,16 @@ const val ROUTE_BLOCK_CREATE = "block/create"
 const val ROUTE_BLOCK_EDIT = "block/edit/{blockId}"
 const val ROUTE_ECOSYSTEM = "ecosystem"
 const val ROUTE_SETTINGS = "settings"
-const val ROUTE_PACKAGES = "packages"
 
 fun NavGraphBuilder.onboardingGraph(
     userPreferencesRepository: UserPreferencesRepository,
     navController: NavController
 ) {
     composable(ROUTE_ONBOARDING) {
-        val context = LocalContext.current
         val scope = rememberCoroutineScope()
         OnboardingScreen(
-            onComplete = { quizState ->
+            onComplete = { _ ->
                 scope.launch {
-                    if (quizState != null) {
-                        val database = DatabaseProvider.getDatabase(context)
-                        val prefs = UserPreferencesRepositoryImpl(context)
-                        val workBlockRepo = WorkBlockRepositoryImpl(database.workBlockDao())
-                        val recurringTaskDefRepo = RecurringTaskDefRepositoryImpl(database.recurringTaskDefDao())
-                        val dayTaskRepo = DayTaskRepositoryImpl(database.dayTaskDao())
-                        val blockCategoryRepo = BlockCategoryRepositoryImpl(database.blockCategoryDao())
-                        val ecosystemStateRepo = EcosystemStateRepositoryImpl(database.ecosystemStateDao())
-                        val installer = PackageInstaller(
-                            workBlockRepository = workBlockRepo,
-                            recurringTaskDefRepository = recurringTaskDefRepo,
-                            userPreferencesRepository = prefs,
-                            marineCategoryAssigner = MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo),
-                            recurringTaskGenerator = RecurringTaskGenerator(recurringTaskDefRepo, dayTaskRepo)
-                        )
-                        val seeder = SmartSeeder(installer, dayTaskRepo)
-                        seeder.seedFromQuiz(quizState)
-                    }
                     userPreferencesRepository.setOnboardingCompleted()
                 }
                 navController.navigate(ROUTE_MAIN) {
@@ -135,28 +99,6 @@ fun NavGraphBuilder.mainGraph(
         val historyUiState by historyViewModel.uiState.collectAsStateWithLifecycle()
 
         val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
-
-        // Calendar state
-        val database = DatabaseProvider.getDatabase(context)
-        val personalDateRepo = remember { PersonalDateRepositoryImpl(database.personalDateDao()) }
-        val calendarDayTaskRepo = remember { DayTaskRepositoryImpl(database.dayTaskDao()) }
-        var calendarUiState by remember { mutableStateOf(CalendarUiState()) }
-        var showPersonalDateDialog by remember { mutableStateOf(false) }
-
-        if (showPersonalDateDialog) {
-            PersonalDateDialog(
-                onDismiss = { showPersonalDateDialog = false },
-                onSave = { personalDate ->
-                    showPersonalDateDialog = false
-                    scope.launch {
-                        personalDateRepo.insert(personalDate)
-                        // Reload calendar data
-                        val all = personalDateRepo.getAll()
-                        calendarUiState = calendarUiState.copy(personalDates = all)
-                    }
-                }
-            )
-        }
 
         // Sync conflict dialog
         if (uiState.pendingSyncConflict) {
@@ -200,47 +142,6 @@ fun NavGraphBuilder.mainGraph(
             onSignIn = {
                 authManager?.let { am ->
                     signInLauncher.launch(am.getSignInIntent(context))
-                }
-            },
-            calendarUiState = calendarUiState,
-            onCalendarMonthChanged = { year, month ->
-                scope.launch {
-                    val firstDay = kotlinx.datetime.LocalDate(year, month, 1)
-                    val lastDay = kotlinx.datetime.LocalDate(
-                        year, month,
-                        when (month) {
-                            2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
-                            4, 6, 9, 11 -> 30
-                            else -> 31
-                        }
-                    )
-                    val tasks = calendarDayTaskRepo.getCompletedRange(firstDay, lastDay) +
-                        calendarDayTaskRepo.getByDate(firstDay) // ensure we get all statuses for the range
-                    // Group all tasks for each date in the range
-                    val tasksByDate = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<com.mnebot.riptide.domain.model.DayTask>>()
-                    for (d in 0..lastDay.day - 1) {
-                        val date = kotlinx.datetime.LocalDate(year, month, d + 1)
-                        val dateTasks = calendarDayTaskRepo.getByDate(date)
-                        if (dateTasks.isNotEmpty()) {
-                            tasksByDate[date] = dateTasks.toMutableList()
-                        }
-                    }
-                    val personalDates = personalDateRepo.getAll()
-                    val holidays = HolidayCalendar.getHolidays("ES", year)
-                        .associate { it.date to it.name }
-                    calendarUiState = CalendarUiState(
-                        tasksByDate = tasksByDate,
-                        personalDates = personalDates,
-                        holidays = holidays
-                    )
-                }
-            },
-            onAddPersonalDate = { showPersonalDateDialog = true },
-            onDeletePersonalDate = { id ->
-                scope.launch {
-                    personalDateRepo.delete(id)
-                    val all = personalDateRepo.getAll()
-                    calendarUiState = calendarUiState.copy(personalDates = all)
                 }
             }
         )
@@ -317,11 +218,6 @@ fun NavGraphBuilder.mainGraph(
             onCreatureNicknameChanged = { creatureId, nickname ->
                 mainViewModel.updateCreatureNickname(creatureId, nickname)
             },
-            selectedPond = uiState.selectedPond,
-            onPondSelected = { category ->
-                mainViewModel.selectPond(category)
-                navController.popBackStack()
-            },
             onNavigateBack = { navController.popBackStack() }
         )
     }
@@ -363,6 +259,8 @@ fun NavGraphBuilder.mainGraph(
             },
             loggedInUser = uiState.loggedInUser,
             syncStatus = uiState.syncStatus,
+            lastSyncMillis = uiState.lastSyncMillis,
+            lastSyncError = uiState.lastSyncError,
             onSignIn = {
                 authManager?.let { am ->
                     signInLauncher.launch(am.getSignInIntent(context))
@@ -370,67 +268,6 @@ fun NavGraphBuilder.mainGraph(
             },
             onSignOut = { mainViewModel.signOut() },
             onSyncNow = { mainViewModel.syncNow() },
-            onNavigateToPackages = { navController.navigate(ROUTE_PACKAGES) },
-            onNavigateBack = { navController.popBackStack() }
-        )
-    }
-
-    composable(
-        ROUTE_PACKAGES,
-        enterTransition  = { slideInVertically(tween(300)) { it } },
-        exitTransition   = { slideOutVertically(tween(300)) { it } },
-        popEnterTransition  = { slideInVertically(tween(300)) { it } },
-        popExitTransition   = { slideOutVertically(tween(300)) { it } }
-    ) {
-        val context = LocalContext.current
-        val scope = rememberCoroutineScope()
-        val database = DatabaseProvider.getDatabase(context)
-        val prefs = remember { UserPreferencesRepositoryImpl(context) }
-        val workBlockRepo = remember { WorkBlockRepositoryImpl(database.workBlockDao()) }
-        val recurringTaskDefRepo = remember { RecurringTaskDefRepositoryImpl(database.recurringTaskDefDao()) }
-        val dayTaskRepo = remember { DayTaskRepositoryImpl(database.dayTaskDao()) }
-        val blockCategoryRepo = remember { BlockCategoryRepositoryImpl(database.blockCategoryDao()) }
-        val ecosystemStateRepo = remember { EcosystemStateRepositoryImpl(database.ecosystemStateDao()) }
-
-        val installer = remember {
-            PackageInstaller(
-                workBlockRepository = workBlockRepo,
-                recurringTaskDefRepository = recurringTaskDefRepo,
-                userPreferencesRepository = prefs,
-                marineCategoryAssigner = MarineCategoryAssigner(workBlockRepo, blockCategoryRepo, ecosystemStateRepo),
-                recurringTaskGenerator = RecurringTaskGenerator(recurringTaskDefRepo, dayTaskRepo)
-            )
-        }
-
-        var installedIds by remember { mutableStateOf(emptySet<String>()) }
-        var installing by remember { mutableStateOf(emptySet<String>()) }
-
-        LaunchedEffect(Unit) {
-            installedIds = prefs.getInstalledPackageIds()
-        }
-
-        PackageBrowserScreen(
-            packages = TaskPackages.ALL,
-            installedIds = installedIds,
-            installing = installing,
-            onInstall = { pkg ->
-                installing = installing + pkg.id
-                scope.launch {
-                    installer.install(pkg)
-                    installedIds = prefs.getInstalledPackageIds()
-                    installing = installing - pkg.id
-                    mainViewModel.reload()
-                }
-            },
-            onUninstall = { pkg ->
-                installing = installing + pkg.id
-                scope.launch {
-                    installer.uninstall(pkg)
-                    installedIds = prefs.getInstalledPackageIds()
-                    installing = installing - pkg.id
-                    mainViewModel.reload()
-                }
-            },
             onNavigateBack = { navController.popBackStack() }
         )
     }

@@ -1,6 +1,7 @@
 package com.mnebot.riptide.presentation.main
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -43,11 +45,8 @@ import com.mnebot.riptide.presentation.components.DatePickerDialogWrapper
 import com.mnebot.riptide.presentation.task.PostponeSheet
 import com.mnebot.riptide.presentation.task.TaskFormSheet
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import com.mnebot.riptide.presentation.aquarium.CreatureIcon
 import com.mnebot.riptide.presentation.theme.rememberAdaptiveCardColor
 import com.mnebot.riptide.presentation.displayNameRes
@@ -69,15 +68,18 @@ private fun sortedBlocks(
     val dayOfWeek = date.dayOfWeek.isoDayNumber
     return blocks.sortedWith(compareBy(
         { block ->
-            // Hora más temprana de cualquier tarea (estable: no cambia al completar)
-            val earliestTaskTime = tasksByBlock[block.id]
-                ?.filter { it.status != TaskStatus.POSTPONED }
+            // Hora más temprana de tarea pendiente (no completada/pospuesta)
+            val earliestPendingTime = tasksByBlock[block.id]
+                ?.filter {
+                    it.status != TaskStatus.POSTPONED &&
+                        it.status != TaskStatus.COMPLETED
+                }
                 ?.mapNotNull { (it.schedule as? TaskSchedule.OneTime)?.time }
                 ?.minOrNull()
                 ?.toSecondOfDay()
 
-            if (earliestTaskTime != null) {
-                earliestTaskTime
+            if (earliestPendingTime != null) {
+                earliestPendingTime
             } else {
                 // Fallback: hora del slot del bloque ese día
                 val recurrence = block.recurrence
@@ -92,13 +94,29 @@ private fun sortedBlocks(
 }
 
 private fun sortedTasks(tasks: List<DayTask>): List<DayTask> {
-    fun taskSortKey(task: DayTask): Pair<Int, Int> {
+    // 4-bucket order for active tasks:
+    //  0 = priority + time (asc by time)
+    //  1 = priority no-time (creation order = stable existing order)
+    //  2 = normal + time (asc by time)
+    //  3 = normal no-time (creation order)
+    // Completed always at the end.
+    fun bucket(task: DayTask): Int {
         val time = (task.schedule as? TaskSchedule.OneTime)?.time
-        return if (time != null) Pair(0, time.toSecondOfDay()) else Pair(1, 0)
+        return when {
+            task.isPriority && time != null -> 0
+            task.isPriority -> 1
+            time != null -> 2
+            else -> 3
+        }
+    }
+    fun timeKey(task: DayTask): Int {
+        val time = (task.schedule as? TaskSchedule.OneTime)?.time
+        return time?.toSecondOfDay() ?: 0
     }
     val (completed, active) = tasks.partition { it.status == TaskStatus.COMPLETED }
-    return active.sortedWith(compareBy({ taskSortKey(it).first }, { taskSortKey(it).second })) +
-            completed.sortedWith(compareBy({ taskSortKey(it).first }, { taskSortKey(it).second }))
+    val sortedActive = active.sortedWith(compareBy({ bucket(it) }, { timeKey(it) }))
+    val sortedCompleted = completed.sortedWith(compareBy({ bucket(it) }, { timeKey(it) }))
+    return sortedActive + sortedCompleted
 }
 
 private fun shouldShowBlockTime(block: WorkBlock, date: LocalDate): Boolean {
@@ -134,24 +152,7 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(uiState.selectedDate) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    when {
-                        dragAmount < -40 -> {
-                            scope.launch {
-                                viewModel.selectDate(uiState.selectedDate.plus(1, DateTimeUnit.DAY))
-                            }
-                        }
-                        dragAmount > 40 -> {
-                            scope.launch {
-                                viewModel.selectDate(uiState.selectedDate.minus(1, DateTimeUnit.DAY))
-                            }
-                        }
-                    }
-                }
-            }
+        modifier = Modifier.fillMaxSize()
     ) {
         // Aquarium background is rendered by MainShellScreen
 
@@ -797,13 +798,13 @@ private fun MainContent(
     onTimerCancel: (String) -> Unit = {},
     onNotesChanged: (DayTask, String?) -> Unit = { _, _ -> },
 ) {
-    val blocksWithTasks = remember(blocks, tasksByBlock) {
+    val (activeBlocks, completedBlocks) = remember(blocks, tasksByBlock) {
         val withTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
-        val (active, allDone) = withTasks.partition { block ->
+        withTasks.partition { block ->
             tasksByBlock[block.id]?.any { it.status != TaskStatus.COMPLETED } == true
         }
-        active + allDone
     }
+    var completedBlocksExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color(0x33FFFFFF)))
@@ -816,7 +817,7 @@ private fun MainContent(
             error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Text(stringResource(Res.string.msg_error, error), color = TextPrimary)
             }
-            blocksWithTasks.isEmpty() && tasksByBlock[null].isNullOrEmpty() -> Box(
+            activeBlocks.isEmpty() && completedBlocks.isEmpty() && tasksByBlock[null].isNullOrEmpty() -> Box(
                 Modifier.fillMaxSize(), Alignment.Center
             ) {
                 Text(stringResource(Res.string.msg_no_tasks), color = TextSecondary, fontSize = 16.sp)
@@ -850,8 +851,8 @@ private fun MainContent(
                         )
                     }
                 }
-                // Blocks (active first, all-completed last — handled by blocksWithTasks)
-                items(blocksWithTasks, key = { it.id }) { block ->
+                // Active blocks (with at least one pending task)
+                items(activeBlocks, key = { it.id }) { block ->
                     val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
                     val streak = streaksByBlock[block.id] ?: 0
                     BlockSection(
@@ -872,6 +873,41 @@ private fun MainContent(
                         onTimerCancel = onTimerCancel,
                         onNotesChanged = onNotesChanged
                     )
+                }
+
+                // Collapsed completed-blocks section
+                if (completedBlocks.isNotEmpty()) {
+                    item {
+                        CompletedBlocksHeader(
+                            count = completedBlocks.size,
+                            expanded = completedBlocksExpanded,
+                            onToggle = { completedBlocksExpanded = !completedBlocksExpanded }
+                        )
+                    }
+                    if (completedBlocksExpanded) {
+                        items(completedBlocks, key = { "done_${it.id}" }) { block ->
+                            val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
+                            val streak = streaksByBlock[block.id] ?: 0
+                            BlockSection(
+                                block = block,
+                                tasks = tasks,
+                                selectedDate = selectedDate,
+                                streak = streak,
+                                onTaskToggle = onTaskToggle,
+                                onTaskLongPress = onTaskLongPress,
+                                onHeaderLongPress = onBlockHeaderLongPress,
+                                onIncrement = onIncrement,
+                                onDecrement = onDecrement,
+                                onPriorityToggle = onPriorityToggle,
+                                timerStates = timerStates,
+                                onTimerStart = onTimerStart,
+                                onTimerPause = onTimerPause,
+                                onTimerResume = onTimerResume,
+                                onTimerCancel = onTimerCancel,
+                                onNotesChanged = onNotesChanged
+                            )
+                        }
+                    }
                 }
                 // Completed unassigned tasks at the very bottom
                 if (completedUnassigned.isNotEmpty()) {
@@ -1703,6 +1739,43 @@ private fun UnassignedSection(
             )
             Spacer(modifier = Modifier.height(6.dp))
         }
+    }
+}
+
+@Composable
+private fun CompletedBlocksHeader(
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 0f else -90f,
+        animationSpec = tween(durationMillis = 200),
+        label = "completed_chevron"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onToggle() }
+            .padding(vertical = 12.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_chevron_down),
+            contentDescription = null,
+            tint = Color(0x99FFFFFF),
+            modifier = Modifier
+                .size(20.dp)
+                .graphicsLayer { rotationZ = rotation }
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = stringResource(Res.string.label_completed_blocks, count),
+            color = Color(0xCCFFFFFF),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

@@ -36,6 +36,10 @@ private fun serializeRecurrence(recurrence: Recurrence): String {
         is Recurrence.Weekly -> recurrence.slots.joinToString("|") { slot ->
             "${slot.dayOfWeek},${slot.startTime},${slot.endTime}"
         }
+        // Blocks only support None/Weekly. Other recurrence types apply to RecurringTaskDef.
+        is Recurrence.Yearly,
+        is Recurrence.MonthlyDay,
+        is Recurrence.NthWeekdayOfMonth -> "none"
     }
 }
 

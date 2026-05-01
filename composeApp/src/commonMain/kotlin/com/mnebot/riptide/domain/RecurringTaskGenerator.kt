@@ -51,12 +51,37 @@ class RecurringTaskGenerator(
         }
     }
 
-    private fun shouldGenerateForDate(def: RecurringTaskDef, date: LocalDate): Boolean {
-        return when (def.recurrence) {
+    internal fun shouldGenerateForDate(def: RecurringTaskDef, date: LocalDate): Boolean {
+        return when (val r = def.recurrence) {
             is Recurrence.None -> false
             is Recurrence.Weekly -> {
-                val dayOfWeek = date.dayOfWeek.isoDayNumber // 1=Lunes, 7=Domingo
-                def.recurrence.slots.any { it.dayOfWeek == dayOfWeek }
+                val dayOfWeek = date.dayOfWeek.isoDayNumber // 1=Mon..7=Sun
+                r.slots.any { it.dayOfWeek == dayOfWeek }
+            }
+            is Recurrence.Yearly -> (date.month.ordinal + 1) == r.month && date.day == r.day
+            is Recurrence.MonthlyDay -> {
+                if (date.day != r.day) false
+                else {
+                    val interval = r.intervalMonths.coerceAtLeast(1)
+                    interval == 1 || ((date.month.ordinal + 1) - 1) % interval == 0
+                }
+            }
+            is Recurrence.NthWeekdayOfMonth -> {
+                val isoDow = date.dayOfWeek.isoDayNumber
+                if (isoDow != r.dayOfWeek) false
+                else {
+                    val occurrence = (date.day - 1) / 7 + 1
+                    val matchesNth = if (r.nth == 5) {
+                        // Last occurrence: next week's same weekday is in next month
+                        val nextWeek = date.plus(DatePeriod(days = 7))
+                        nextWeek.month != date.month
+                    } else occurrence == r.nth
+                    if (!matchesNth) false
+                    else {
+                        val interval = r.intervalMonths.coerceAtLeast(1)
+                        interval == 1 || ((date.month.ordinal + 1) - 1) % interval == 0
+                    }
+                }
             }
         }
     }

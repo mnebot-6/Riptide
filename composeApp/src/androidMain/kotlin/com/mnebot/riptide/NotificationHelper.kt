@@ -74,10 +74,19 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(NOTIF_NIGHT_SUMMARY, notification)
     }
 
-    fun sendMorningReminderNotification(context: Context) {
+    fun sendMorningReminderNotification(context: Context, untimedTaskTitles: List<String> = emptyList()) {
+        val title = context.getString(R.string.notif_morning_reminder_title)
+        val body = if (untimedTaskTitles.isEmpty()) {
+            context.getString(R.string.notif_morning_reminder_body)
+        } else {
+            untimedTaskTitles.joinToString(separator = "\n") { "• $it" }
+        }
         val notification = buildNotification(context, CHANNEL_MORNING_REMINDER) {
-            setContentTitle(context.getString(R.string.notif_morning_reminder_title))
-            setContentText(context.getString(R.string.notif_morning_reminder_body))
+            setContentTitle(title)
+            setContentText(body)
+            if (untimedTaskTitles.isNotEmpty()) {
+                setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            }
             setPriority(NotificationCompat.PRIORITY_DEFAULT)
         }
         NotificationManagerCompat.from(context).notify(NOTIF_MORNING_REMINDER, notification)

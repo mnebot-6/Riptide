@@ -55,10 +55,11 @@ fun SettingsScreen(
     onSetLiveWallpaper: () -> Unit,
     loggedInUser: LoggedInUser?,
     syncStatus: SyncStatus,
+    lastSyncMillis: Long? = null,
+    lastSyncError: String? = null,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncNow: () -> Unit,
-    onNavigateToPackages: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
     var showFpsDialog by remember { mutableStateOf(false) }
@@ -206,12 +207,6 @@ fun SettingsScreen(
                     label = stringResource(Res.string.btn_live_wallpaper),
                     onClick = { showFpsDialog = true }
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                SettingsItem(
-                    painter = painterResource(Res.drawable.ic_box),
-                    label = stringResource(Res.string.setting_packages),
-                    onClick = onNavigateToPackages
-                )
 
                 Spacer(modifier = Modifier.height(20.dp))
                 HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -221,6 +216,8 @@ fun SettingsScreen(
                 AccountSection(
                     loggedInUser = loggedInUser,
                     syncStatus = syncStatus,
+                    lastSyncMillis = lastSyncMillis,
+                    lastSyncError = lastSyncError,
                     onSignIn = onSignIn,
                     onSignOut = onSignOut,
                     onSyncNow = onSyncNow
@@ -329,6 +326,8 @@ private fun SettingsItem(painter: Painter, label: String, onClick: () -> Unit) {
 private fun AccountSection(
     loggedInUser: LoggedInUser?,
     syncStatus: SyncStatus,
+    lastSyncMillis: Long? = null,
+    lastSyncError: String? = null,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncNow: () -> Unit
@@ -408,12 +407,40 @@ private fun AccountSection(
             SyncStatusBadge(syncStatus, modifier = Modifier.padding(start = 8.dp))
         }
 
+        // Last sync info / error
+        if (lastSyncError != null) {
+            Text(
+                text = stringResource(Res.string.sync_last_error, lastSyncError),
+                color = Color(0xFFE57373),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            )
+        } else if (lastSyncMillis != null) {
+            Text(
+                text = stringResource(Res.string.sync_last_synced, formatRelativeTime(lastSyncMillis)),
+                color = TextSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            )
+        }
+
         // Sign out
         SettingsItem(
             painter = painterResource(Res.drawable.ic_log_out),
             label = stringResource(Res.string.btn_sign_out),
             onClick = onSignOut
         )
+    }
+}
+
+private fun formatRelativeTime(millis: Long): String {
+    val diff = (kotlin.time.Clock.System.now().toEpochMilliseconds() - millis).coerceAtLeast(0)
+    val seconds = diff / 1000
+    return when {
+        seconds < 60 -> "<1 min"
+        seconds < 3600 -> "${seconds / 60} min"
+        seconds < 86400 -> "${seconds / 3600} h"
+        else -> "${seconds / 86400} d"
     }
 }
 

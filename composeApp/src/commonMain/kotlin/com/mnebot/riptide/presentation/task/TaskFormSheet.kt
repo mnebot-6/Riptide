@@ -10,9 +10,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -25,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.*
@@ -35,6 +42,7 @@ import com.mnebot.riptide.presentation.main.currentDate
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.number
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import riptide.composeapp.generated.resources.*
@@ -87,9 +95,7 @@ fun TaskFormSheet(
     var isPriority by remember { mutableStateOf(existingTask?.isPriority ?: existingDef?.isPriority ?: false) }
     var notesText by remember { mutableStateOf(existingTask?.notes ?: existingDef?.noteTemplate ?: "") }
 
-    // Reset notification toggle when time is cleared
-    LaunchedEffect(selectedTime) { if (selectedTime == null) notificationsEnabled = false }
-    LaunchedEffect(recurringTime) { if (recurringTime == null) notificationsEnabled = false }
+    // Note: notifications without time fire at the morning reminder digest.
 
     val selectedDays = remember(existingDef) {
         mutableStateMapOf<Int, Unit>().also { map ->
@@ -98,6 +104,39 @@ fun TaskFormSheet(
         }
     }
     val days = localizedDays()
+
+    // ── Extended recurrence types ────────────────────────────────────────
+    var recurrenceType by remember(existingDef) {
+        mutableStateOf(
+            when (existingDef?.recurrence) {
+                is Recurrence.Yearly -> RecurrenceTypeUI.YEARLY
+                is Recurrence.MonthlyDay -> RecurrenceTypeUI.MONTHLY_DAY
+                is Recurrence.NthWeekdayOfMonth -> RecurrenceTypeUI.NTH_WEEKDAY
+                else -> RecurrenceTypeUI.WEEKLY
+            }
+        )
+    }
+    var monthlyDay by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.MonthlyDay)?.day ?: 1)
+    }
+    var monthlyInterval by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.MonthlyDay)?.intervalMonths ?: 1)
+    }
+    var yearlyMonth by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.Yearly)?.month ?: 1)
+    }
+    var yearlyDay by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.Yearly)?.day ?: 1)
+    }
+    var nthOccurrence by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.nth ?: 1)
+    }
+    var nthDayOfWeek by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.dayOfWeek ?: 1)
+    }
+    var nthInterval by remember(existingDef) {
+        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.intervalMonths ?: 1)
+    }
 
     Box(
         modifier = Modifier
@@ -189,36 +228,34 @@ fun TaskFormSheet(
                         )
                     }
                 }
-                if (selectedTime != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_bell),
-                                contentDescription = stringResource(Res.string.a11y_notification),
-                                tint = TextSecondary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(Res.string.label_notify_at_time),
-                                color = TextSecondary,
-                                fontSize = 14.sp
-                            )
-                        }
-                        Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = TextPrimary,
-                                checkedTrackColor = Color(0xFF1A73E8)
-                            )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_bell),
+                            contentDescription = stringResource(Res.string.a11y_notification),
+                            tint = TextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(Res.string.label_notify_at_time),
+                            color = TextSecondary,
+                            fontSize = 14.sp
                         )
                     }
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { notificationsEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TextPrimary,
+                            checkedTrackColor = Color(0xFF1A73E8)
+                        )
+                    )
                 }
             } else {
                 SheetSectionLabel(stringResource(Res.string.label_time_optional))
@@ -228,63 +265,156 @@ fun TaskFormSheet(
                     onValueChange = { recurringTime = it },
                     nullable = true
                 )
-                if (recurringTime != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_bell),
-                                contentDescription = stringResource(Res.string.a11y_notification),
-                                tint = TextSecondary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(Res.string.label_notify_at_time),
-                                color = TextSecondary,
-                                fontSize = 14.sp
-                            )
-                        }
-                        Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = TextPrimary,
-                                checkedTrackColor = Color(0xFF1A73E8)
-                            )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_bell),
+                            contentDescription = stringResource(Res.string.a11y_notification),
+                            tint = TextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(Res.string.label_notify_at_time),
+                            color = TextSecondary,
+                            fontSize = 14.sp
                         )
                     }
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { notificationsEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TextPrimary,
+                            checkedTrackColor = Color(0xFF1A73E8)
+                        )
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                SheetSectionLabel(stringResource(Res.string.label_days))
+                // ── Recurrence type picker — equal-width chips ───────────────
+                SheetSectionLabel(stringResource(Res.string.label_recurrence_type))
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    days.forEach { (dayNum, dayLabel) ->
-                        val isSelected = selectedDays.containsKey(dayNum)
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(if (isSelected) Color(0xFF1A73E8) else CardBackground)
-                                .border(1.dp, if (isSelected) Color(0xFF1A73E8) else CardBorder, CircleShape)
-                                .clickable {
-                                    if (isSelected) selectedDays.remove(dayNum)
-                                    else selectedDays[dayNum] = Unit
-                                    daysError = false
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(dayLabel, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    RecurrenceTypeChip(
+                        label = stringResource(Res.string.recurrence_weekly),
+                        selected = recurrenceType == RecurrenceTypeUI.WEEKLY,
+                        modifier = Modifier.weight(1f)
+                    ) { recurrenceType = RecurrenceTypeUI.WEEKLY; daysError = false }
+                    RecurrenceTypeChip(
+                        label = stringResource(Res.string.recurrence_monthly_day),
+                        selected = recurrenceType == RecurrenceTypeUI.MONTHLY_DAY,
+                        modifier = Modifier.weight(1f)
+                    ) { recurrenceType = RecurrenceTypeUI.MONTHLY_DAY; daysError = false }
+                    RecurrenceTypeChip(
+                        label = stringResource(Res.string.recurrence_nth_weekday),
+                        selected = recurrenceType == RecurrenceTypeUI.NTH_WEEKDAY,
+                        modifier = Modifier.weight(1f)
+                    ) { recurrenceType = RecurrenceTypeUI.NTH_WEEKDAY; daysError = false }
+                    RecurrenceTypeChip(
+                        label = stringResource(Res.string.recurrence_yearly),
+                        selected = recurrenceType == RecurrenceTypeUI.YEARLY,
+                        modifier = Modifier.weight(1f)
+                    ) { recurrenceType = RecurrenceTypeUI.YEARLY; daysError = false }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when (recurrenceType) {
+                    RecurrenceTypeUI.WEEKLY -> {
+                        SheetSectionLabel(stringResource(Res.string.label_days))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        WeekdayCircleRow(
+                            days = days,
+                            isSelected = { selectedDays.containsKey(it) },
+                            onToggle = { dayNum ->
+                                if (selectedDays.containsKey(dayNum)) selectedDays.remove(dayNum)
+                                else selectedDays[dayNum] = Unit
+                                daysError = false
+                            }
+                        )
+                    }
+                    RecurrenceTypeUI.MONTHLY_DAY -> {
+                        // System date picker → user picks a date, we extract the day-of-month.
+                        SheetSectionLabel(stringResource(Res.string.label_day_of_month))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DateInputField(
+                            value = LocalDate(currentDate().year, currentDate().month, monthlyDay.coerceIn(1, 28)),
+                            onValueChange = { picked -> picked?.let { monthlyDay = it.day } },
+                            nullable = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        SheetSectionLabel(stringResource(Res.string.label_every_n_months))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        IntervalNumberField(value = monthlyInterval, onChange = { monthlyInterval = it })
+                    }
+                    RecurrenceTypeUI.YEARLY -> {
+                        // One picker for both month and day-of-month — the year is ignored.
+                        SheetSectionLabel(stringResource(Res.string.label_yearly_date))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DateInputField(
+                            value = LocalDate(currentDate().year, yearlyMonth.coerceIn(1, 12), yearlyDay.coerceIn(1, 28)),
+                            onValueChange = { picked ->
+                                picked?.let {
+                                    yearlyMonth = it.month.number
+                                    yearlyDay = it.day
+                                }
+                            },
+                            nullable = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    RecurrenceTypeUI.NTH_WEEKDAY -> {
+                        SheetSectionLabel(stringResource(Res.string.label_nth_occurrence))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            val occurrenceLabels = listOf(
+                                1 to stringResource(Res.string.nth_1),
+                                2 to stringResource(Res.string.nth_2),
+                                3 to stringResource(Res.string.nth_3),
+                                4 to stringResource(Res.string.nth_4),
+                                5 to stringResource(Res.string.nth_last)
+                            )
+                            occurrenceLabels.forEachIndexed { index, (n, label) ->
+                                SegmentedButton(
+                                    selected = nthOccurrence == n,
+                                    onClick = { nthOccurrence = n },
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = occurrenceLabels.size
+                                    ),
+                                    colors = SegmentedButtonDefaults.colors(
+                                        activeContainerColor = ChipAccent,
+                                        activeContentColor = TextPrimary,
+                                        activeBorderColor = ChipAccent,
+                                        inactiveContainerColor = CardBackground,
+                                        inactiveContentColor = TextSecondary,
+                                        inactiveBorderColor = CardBorder
+                                    ),
+                                    label = { Text(label, fontSize = 13.sp) }
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        SheetSectionLabel(stringResource(Res.string.label_days))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        WeekdayCircleRow(
+                            days = days,
+                            isSelected = { nthDayOfWeek == it },
+                            onToggle = { nthDayOfWeek = it }
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        SheetSectionLabel(stringResource(Res.string.label_every_n_months))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        IntervalNumberField(value = nthInterval, onChange = { nthInterval = it })
                     }
                 }
             }
@@ -639,10 +769,18 @@ fun TaskFormSheet(
                             } else {
                                 blockError = selectedBlockId == null
                                 if (title.isBlank() || selectedBlockId == null) return@clickable
-                                daysError = selectedDays.isEmpty()
-                                if (selectedDays.isEmpty()) return@clickable
-                                val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
-                                onSaveRecurring(title, selectedBlockId!!, recurringTime, Recurrence.Weekly(slots), notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
+                                val recurrence: Recurrence = when (recurrenceType) {
+                                    RecurrenceTypeUI.WEEKLY -> {
+                                        daysError = selectedDays.isEmpty()
+                                        if (selectedDays.isEmpty()) return@clickable
+                                        val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
+                                        Recurrence.Weekly(slots)
+                                    }
+                                    RecurrenceTypeUI.MONTHLY_DAY -> Recurrence.MonthlyDay(monthlyDay, monthlyInterval)
+                                    RecurrenceTypeUI.YEARLY -> Recurrence.Yearly(yearlyMonth, yearlyDay)
+                                    RecurrenceTypeUI.NTH_WEEKDAY -> Recurrence.NthWeekdayOfMonth(nthOccurrence, nthDayOfWeek, nthInterval)
+                                }
+                                onSaveRecurring(title, selectedBlockId!!, recurringTime, recurrence, notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
                             }
                         }
                         .padding(vertical = 14.dp),
@@ -793,4 +931,111 @@ private fun FeatureToggleChip(
         Spacer(modifier = Modifier.width(6.dp))
         Text(label, color = if (isActive) TextPrimary else TextSecondary, fontSize = 13.sp)
     }
+}
+
+private enum class RecurrenceTypeUI { WEEKLY, MONTHLY_DAY, YEARLY, NTH_WEEKDAY }
+
+private val ChipAccent = Color(0xFF1A73E8)
+
+/** Standard chip used for recurrence type selection and similar single-line choice rows. */
+@Composable
+private fun RecurrenceTypeChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) ChipAccent else CardBackground)
+            .border(
+                width = if (selected) 1.5.dp else 1.dp,
+                color = if (selected) ChipAccent else CardBorder,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (selected) TextPrimary else TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        )
+    }
+}
+
+/** Single-row weekday selector (Mon..Sun). Reused by Weekly and NthWeekday recurrences. */
+@Composable
+private fun WeekdayCircleRow(
+    days: List<Pair<Int, String>>,
+    isSelected: (Int) -> Boolean,
+    onToggle: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        days.forEach { (dayNum, dayLabel) ->
+            val selected = isSelected(dayNum)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) ChipAccent else CardBackground)
+                    .border(
+                        width = if (selected) 1.5.dp else 1.dp,
+                        color = if (selected) ChipAccent else CardBorder,
+                        shape = CircleShape
+                    )
+                    .clickable { onToggle(dayNum) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = dayLabel,
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Numeric input for "every N months". Uses Material3 [OutlinedTextField] with the numeric
+ * keyboard — a stock component the user already recognises from form inputs elsewhere.
+ */
+@Composable
+private fun IntervalNumberField(value: Int, onChange: (Int) -> Unit) {
+    var text by remember(value) { mutableStateOf(value.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { input ->
+            // Accept up to 2 digits; clamp 1..12. Empty string while user is editing is fine.
+            val sanitized = input.filter { it.isDigit() }.take(2)
+            text = sanitized
+            sanitized.toIntOrNull()?.let { parsed ->
+                onChange(parsed.coerceIn(1, 12))
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            focusedContainerColor = CardBackground,
+            unfocusedContainerColor = CardBackground,
+            focusedBorderColor = ChipAccent,
+            unfocusedBorderColor = CardBorder,
+            cursorColor = ChipAccent
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+    )
 }

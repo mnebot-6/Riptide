@@ -43,7 +43,6 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         private val KEY_WALLPAPER_FPS = intPreferencesKey("wallpaper_fps")
         private val KEY_TASK_ONBOARDING_SHOWN = booleanPreferencesKey("task_creation_onboarding_shown")
         private val KEY_PENDING_INITIAL_SYNC = booleanPreferencesKey("pending_initial_sync")
-        private val KEY_INSTALLED_PACKAGES = stringPreferencesKey("installed_packages")
         private const val DEFAULT_HOUR = 23
         private const val DEFAULT_MINUTE = 30
         private const val DISABLED = -1          // sentinel for "no morning reminder"
@@ -247,26 +246,4 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
         }
     }
 
-    // ── Installed task packages ───────────────────────────────────────────────
-
-    override suspend fun getInstalledPackageIds(): Set<String> {
-        val raw = context.dataStore.data.first()[KEY_INSTALLED_PACKAGES] ?: return emptySet()
-        return if (raw.isBlank()) emptySet() else raw.split(SEPARATOR).toSet()
-    }
-
-    override suspend fun addInstalledPackageId(packageId: String) {
-        context.dataStore.edit { prefs ->
-            val current = prefs[KEY_INSTALLED_PACKAGES]?.split(SEPARATOR)?.toMutableSet() ?: mutableSetOf()
-            current.add(packageId)
-            prefs[KEY_INSTALLED_PACKAGES] = current.joinToString(SEPARATOR)
-        }
-    }
-
-    override suspend fun removeInstalledPackageId(packageId: String) {
-        context.dataStore.edit { prefs ->
-            val current = prefs[KEY_INSTALLED_PACKAGES]?.split(SEPARATOR)?.toMutableSet() ?: return@edit
-            current.remove(packageId)
-            prefs[KEY_INSTALLED_PACKAGES] = current.joinToString(SEPARATOR)
-        }
-    }
 }
