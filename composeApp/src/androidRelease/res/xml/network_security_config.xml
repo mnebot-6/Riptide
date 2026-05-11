@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- Release: only HTTPS allowed, no cleartext traffic -->
-</network-security-config>

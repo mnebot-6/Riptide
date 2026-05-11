@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy Auto Backup rules (API 24-30). Same intent as data_extraction_rules.xml:
+  back up the Room database but exclude tokens, encrypted prefs and DataStore.
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/" />
+    <exclude domain="sharedpref" path="riptide_secure_prefs.xml" />
+</full-backup-content>

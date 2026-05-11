@@ -65,5 +65,8 @@ fun Application.configureRouting() {
 
         // Batch sync
         syncRoutes()
+
+        // Account lifecycle (delete account)
+        accountRoutes()
     }
 }

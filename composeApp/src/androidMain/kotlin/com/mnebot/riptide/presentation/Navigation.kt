@@ -33,18 +33,26 @@ import com.mnebot.riptide.presentation.onboarding.OnboardingScreen
 import com.mnebot.riptide.presentation.settings.SettingsScreen
 import com.mnebot.riptide.presentation.stats.StatsViewModel
 import com.mnebot.riptide.presentation.stats.StatsViewModelFactory
+import android.Manifest
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.mnebot.riptide.BuildConfig
 import com.mnebot.riptide.data.remote.AuthManager
 import com.mnebot.riptide.data.remote.RiptideApi
 import com.mnebot.riptide.data.sync.InitialSyncPreparer
 import com.mnebot.riptide.data.sync.SyncManager
 import com.mnebot.riptide.domain.repository.UserPreferencesRepository as UserPrefs
 import com.mnebot.riptide.wallpaper.RiptideWallpaperService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 const val ROUTE_ONBOARDING = "onboarding"
 const val ROUTE_MAIN = "main"
@@ -58,6 +66,7 @@ fun NavGraphBuilder.onboardingGraph(
     navController: NavController
 ) {
     composable(ROUTE_ONBOARDING) {
+        val context = LocalContext.current
         val scope = rememberCoroutineScope()
         OnboardingScreen(
             onComplete = { _ ->
@@ -66,6 +75,14 @@ fun NavGraphBuilder.onboardingGraph(
                 }
                 navController.navigate(ROUTE_MAIN) {
                     popUpTo(ROUTE_ONBOARDING) { inclusive = true }
+                }
+            },
+            onOpenUrl = { url ->
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
                 }
             }
         )
@@ -85,6 +102,8 @@ fun NavGraphBuilder.mainGraph(
     composable(ROUTE_MAIN) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
+
+        RequestNotificationsPermissionOnce()
 
         val signInLauncher = rememberSignInLauncher(
             authManager, syncManager, initialSyncPreparer, mainViewModel, userPreferences
@@ -268,8 +287,56 @@ fun NavGraphBuilder.mainGraph(
             },
             onSignOut = { mainViewModel.signOut() },
             onSyncNow = { mainViewModel.syncNow() },
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            appVersionName = BuildConfig.VERSION_NAME,
+            appVersionCode = BuildConfig.VERSION_CODE,
+            onOpenUrl = { url ->
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+            },
+            onDeleteAccount = {
+                try {
+                    api?.deleteAccount()
+                    withContext(Dispatchers.IO) {
+                        DatabaseProvider.getDatabase(context).clearAllTables()
+                    }
+                    userPreferences?.clearAuth()
+                    mainViewModel.signOut()
+                    mainViewModel.reload()
+                    navController.popBackStack()
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
         )
+    }
+}
+
+/**
+ * Ask for POST_NOTIFICATIONS on Android 13+ the first time the user lands on Main.
+ * If the system has already remembered a denial it silently no-ops — the OS won't
+ * show the dialog a third time. Result is ignored: notification workers check
+ * permission themselves and degrade gracefully when denied.
+ */
+@Composable
+private fun RequestNotificationsPermissionOnce() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* ignored */ }
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 }
 

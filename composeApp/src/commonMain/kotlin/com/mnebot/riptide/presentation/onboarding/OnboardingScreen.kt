@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
@@ -52,13 +55,21 @@ private const val TOTAL_PAGES = 8  // Welcome + 5 quiz + summary + ready
 /**
  * Onboarding with integrated quiz. [onComplete] receives the quiz state
  * if the user completed the quiz, or null if they skipped.
+ *
+ * The final page is a consent gate: the "Start" button is disabled until the user
+ * checks the Privacy Policy + ToS acceptance box. [onOpenUrl] opens legal URLs.
  */
 @Composable
-fun OnboardingScreen(onComplete: (OnboardingQuizState?) -> Unit) {
+fun OnboardingScreen(
+    onComplete: (OnboardingQuizState?) -> Unit,
+    onOpenUrl: (String) -> Unit = {}
+) {
 
     var currentStep by remember { mutableIntStateOf(0) }
     var goingForward by remember { mutableStateOf(true) }
     var quizState by remember { mutableStateOf(OnboardingQuizState()) }
+    var consentAccepted by remember { mutableStateOf(false) }
+    val isOnConsentPage = { currentStep == TOTAL_PAGES - 1 }
 
     Box(
         modifier = Modifier
@@ -110,7 +121,11 @@ fun OnboardingScreen(onComplete: (OnboardingQuizState?) -> Unit) {
                 4 -> BedTimePage(quizState) { quizState = quizState.copy(bedHour = it) }
                 5 -> StructurePage(quizState) { quizState = quizState.copy(structure = it) }
                 6 -> SummaryPage(quizState)
-                7 -> ReadyPage()
+                7 -> ConsentReadyPage(
+                    accepted = consentAccepted,
+                    onAcceptedChange = { consentAccepted = it },
+                    onOpenUrl = onOpenUrl
+                )
             }
         }
 
@@ -167,7 +182,11 @@ fun OnboardingScreen(onComplete: (OnboardingQuizState?) -> Unit) {
                         onComplete(quizState)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                enabled = !isOnConsentPage() || consentAccepted,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentBlue,
+                    disabledContainerColor = Color(0x33FFFFFF)
+                ),
                 contentPadding = PaddingValues(horizontal = 28.dp, vertical = 12.dp),
                 shape = RoundedCornerShape(24.dp)
             ) {
@@ -196,12 +215,82 @@ private fun WelcomePage() {
 }
 
 @Composable
-private fun ReadyPage() {
-    CenteredPage(
-        emoji = "\u2728",
-        title = stringResource(Res.string.onboarding_ready_title),
-        body = stringResource(Res.string.onboarding_ready_body)
-    )
+private fun ConsentReadyPage(
+    accepted: Boolean,
+    onAcceptedChange: (Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit
+) {
+    val privacyUrl = stringResource(Res.string.url_privacy_policy)
+    val termsUrl = stringResource(Res.string.url_terms_of_service)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "\u2728", fontSize = 56.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = stringResource(Res.string.onboarding_ready_title),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            textAlign = TextAlign.Center,
+            lineHeight = 32.sp
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = stringResource(Res.string.consent_body),
+            fontSize = 14.sp,
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Text(
+                text = stringResource(Res.string.consent_open_privacy),
+                color = AccentBlue,
+                fontSize = 13.sp,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable { onOpenUrl(privacyUrl) }
+            )
+            Text(
+                text = stringResource(Res.string.consent_open_terms),
+                color = AccentBlue,
+                fontSize = 13.sp,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable { onOpenUrl(termsUrl) }
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onAcceptedChange(!accepted) }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Checkbox(
+                checked = accepted,
+                onCheckedChange = onAcceptedChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = AccentBlue,
+                    uncheckedColor = TextSecondary,
+                    checkmarkColor = Color.White
+                )
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = stringResource(Res.string.consent_checkbox),
+                color = TextPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+        }
+    }
 }
 
 @Composable

@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.serialization.json)
             implementation(libs.play.services.auth)
+            implementation(libs.androidx.security.crypto)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -99,7 +100,18 @@ android {
             val localFile = rootProject.file("local.properties")
             if (localFile.exists()) load(localFile.inputStream())
         }
-        buildConfigField("String", "API_BASE_URL", "\"${localProps.getProperty("API_BASE_URL", "http://10.0.2.2:8080")}\"")
+        val apiBaseUrl = localProps.getProperty("API_BASE_URL", "http://10.0.2.2:8080")
+        val isAssemblingRelease = project.gradle.startParameter.taskNames.any {
+            it.contains("Release") || it.endsWith("Release") ||
+                    it.contains("bundleRelease") || it.contains("assembleRelease")
+        }
+        if (isAssemblingRelease && !apiBaseUrl.startsWith("https://")) {
+            throw GradleException(
+                "API_BASE_URL must be HTTPS for release builds.\n" +
+                "Set API_BASE_URL=https://your-backend in local.properties before building release."
+            )
+        }
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_CLIENT_ID", "")}\"")
     }
 

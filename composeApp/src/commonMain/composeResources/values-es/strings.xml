@@ -432,6 +432,32 @@
     <string name="quiz_summary">Tu configuracion esta lista!</string>
     <string name="quiz_summary_body">Hemos creado bloques y tareas segun tus respuestas. Siempre puedes cambiarlos despues.</string>
 
+    <!-- Settings: Legal y Acerca de -->
+    <string name="section_legal">LEGAL Y ACERCA DE</string>
+    <string name="btn_privacy_policy">Politica de privacidad</string>
+    <string name="btn_terms_of_service">Terminos del servicio</string>
+    <string name="label_app_version">Version %1$s (build %2$d)</string>
+    <string name="url_privacy_policy">https://riptide.mnebot.dev/privacy-policy.html</string>
+    <string name="url_terms_of_service">https://riptide.mnebot.dev/terms.html</string>
+
+    <!-- Settings: Eliminar cuenta -->
+    <string name="section_danger">ZONA DE PELIGRO</string>
+    <string name="btn_delete_account">Eliminar cuenta</string>
+    <string name="dialog_delete_account_title">Eliminar tu cuenta?</string>
+    <string name="dialog_delete_account_body">Esto eliminara permanentemente tu cuenta, todos los datos sincronizados en nuestros servidores y revocara cada sesion. Los datos locales en este dispositivo tambien se borraran. Esta accion no se puede deshacer.</string>
+    <string name="dialog_delete_account_confirm_hint">Escribe ELIMINAR para confirmar</string>
+    <string name="dialog_delete_account_confirm_word">ELIMINAR</string>
+    <string name="btn_delete_account_confirm">Eliminar para siempre</string>
+    <string name="msg_delete_account_failed">No se pudo eliminar la cuenta: %1$s</string>
+
+    <!-- Onboarding: consentimiento -->
+    <string name="consent_title">Antes de empezar</string>
+    <string name="consent_body">Riptide guarda tus tareas localmente en tu dispositivo. Si mas tarde inicias sesion con Google, tus datos tambien se sincronizan con nuestros servidores para que sobrevivan reinstalaciones y se compartan entre dispositivos. Nunca vendemos tus datos ni los compartimos con terceros.</string>
+    <string name="consent_checkbox">He leido y acepto la Politica de privacidad y los Terminos del servicio.</string>
+    <string name="consent_open_privacy">Leer politica de privacidad</string>
+    <string name="consent_open_terms">Leer terminos del servicio</string>
+    <string name="consent_continue">Continuar</string>
+
     <!-- Biomes -->
     <string name="biome_coral_reef">Arrecife de Coral</string>
     <string name="biome_kelp_forest">Bosque de Kelp</string>

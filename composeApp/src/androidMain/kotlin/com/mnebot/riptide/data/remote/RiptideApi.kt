@@ -43,6 +43,16 @@ class RiptideApi(private val client: HttpClient) {
         }
     }
 
+    /** Permanently delete the account, all server data, and revoke all sessions. */
+    suspend fun deleteAccount() {
+        val response = client.delete("/api/account")
+        if (response.status.value !in 200..299) {
+            val errorBody = response.bodyAsText()
+            Log.e("RiptideApi", "Delete account failed: HTTP ${response.status.value} — $errorBody")
+            throw RuntimeException("Delete account failed: HTTP ${response.status.value} — $errorBody")
+        }
+    }
+
     /** Revoke all refresh tokens for current user. */
     suspend fun logout() {
         client.post("/auth/logout")

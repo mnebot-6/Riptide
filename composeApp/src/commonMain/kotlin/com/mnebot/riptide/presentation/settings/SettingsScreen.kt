@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
@@ -19,7 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,9 +67,24 @@ fun SettingsScreen(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncNow: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    appVersionName: String = "",
+    appVersionCode: Int = 0,
+    onOpenUrl: (String) -> Unit = {},
+    onDeleteAccount: suspend () -> Result<Unit> = { Result.success(Unit) }
 ) {
     var showFpsDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val privacyUrl = stringResource(Res.string.url_privacy_policy)
+    val termsUrl = stringResource(Res.string.url_terms_of_service)
+
+    if (showDeleteDialog) {
+        DeleteAccountDialog(
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = onDeleteAccount
+        )
+    }
 
     if (showFpsDialog) {
         var selectedFps by remember { mutableIntStateOf(wallpaperFps) }
@@ -222,9 +244,193 @@ fun SettingsScreen(
                     onSignOut = onSignOut,
                     onSyncNow = onSyncNow
                 )
+
+                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Legal & About section
+                LegalSection(
+                    appVersionName = appVersionName,
+                    appVersionCode = appVersionCode,
+                    onOpenPrivacy = { onOpenUrl(privacyUrl) },
+                    onOpenTerms = { onOpenUrl(termsUrl) }
+                )
+
+                // Danger zone — only visible when signed in
+                if (loggedInUser != null) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    DangerSection(onDeleteAccountClick = { showDeleteDialog = true })
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
+}
+
+@Composable
+private fun LegalSection(
+    appVersionName: String,
+    appVersionCode: Int,
+    onOpenPrivacy: () -> Unit,
+    onOpenTerms: () -> Unit
+) {
+    SectionTitle(stringResource(Res.string.section_legal))
+    Spacer(modifier = Modifier.height(8.dp))
+    SettingsItem(
+        painter = painterResource(Res.drawable.ic_user),
+        label = stringResource(Res.string.btn_privacy_policy),
+        onClick = onOpenPrivacy
+    )
+    SettingsItem(
+        painter = painterResource(Res.drawable.ic_user),
+        label = stringResource(Res.string.btn_terms_of_service),
+        onClick = onOpenTerms
+    )
+    if (appVersionName.isNotEmpty()) {
+        Text(
+            text = stringResource(Res.string.label_app_version, appVersionName, appVersionCode),
+            color = SectionLabel,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun DangerSection(onDeleteAccountClick: () -> Unit) {
+    SectionTitle(stringResource(Res.string.section_danger))
+    Spacer(modifier = Modifier.height(8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onDeleteAccountClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_log_out),
+            contentDescription = null,
+            tint = Color(0xFFE57373),
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = stringResource(Res.string.btn_delete_account),
+            color = Color(0xFFE57373),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun DeleteAccountDialog(
+    onDismiss: () -> Unit,
+    onConfirm: suspend () -> Result<Unit>
+) {
+    val scope = rememberCoroutineScope()
+    var confirmText by remember { mutableStateOf(TextFieldValue("")) }
+    var isDeleting by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val expectedWord = stringResource(Res.string.dialog_delete_account_confirm_word)
+    val matches = confirmText.text.trim().equals(expectedWord, ignoreCase = false)
+
+    AlertDialog(
+        onDismissRequest = { if (!isDeleting) onDismiss() },
+        containerColor = Color(0xFF1B3A6B),
+        title = {
+            Text(
+                stringResource(Res.string.dialog_delete_account_title),
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    stringResource(Res.string.dialog_delete_account_body),
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    stringResource(Res.string.dialog_delete_account_confirm_hint),
+                    color = SectionLabel,
+                    fontSize = 12.sp
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x22FFFFFF))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    BasicTextField(
+                        value = confirmText,
+                        onValueChange = { confirmText = it },
+                        singleLine = true,
+                        enabled = !isDeleting,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = TextPrimary,
+                            fontSize = 15.sp
+                        ),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFE57373)),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (errorMessage != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(Res.string.msg_delete_account_failed, errorMessage!!),
+                        color = Color(0xFFE57373),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = matches && !isDeleting,
+                onClick = {
+                    scope.launch {
+                        isDeleting = true
+                        errorMessage = null
+                        val result = onConfirm()
+                        isDeleting = false
+                        result.onSuccess { onDismiss() }
+                            .onFailure { errorMessage = it.message ?: "unknown" }
+                    }
+                }
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color(0xFFE57373),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        stringResource(Res.string.btn_delete_account_confirm),
+                        color = if (matches) Color(0xFFE57373) else Color(0x66FFFFFF),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isDeleting) {
+                Text(stringResource(Res.string.btn_cancel), color = TextSecondary)
+            }
+        }
+    )
 }
 
 @Composable

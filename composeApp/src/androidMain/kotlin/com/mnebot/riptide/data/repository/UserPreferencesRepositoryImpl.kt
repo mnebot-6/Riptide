@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.mnebot.riptide.data.remote.EncryptedTokenStore
 import com.mnebot.riptide.domain.model.CreatureSpecies
 import com.mnebot.riptide.domain.model.LoggedInUser
 import com.mnebot.riptide.domain.model.MarineCategory
@@ -21,7 +22,10 @@ import kotlinx.datetime.LocalTime
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "riptide_prefs")
 
-class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferencesRepository {
+class UserPreferencesRepositoryImpl(
+    private val context: Context,
+    private val tokenStore: EncryptedTokenStore = EncryptedTokenStore(context)
+) : UserPreferencesRepository {
 
     companion object {
         private val KEY_NIGHT_HOUR = intPreferencesKey("night_summary_hour")
@@ -149,20 +153,44 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
 
     // ── Auth ────────────────────────────────────────────────────────────────────
 
-    override suspend fun getAccessToken(): String? =
-        context.dataStore.data.first()[KEY_ACCESS_TOKEN]
+    /**
+     * Migrate legacy plain-text tokens from DataStore to EncryptedSharedPreferences.
+     * Idempotent: once migrated, the DataStore keys are removed and this becomes a no-op.
+     */
+    private suspend fun migrateLegacyTokensIfNeeded() {
+        val prefs = context.dataStore.data.first()
+        val legacyAccess = prefs[KEY_ACCESS_TOKEN]
+        val legacyRefresh = prefs[KEY_REFRESH_TOKEN]
+        if (legacyAccess != null && legacyRefresh != null) {
+            tokenStore.saveTokens(legacyAccess, legacyRefresh)
+            context.dataStore.edit { mut ->
+                mut.remove(KEY_ACCESS_TOKEN)
+                mut.remove(KEY_REFRESH_TOKEN)
+            }
+        }
+    }
 
-    override suspend fun getRefreshToken(): String? =
-        context.dataStore.data.first()[KEY_REFRESH_TOKEN]
+    override suspend fun getAccessToken(): String? {
+        migrateLegacyTokensIfNeeded()
+        return tokenStore.getAccessToken()
+    }
+
+    override suspend fun getRefreshToken(): String? {
+        migrateLegacyTokensIfNeeded()
+        return tokenStore.getRefreshToken()
+    }
 
     override suspend fun saveTokens(accessToken: String, refreshToken: String) {
+        tokenStore.saveTokens(accessToken, refreshToken)
+        // Ensure legacy plain copies are wiped if they ever existed.
         context.dataStore.edit { prefs ->
-            prefs[KEY_ACCESS_TOKEN] = accessToken
-            prefs[KEY_REFRESH_TOKEN] = refreshToken
+            prefs.remove(KEY_ACCESS_TOKEN)
+            prefs.remove(KEY_REFRESH_TOKEN)
         }
     }
 
     override suspend fun clearAuth() {
+        tokenStore.clear()
         context.dataStore.edit { prefs ->
             prefs.remove(KEY_ACCESS_TOKEN)
             prefs.remove(KEY_REFRESH_TOKEN)
@@ -196,7 +224,9 @@ class UserPreferencesRepositoryImpl(private val context: Context) : UserPreferen
     }
 
     override fun isLoggedIn(): Flow<Boolean> =
-        context.dataStore.data.map { prefs -> prefs[KEY_ACCESS_TOKEN] != null }
+        // Tokens live in EncryptedSharedPreferences (non-reactive). userId is saved
+        // last during sign-in and cleared in clearAuth(), so it's a reliable proxy.
+        context.dataStore.data.map { prefs -> prefs[KEY_USER_ID] != null }
 
     // ── Wallpaper FPS ──────────────────────────────────────────────────────────
 

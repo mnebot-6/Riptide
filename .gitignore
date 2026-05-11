@@ -30,6 +30,10 @@ composeApp/release/
 backend/.env
 backend/.env.local
 
+# Firebase / Google client config (provision per-developer, never commit)
+composeApp/google-services.json
+composeApp/src/*/google-services.json
+
 # Private keys and certificates
 *.pem
 *.key

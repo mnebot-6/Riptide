@@ -432,6 +432,32 @@
     <string name="quiz_summary">Your setup is ready!</string>
     <string name="quiz_summary_body">We\'ve created blocks and tasks based on your answers. You can always change them later.</string>
 
+    <!-- Settings: Legal & About -->
+    <string name="section_legal">LEGAL &amp; ABOUT</string>
+    <string name="btn_privacy_policy">Privacy policy</string>
+    <string name="btn_terms_of_service">Terms of service</string>
+    <string name="label_app_version">Version %1$s (build %2$d)</string>
+    <string name="url_privacy_policy">https://riptide.mnebot.dev/privacy-policy.html</string>
+    <string name="url_terms_of_service">https://riptide.mnebot.dev/terms.html</string>
+
+    <!-- Settings: Delete Account -->
+    <string name="section_danger">DANGER ZONE</string>
+    <string name="btn_delete_account">Delete account</string>
+    <string name="dialog_delete_account_title">Delete your account?</string>
+    <string name="dialog_delete_account_body">This will permanently remove your account, all synced data on our servers, and revoke every session. Local data on this device will also be cleared. This action cannot be undone.</string>
+    <string name="dialog_delete_account_confirm_hint">Type DELETE to confirm</string>
+    <string name="dialog_delete_account_confirm_word">DELETE</string>
+    <string name="btn_delete_account_confirm">Delete forever</string>
+    <string name="msg_delete_account_failed">Could not delete account: %1$s</string>
+
+    <!-- Onboarding: consent -->
+    <string name="consent_title">Before we start</string>
+    <string name="consent_body">Riptide stores your tasks locally on your device. If you sign in with Google later, your data is also synced to our servers so it survives reinstalls and across devices. We never sell your data and never share it with third parties.</string>
+    <string name="consent_checkbox">I have read and accept the Privacy policy and Terms of service.</string>
+    <string name="consent_open_privacy">Read privacy policy</string>
+    <string name="consent_open_terms">Read terms of service</string>
+    <string name="consent_continue">Continue</string>
+
     <!-- Biomes -->
     <string name="biome_coral_reef">Coral Reef</string>
     <string name="biome_kelp_forest">Kelp Forest</string>

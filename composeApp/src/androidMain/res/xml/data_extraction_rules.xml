@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+). Controls Auto Backup (cloud-backup) and D2D transfer (device-transfer).
+  We back up the Room database (user tasks survive reinstall for offline users) but exclude
+  tokens, encrypted prefs and the DataStore (PII + auth state).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/" />
+        <exclude domain="sharedpref" path="riptide_secure_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/" />
+        <exclude domain="sharedpref" path="riptide_secure_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>
