@@ -577,4 +577,4 @@ FILOSOFIA DE DISENO
 GITHUB
 
 Repositorio: https://github.com/mnebot-6/Riptide
-Cuenta: mnebot-6 / mnebotchirivella@gmail.com (config local del repo)
+Cuenta: mnebot-6

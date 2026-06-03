@@ -31,8 +31,8 @@ CREATE DATABASE riptide OWNER riptide;
 
 ## 2. Google Cloud Console
 
-**Proyecto:** `riptide-492016`
-**Console:** https://console.cloud.google.com/apis/credentials?project=riptide-492016
+**Proyecto:** *(tu proyecto en Google Cloud)*
+**Console:** https://console.cloud.google.com/apis/credentials
 
 ### OAuth consent screen
 - Tipo: External

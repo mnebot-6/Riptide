@@ -2,6 +2,7 @@
 <!--
   Debug-only network config. Allows cleartext to local dev backends
   (Android emulator host, common LAN IPs, localhost). Never shipped in release.
+  To test on a physical device on your LAN, add your machine's local IP here.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -12,7 +13,8 @@
     </base-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">192.168.1.142</domain>
+        <!-- Replace with your machine's LAN IP when testing on a physical device -->
+        <!-- <domain includeSubdomains="true">192.168.X.X</domain> -->
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
 </network-security-config>

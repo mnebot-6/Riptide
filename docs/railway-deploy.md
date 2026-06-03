@@ -33,7 +33,7 @@ En el servicio del backend (no en la DB), ir a **Variables** y añadir:
 |---|---|---|
 | `DATABASE_URL` | *(referencia a la DB)* | Click "Add Reference" → seleccionar la variable de PostgreSQL |
 | `JWT_SECRET` | *(generar uno)* | Mínimo 32 caracteres. Generar con: `openssl rand -base64 48` |
-| `GOOGLE_CLIENT_ID` | `513136290979-...apps.googleusercontent.com` | El mismo que usas en la app Android |
+| `GOOGLE_CLIENT_ID` | `tu-web-client-id.apps.googleusercontent.com` | El mismo que usas en la app Android |
 | `CORS_ALLOWED_HOSTS` | *(tu dominio Railway)* | Ejemplo: `riptide-backend-production.up.railway.app` |
 
 **Para generar JWT_SECRET** (ejecutar en terminal):
