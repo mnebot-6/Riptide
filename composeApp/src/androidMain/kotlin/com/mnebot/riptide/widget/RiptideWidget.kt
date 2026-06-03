@@ -6,331 +6,304 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.*
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.layout.*
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.width
+import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.mnebot.riptide.MainActivity
 import com.mnebot.riptide.R
-import com.mnebot.riptide.data.local.db.DatabaseProvider
-import kotlinx.datetime.LocalDate
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import java.time.LocalDate as JavaLocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.time.Clock
 
 private const val TAG = "RiptideWidget"
 
-// Semi-transparent marine palette
-private val WidgetBackground = Color(0xCC0A1628)
-private val OceanMidTranslucent = Color(0x881B3A6B)
+// Marine palette, translucent but legible (~70% alpha) so the live wallpaper still peeks through.
+private val WidgetBackground = Color(0xB3061826)         // ~70% alpha deep ocean
+private val HeaderSeam = Color(0x33FFFFFF)
+private val ProgressTrack = Color(0x33FFFFFF)
+private val ProgressFill = Color(0xCC4FC3F7)
+private val ProgressFillDone = Color(0xCC81C784)
+private val RowBg = Color(0x33FFFFFF)
+private val NoBlockStripe = Color(0x44FFFFFF)
 private val TextPrimary = Color(0xFFFFFFFF)
 private val TextSecondary = Color(0xB3FFFFFF)
-private val Accent = Color(0xFF4FC3F7)
-private val CompletedGreen = Color(0xFF81C784)
-private val CheckCyan = Color(0xFF4DD0E1)
-private val RowBg = Color(0x22FFFFFF)
-private val NoBlockStripe = Color(0x33FFFFFF)
+private val TextCompleted = Color(0x8AFFFFFF)
+private val PriorityAmber = Color(0xFFFFD54F)
 
 class RiptideWidget : GlanceAppWidget() {
 
+    override val stateDefinition: GlanceStateDefinition<*> = WidgetSnapshotStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val widgetTasks: List<WidgetTask>
-        val completed: Int
-        val total: Int
-        val today: LocalDate
-
         try {
-            today = Clock.System.now()
-                .toLocalDateTime(TimeZone.currentSystemDefault()).date
-
-            val db = DatabaseProvider.getDatabase(context)
-            val tasks = db.dayTaskDao().getByDate(today.toString())
-            val blocks = db.workBlockDao().getAll()
-            val blockMap = blocks.associate { it.id to it }
-
-            widgetTasks = tasks
-                .filter { it.status != "POSTPONED" }
-                .map { entity ->
-                    val rawColor = entity.blockId?.let { blockMap[it]?.color }
-                    val parsedColor = rawColor?.let {
-                        try {
-                            Color(android.graphics.Color.parseColor(it).toLong() or 0x100000000L)
-                        } catch (_: Exception) { null }
-                    } ?: NoBlockStripe
-
-                    WidgetTask(
-                        id = entity.id,
-                        title = entity.title,
-                        blockName = entity.blockId?.let { blockMap[it]?.name },
-                        blockColor = parsedColor,
-                        isCompleted = entity.status == "COMPLETED",
-                        time = entity.time,
-                        targetCount = entity.targetCount,
-                        currentCount = entity.currentCount
-                    )
-                }
-                .sortedWith(compareBy({ it.isCompleted }, { it.time ?: "99:99" }, { it.title }))
-
-            completed = widgetTasks.count { it.isCompleted }
-            total = widgetTasks.size
+            val dataStore = WidgetSnapshotStateDefinition.getDataStore(context, "")
+            val current = dataStore.data.first()
+            val today = Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+            if (current.dateIso != today || current.generatedAtIso.isBlank()) {
+                val fresh = WidgetDataLoader.load(context)
+                updateAppWidgetState(context, WidgetSnapshotStateDefinition, id) { fresh }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading widget data", e)
-            provideContent { ErrorContent() }
-            return
+            Log.e(TAG, "Error preparing widget state", e)
         }
 
         provideContent {
-            WidgetContent(
-                tasks = widgetTasks,
-                completed = completed,
-                total = total,
-                today = today,
-                context = context
+            val snapshot = currentState<WidgetSnapshot>()
+            WidgetContent(snapshot)
+        }
+    }
+}
+
+@Composable
+private fun WidgetContent(snapshot: WidgetSnapshot) {
+    val context = LocalContext.current
+    val items = snapshot.items
+    val total = items.size
+    val completed = items.count { it.isCompleted }
+
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .cornerRadius(16.dp)
+            .background(ColorProvider(WidgetBackground))
+            .clickable(actionStartActivity<MainActivity>())
+    ) {
+        Column(modifier = GlanceModifier.fillMaxSize()) {
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                DateHeader(
+                    dateIso = snapshot.dateIso,
+                    completed = completed,
+                    total = total
+                )
+                Spacer(modifier = GlanceModifier.height(6.dp))
+                ProgressHeader(completed = completed, total = total)
+            }
+            // Seam: thin divider, only as wide as the task list, under which tasks appear to slide.
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            ) {
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(ColorProvider(HeaderSeam))
+                ) {}
+            }
+            if (total == 0) {
+                EmptyState(text = context.getString(R.string.widget_no_tasks))
+            } else {
+                LazyColumn(
+                    modifier = GlanceModifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp)
+                ) {
+                    // Top spacer lives inside the scroll, so tasks slide under the seam.
+                    item { Spacer(modifier = GlanceModifier.height(8.dp)) }
+                    items(items, itemId = { it.id.hashCode().toLong() }) { item ->
+                        TaskRow(item)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateHeader(dateIso: String, completed: Int, total: Int) {
+    val locale = Locale.getDefault()
+    val dateText = formatDateHeader(dateIso, locale)
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = dateText,
+            modifier = GlanceModifier.defaultWeight(),
+            style = TextStyle(
+                color = ColorProvider(TextPrimary),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            maxLines = 1
+        )
+        if (total > 0) {
+            Text(
+                text = "$completed/$total",
+                style = TextStyle(
+                    color = ColorProvider(TextSecondary),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
             )
         }
     }
 }
 
-data class WidgetTask(
-    val id: String,
-    val title: String,
-    val blockName: String?,
-    val blockColor: Color,
-    val isCompleted: Boolean,
-    val time: String?,
-    val targetCount: Int? = null,
-    val currentCount: Int = 0
-)
+private fun formatDateHeader(dateIso: String, locale: Locale): String {
+    val date = try {
+        if (dateIso.isBlank()) JavaLocalDate.now() else JavaLocalDate.parse(dateIso)
+    } catch (_: Exception) {
+        JavaLocalDate.now()
+    }
+    val day = date.format(DateTimeFormatter.ofPattern("EEEE", locale))
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    val month = date.format(DateTimeFormatter.ofPattern("MMMM", locale))
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    return "$day ${date.dayOfMonth} - $month"
+}
 
 @Composable
-private fun ErrorContent() {
+private fun ProgressHeader(completed: Int, total: Int) {
+    if (total == 0) {
+        Box(modifier = GlanceModifier.fillMaxWidth().height(4.dp)) {}
+        return
+    }
+    val progress = completed.toFloat() / total
+    val done = completed == total
     Box(
         modifier = GlanceModifier
-            .fillMaxSize()
-            .background(ColorProvider(WidgetBackground))
-            .cornerRadius(16.dp)
-            .clickable(actionStartActivity<MainActivity>())
-            .padding(14.dp),
+            .fillMaxWidth()
+            .height(4.dp)
+            .cornerRadius(2.dp)
+    ) {
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = GlanceModifier.fillMaxWidth().height(4.dp),
+            color = ColorProvider(if (done) ProgressFillDone else ProgressFill),
+            backgroundColor = ColorProvider(ProgressTrack)
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(text: String) {
+    Box(
+        modifier = GlanceModifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Riptide",
+            text = text,
             style = TextStyle(
-                color = ColorProvider(TextPrimary),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                color = ColorProvider(TextSecondary),
+                fontSize = 13.sp
             )
         )
     }
 }
 
-private fun formatDayOfWeek(date: LocalDate): String {
-    val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-    return "$dayName ${date.day}"
-}
-
 @Composable
-private fun WidgetContent(
-    tasks: List<WidgetTask>,
-    completed: Int,
-    total: Int,
-    today: LocalDate,
-    context: Context
-) {
+private fun TaskRow(item: WidgetTaskItem) {
+    val stripeColor = parseHexColor(item.blockColorHex) ?: NoBlockStripe
+    val textColor = if (item.isCompleted) TextCompleted else TextPrimary
+
     Box(
         modifier = GlanceModifier
-            .fillMaxSize()
-            .background(ColorProvider(WidgetBackground))
-            .cornerRadius(16.dp)
-            .padding(14.dp)
+            .fillMaxWidth()
+            .padding(bottom = 4.dp)
     ) {
-        Column(modifier = GlanceModifier.fillMaxSize()) {
-            // Header: clickable to open app
-            Row(
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .cornerRadius(8.dp)
+                .background(ColorProvider(RowBg))
+                .clickable(
+                    actionRunCallback<TaskClickAction>(
+                        actionParametersOf(TaskClickAction.TaskIdKey to item.id)
+                    )
+                )
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Vertical block-color stripe
+            Box(
                 modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .clickable(actionStartActivity<MainActivity>()),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(
-                        text = "Riptide",
-                        style = TextStyle(
-                            color = ColorProvider(TextPrimary),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    .width(3.dp)
+                    .height(22.dp)
+                    .cornerRadius(2.dp)
+                    .background(ColorProvider(stripeColor))
+            ) {}
+
+            Spacer(modifier = GlanceModifier.width(8.dp))
+
+            // Title (with optional priority star prefix) and optional count line
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                val titleText = buildString {
+                    if (item.isPriority) {
+                        append("★ ")
+                    }
+                    append(item.title)
+                }
+                Text(
+                    text = titleText,
+                    maxLines = 1,
+                    style = TextStyle(
+                        color = ColorProvider(if (item.isPriority && !item.isCompleted) PriorityAmber else textColor),
+                        fontSize = 13.sp,
+                        fontWeight = if (item.isPriority) FontWeight.Medium else FontWeight.Normal,
+                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     )
+                )
+                if (item.isCountable && item.targetCount != null) {
                     Text(
-                        text = formatDayOfWeek(today),
+                        text = "${item.currentCount}/${item.targetCount}",
                         style = TextStyle(
                             color = ColorProvider(TextSecondary),
-                            fontSize = 11.sp
+                            fontSize = 10.sp
                         )
                     )
-                }
-                if (total > 0) {
-                    val allDone = completed == total
-                    Text(
-                        text = if (allDone) context.getString(R.string.widget_all_done) else "$completed / $total",
-                        style = TextStyle(
-                            color = ColorProvider(if (allDone) CompletedGreen else Accent),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = GlanceModifier.height(8.dp))
-
-            // Progress bar
-            if (total > 0) {
-                val progress = completed.toFloat() / total
-                val barColor = if (completed == total) CompletedGreen else Accent
-                Row(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .cornerRadius(3.dp)
-                        .background(ColorProvider(OceanMidTranslucent))
-                ) {
-                    if (progress > 0f) {
-                        Box(
-                            modifier = GlanceModifier
-                                .width((progress * 200).dp.coerceAtLeast(6.dp))
-                                .height(6.dp)
-                                .cornerRadius(3.dp)
-                                .background(ColorProvider(barColor))
-                        ) {}
-                    }
-                }
-                Spacer(modifier = GlanceModifier.height(10.dp))
-            }
-
-            // Task list or empty state
-            if (total == 0) {
-                Box(
-                    modifier = GlanceModifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = context.getString(R.string.widget_no_tasks),
-                        style = TextStyle(
-                            color = ColorProvider(TextSecondary),
-                            fontSize = 14.sp
-                        )
-                    )
-                }
-            } else {
-                LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-                    items(tasks, itemId = { it.id.hashCode().toLong() }) { task ->
-                        WidgetTaskRow(task)
-                    }
                 }
             }
         }
     }
 }
 
-@Composable
-private fun WidgetTaskRow(task: WidgetTask) {
-    // Outer box provides the gap between rows
-    Box(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .padding(bottom = 5.dp)
-    ) {
-        Row(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .clickable(
-                    actionRunCallback<ToggleTaskAction>(
-                        actionParametersOf(ToggleTaskAction.TaskIdKey to task.id)
-                    )
-                )
-                .cornerRadius(8.dp)
-                .background(ColorProvider(RowBg))
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Status indicator: ✓ for completed, fixed-width space for pending
-            if (task.isCompleted) {
-                Text(
-                    text = "✓",
-                    style = TextStyle(
-                        color = ColorProvider(CheckCyan),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            } else {
-                Spacer(modifier = GlanceModifier.width(13.dp))
-            }
-
-            Spacer(modifier = GlanceModifier.width(6.dp))
-
-            // Block color stripe
-            Box(
-                modifier = GlanceModifier
-                    .width(4.dp)
-                    .height(32.dp)
-                    .cornerRadius(2.dp)
-                    .background(ColorProvider(task.blockColor))
-            ) {}
-
-            Spacer(modifier = GlanceModifier.width(8.dp))
-
-            // Task title + block name
-            Column(modifier = GlanceModifier.defaultWeight()) {
-                val displayTitle = if (task.targetCount != null) {
-                    "${task.title} ${task.currentCount}/${task.targetCount}"
-                } else {
-                    task.title
-                }
-                Text(
-                    text = displayTitle,
-                    style = TextStyle(
-                        color = ColorProvider(if (task.isCompleted) TextSecondary else TextPrimary),
-                        fontSize = 13.sp
-                    ),
-                    maxLines = 1
-                )
-                if (task.blockName != null) {
-                    Text(
-                        text = task.blockName,
-                        style = TextStyle(
-                            color = ColorProvider(task.blockColor),
-                            fontSize = 10.sp
-                        ),
-                        maxLines = 1
-                    )
-                }
-            }
-
-            // Time (at the end)
-            val timeDisplay = task.time?.take(5)
-            if (timeDisplay != null) {
-                Spacer(modifier = GlanceModifier.width(6.dp))
-                Text(
-                    text = timeDisplay,
-                    style = TextStyle(
-                        color = ColorProvider(TextSecondary),
-                        fontSize = 11.sp
-                    )
-                )
-            }
-        }
+private fun parseHexColor(hex: String?): Color? {
+    if (hex.isNullOrBlank()) return null
+    return try {
+        Color(android.graphics.Color.parseColor(hex).toLong() or 0x100000000L)
+    } catch (_: Exception) {
+        null
     }
 }
