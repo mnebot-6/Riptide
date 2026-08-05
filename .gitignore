@@ -42,19 +42,9 @@ composeApp/src/*/google-services.json
 # Privacy policy site (separate deploy)
 riptide-privacy/
 
-# Claude local config (nunca commitear)
-.claude/settings.local.json
-
-# Claude worktrees (efimeros, nunca commitear)
-.claude/worktrees/
-
-# Ruflo runtime data
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
+# Tooling de Claude Code / Ruflo — local, fuera del repo publico
+.claude/
+.claude-flow/
 .swarm/
-.claude/memory.db
-
-# Ruflo boilerplate (regenerable con `ruflo init`)
-.claude/agents/
-.claude/skills/
+.mcp.json
+CLAUDE.md

@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "ruflo": {
-      "command": "cmd",
-      "args": ["/c", "ruflo", "mcp", "start"]
-    }
-  }
-}

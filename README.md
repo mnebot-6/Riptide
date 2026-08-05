@@ -4,6 +4,8 @@ App de productividad personal con sistema de recompensa emocional basado en un *
 
 > La constancia construye algo bonito. El abandono lo pausa. Nunca lo destruye.
 
+<!-- CAPTURAS: insertar aquí (Pantalla principal · Acuario · Ecosistema · Estadísticas · Widget) -->
+
 ---
 
 ## Concepto
@@ -130,6 +132,7 @@ Cada criatura tiene su propia personalidad de nado: los peces payaso zigzaguean 
 | `docs/roadmap.md` | Fases completadas y futuras |
 | `docs/setup-guide.md` | Setup backend + sync + Google Cloud |
 | `docs/privacy-policy.md` | Politica de privacidad |
+| `docs/riptide-course.html` | Curso interactivo del proyecto (pagina HTML autocontenida) |
 
 ---
 
