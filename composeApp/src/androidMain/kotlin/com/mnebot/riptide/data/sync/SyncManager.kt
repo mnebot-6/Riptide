@@ -54,23 +54,23 @@ class SyncManager(
         val startMs = System.currentTimeMillis()
         Log.i(TAG, "Sync start (force=$force)")
         return try {
-            val lastSync = userPrefs.getLastSyncTime()
+            // "" significa "nunca sincronizado": el servidor no puede parsearlo como fecha.
+            val lastSync = userPrefs.getLastSyncTime()?.takeIf { it.isNotBlank() }
             val since = lastSync ?: ""
             val pushBlocks = db.workBlockDao().getModifiedSince(since).map { it.toDto() }
             val pushCats = db.blockCategoryDao().getModifiedSince(since).map { it.toDto() }
             val pushTasks = db.dayTaskDao().getModifiedSince(since).map { it.toDto() }
             val pushDefs = db.recurringTaskDefDao().getModifiedSince(since).map { it.toDto() }
             val pushSummaries = db.daySummaryDao().getModifiedSince(since).map { it.toDto() }
-            val pushStreaks = db.blockStreakDao().getModifiedSince(since).map { it.toDto() }
             val pushEco = db.ecosystemStateDao().getModifiedSince(since).map { it.toDto() }
             val pushCreatures = db.marineCreatureDao().getModifiedSince(since).map { it.toDto() }
             val pushTotal = pushBlocks.size + pushCats.size + pushTasks.size + pushDefs.size +
-                pushSummaries.size + pushStreaks.size + pushEco.size + pushCreatures.size
+                pushSummaries.size + pushEco.size + pushCreatures.size
             Log.i(
                 TAG,
                 "Push: total=$pushTotal blocks=${pushBlocks.size} cats=${pushCats.size} " +
                     "tasks=${pushTasks.size} defs=${pushDefs.size} summaries=${pushSummaries.size} " +
-                    "streaks=${pushStreaks.size} eco=${pushEco.size} creatures=${pushCreatures.size}"
+                    "eco=${pushEco.size} creatures=${pushCreatures.size}"
             )
             val request = SyncRequest(
                 lastSyncTime = lastSync,
@@ -79,7 +79,6 @@ class SyncManager(
                 dayTasks = pushTasks,
                 recurringTaskDefs = pushDefs,
                 daySummaries = pushSummaries,
-                blockStreaks = pushStreaks,
                 ecosystemStates = pushEco,
                 marineCreatures = pushCreatures
             )
@@ -87,13 +86,13 @@ class SyncManager(
             val response = api.sync(request)
             val pullTotal = response.workBlocks.size + response.blockCategories.size +
                 response.dayTasks.size + response.recurringTaskDefs.size +
-                response.daySummaries.size + response.blockStreaks.size +
+                response.daySummaries.size +
                 response.ecosystemStates.size + response.marineCreatures.size
             Log.i(
                 TAG,
                 "Pull: total=$pullTotal blocks=${response.workBlocks.size} cats=${response.blockCategories.size} " +
                     "tasks=${response.dayTasks.size} defs=${response.recurringTaskDefs.size} summaries=${response.daySummaries.size} " +
-                    "streaks=${response.blockStreaks.size} eco=${response.ecosystemStates.size} creatures=${response.marineCreatures.size}"
+                    "eco=${response.ecosystemStates.size} creatures=${response.marineCreatures.size}"
             )
             applyServerChanges(response)
             userPrefs.setLastSyncTime(response.serverTime)
@@ -140,9 +139,6 @@ class SyncManager(
         }
         if (response.daySummaries.isNotEmpty()) {
             db.daySummaryDao().upsertAll(response.daySummaries.map { it.toEntity() })
-        }
-        if (response.blockStreaks.isNotEmpty()) {
-            db.blockStreakDao().upsertAll(response.blockStreaks.map { it.toEntity() })
         }
         if (response.ecosystemStates.isNotEmpty()) {
             db.ecosystemStateDao().upsertAll(response.ecosystemStates.map { it.toEntity() })

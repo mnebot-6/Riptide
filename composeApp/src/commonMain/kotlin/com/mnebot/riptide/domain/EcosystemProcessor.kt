@@ -10,122 +10,77 @@ import com.mnebot.riptide.presentation.aquarium.CATEGORY_UNLOCK_LEVELS
 import com.mnebot.riptide.presentation.aquarium.allCreatures
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlin.random.Random
 import kotlin.time.Clock
 
+/**
+ * Reparto de XP, en dos reglas y sin recursión:
+ *
+ * 1. El 80% se reparte entre las categorías marinas del bloque.
+ * 2. El 20% restante va a la categoría desbloqueada con menos XP (catch-up).
+ *
+ * La sorpresa vive en LootboxResolver —qué especie sale—, no en la contabilidad:
+ * si el XP no cuadra, es un bug, no el azar.
+ */
 class EcosystemProcessor(
     private val ecosystemStateRepository: EcosystemStateRepository,
     private val marineCreatureRepository: MarineCreatureRepository
 ) {
-    suspend fun addXpForTask(categories: List<MarineCategory>): List<PendingLootbox> {
-        val targets = if (categories.isEmpty()) {
-            ecosystemStateRepository.getUnlocked()
-                .map { it.category }
-                .filter { it != MarineCategory.DECORATION && it != MarineCategory.COMPANION }
-        } else {
-            categories
-        }
-        if (targets.isEmpty()) return emptyList()
-
-        val xpEach = EcosystemLevelCalculator.XP_PER_TASK / targets.size
-        val spilloverTarget = findSpilloverTarget(excludes = targets)
-
-        return targets.flatMap { target ->
-            if (spilloverTarget != null) {
-                val actualXp    = (xpEach * 0.80).toInt()
-                val spilloverXp = xpEach - actualXp
-                val main  = addXp(target, actualXp)
-                val spill = addXp(spilloverTarget, spilloverXp, fromSpillover = true)
-                main + spill
-            } else {
-                addXp(target, xpEach)
-            }
-        }.distinctBy { it.category to it.categoryLevel }
-    }
+    suspend fun addXpForTask(categories: List<MarineCategory>): List<PendingLootbox> =
+        distribute(EcosystemLevelCalculator.XP_PER_TASK, categories)
 
     suspend fun addNightBonus(
         score: Float,
-        bestStreak: Int,
+        streak: Int,
+        fullBlocks: Int,
         categories: List<MarineCategory>
-    ): List<PendingLootbox> {
-        val targets = if (categories.isEmpty()) {
-            ecosystemStateRepository.getUnlocked()
-                .map { it.category }
-                .filter { it != MarineCategory.DECORATION && it != MarineCategory.COMPANION }
-        } else {
-            categories
-        }
-        if (targets.isEmpty()) return emptyList()
+    ): List<PendingLootbox> =
+        distribute(EcosystemLevelCalculator.nightBonus(score, streak, fullBlocks), categories)
 
-        val bonus = EcosystemLevelCalculator.nightBonus(score, bestStreak)
-        if (bonus == 0) return emptyList()
-
-        val xpEach = bonus / targets.size
-        val spilloverTarget = findSpilloverTarget(excludes = targets)
-
-        return targets.flatMap { target ->
-            if (spilloverTarget != null) {
-                val actualXp    = (xpEach * 0.80).toInt()
-                val spilloverXp = xpEach - actualXp
-                val main  = addXp(target, actualXp)
-                val spill = addXp(spilloverTarget, spilloverXp, fromSpillover = true)
-                main + spill
-            } else {
-                addXp(target, xpEach)
-            }
-        }.distinctBy { it.category to it.categoryLevel }
-    }
-
-    /**
-     * Returns the unlocked non-DECORATION category with least [EcosystemState.totalExperience],
-     * excluding any category already in [excludes].
-     * Returns null when no valid candidate exists.
-     * On tie, picks randomly among tied candidates.
-     */
-    private suspend fun findSpilloverTarget(excludes: List<MarineCategory>): MarineCategory? {
-        val candidates = ecosystemStateRepository.getUnlocked()
-            .filter { it.category != MarineCategory.DECORATION && it.category != MarineCategory.COMPANION }
-            .filter { it.category !in excludes }
-        if (candidates.isEmpty()) return null
-        val minXp = candidates.minOf { it.totalExperience }
-        val tied  = candidates.filter { it.totalExperience == minXp }
-        return tied[Random.nextInt(tied.size)].category
-    }
-
-    private suspend fun addXp(
-        category: MarineCategory,
+    /** Reparte [xp] siguiendo las dos reglas de la clase. */
+    private suspend fun distribute(
         xp: Int,
-        fromOverflow: Boolean = false,
-        fromSpillover: Boolean = false
+        categories: List<MarineCategory>
     ): List<PendingLootbox> {
         if (xp <= 0) return emptyList()
 
-        // ── XP overflow: si todas las especies de la categoría están desbloqueadas,
-        //    50% del XP va a la categoría con menor nivel (catch-up) ──
-        // Neither overflow nor spillover propagate further when already redistributed
-        val allSpecsInCategory = allCreatures.filter { it.category == category }
-        val unlockedCreatures  = marineCreatureRepository.getByCategory(category)
-        val allUnlocked        = unlockedCreatures.size >= allSpecsInCategory.size
-        val isRedistributed    = fromOverflow || fromSpillover
+        val targets = categories.ifEmpty { unlockedTargets() }
+        if (targets.isEmpty()) return emptyList()
 
-        val actualXp: Int
-        var overflowLootboxes: List<PendingLootbox> = emptyList()
+        val spilloverXp = (xp * SPILLOVER_FRACTION).toInt()
+        val mainXp = xp - spilloverXp
 
-        if (allUnlocked && !isRedistributed) {
-            actualXp = xp / 2
-            val overflow = xp - actualXp
-            if (overflow > 0) {
-                overflowLootboxes = redistributeOverflow(category, overflow)
-            }
-        } else {
-            actualXp = xp
-        }
+        val lootboxes = mutableListOf<PendingLootbox>()
 
-        val now      = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val xpEach = mainXp / targets.size
+        targets.forEach { target -> lootboxes += addXp(target, xpEach) }
+
+        // Catch-up: el resto va a la categoría más rezagada. Si resulta ser una de las
+        // del bloque, se lo queda igual — sigue siendo la que menos tiene.
+        leastAdvancedCategory()?.let { lootboxes += addXp(it, spilloverXp) }
+
+        return lootboxes.distinctBy { it.category to it.categoryLevel }
+    }
+
+    private suspend fun unlockedTargets(): List<MarineCategory> =
+        ecosystemStateRepository.getUnlocked()
+            .map { it.category }
+            .filter { it !in NON_XP_CATEGORIES }
+
+    /** Categoría desbloqueada con menos XP total. Determinista: desempata por nombre. */
+    private suspend fun leastAdvancedCategory(): MarineCategory? =
+        ecosystemStateRepository.getUnlocked()
+            .filter { it.category !in NON_XP_CATEGORIES }
+            .minWithOrNull(compareBy({ it.totalExperience }, { it.category.name }))
+            ?.category
+
+    private suspend fun addXp(category: MarineCategory, xp: Int): List<PendingLootbox> {
+        if (xp <= 0) return emptyList()
+
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val existing = ecosystemStateRepository.getByCategory(category)
 
-        val oldLevel = if (existing == null) 1 else existing.currentLevel
-        val newXp    = (existing?.totalExperience ?: 0) + actualXp
+        val oldLevel = existing?.currentLevel ?: 1
+        val newXp = (existing?.totalExperience ?: 0) + xp
         val newLevel = EcosystemLevelCalculator.levelForXp(newXp)
 
         if (existing == null) {
@@ -149,65 +104,24 @@ class EcosystemProcessor(
             )
         }
 
-        // Repartir XP entre criaturas desbloqueadas de esta categoría
-        val creatures = marineCreatureRepository.getByCategory(category)
-        if (creatures.isNotEmpty()) {
-            val xpPerCreature = actualXp / creatures.size
-            if (xpPerCreature > 0) {
-                creatures.forEach { creature ->
-                    val newCreatureXp    = creature.experience + xpPerCreature
-                    val newCreatureLevel = EcosystemLevelCalculator.levelForXp(newCreatureXp)
-                    marineCreatureRepository.update(
-                        creature.copy(
-                            experience = newCreatureXp,
-                            creatureLevel = newCreatureLevel
-                        )
-                    )
-                }
-            }
-        }
+        // El nivel visual de cada criatura se deriva del de su categoría
+        // (MarineCreature.visualLevel): no hay un segundo pozo de XP que mantener.
 
-        // ── Detección de lootbox ──
-        val unlockLevels    = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
+        val unlockLevels = CATEGORY_UNLOCK_LEVELS[category] ?: emptyList()
         val triggeredLevels = unlockLevels.filter { it in (oldLevel + 1)..newLevel }
+        if (triggeredLevels.isEmpty()) return emptyList()
 
-        val unlockedCount  = marineCreatureRepository.getByCategory(category).size
-        val totalSpecies   = allSpecsInCategory.size
+        val totalSpecies = allCreatures.count { it.category == category }
+        val unlockedCount = marineCreatureRepository.getByCategory(category).size
         val availableSlots = (totalSpecies - unlockedCount).coerceAtLeast(0)
-        val lootboxes = triggeredLevels.take(availableSlots).map { level ->
+
+        return triggeredLevels.take(availableSlots).map { level ->
             PendingLootbox(category = category, categoryLevel = level)
         }
-
-        return lootboxes + overflowLootboxes
-    }
-
-    /**
-     * Redistribuye XP overflow a la categoría con menor nivel (catch-up).
-     * Si hay empate, elige aleatoriamente entre las empatadas.
-     * Excluye DECORATION y categorías con todas las especies desbloqueadas.
-     */
-    private suspend fun redistributeOverflow(
-        sourceCategory: MarineCategory,
-        overflowXp: Int
-    ): List<PendingLootbox> {
-        val allStates = ecosystemStateRepository.getUnlocked()
-        val candidates = allStates
-            .filter { it.category != MarineCategory.DECORATION && it.category != MarineCategory.COMPANION }
-            .filter { it.category != sourceCategory }
-            .filter { state ->
-                val specsInCat    = allCreatures.count { it.category == state.category }
-                val unlockedInCat = marineCreatureRepository.getByCategory(state.category).size
-                unlockedInCat < specsInCat
-            }
-        if (candidates.isEmpty()) return emptyList()
-        val minLevel = candidates.minOf { it.currentLevel }
-        val tied     = candidates.filter { it.currentLevel == minLevel }
-        val target   = tied[Random.nextInt(tied.size)]
-        return addXp(target.category, overflowXp, fromOverflow = true)
     }
 
     suspend fun unlockCategory(category: MarineCategory) {
-        val now      = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val existing = ecosystemStateRepository.getByCategory(category)
         if (existing == null) {
             ecosystemStateRepository.insert(
@@ -223,5 +137,13 @@ class EcosystemProcessor(
         } else {
             ecosystemStateRepository.update(existing.copy(isUnlocked = true))
         }
+    }
+
+    private companion object {
+        /** Parte del XP que va a la categoría más rezagada. */
+        const val SPILLOVER_FRACTION = 0.20
+
+        /** Categorías que no participan en el reparto de XP. */
+        val NON_XP_CATEGORIES = setOf(MarineCategory.DECORATION, MarineCategory.COMPANION)
     }
 }

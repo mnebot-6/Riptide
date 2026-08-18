@@ -5,29 +5,21 @@ import com.mnebot.riptide.domain.model.*
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 fun DayTaskEntity.toDomain(): DayTask {
-    val schedule = when (scheduleType) {
-        "ONE_TIME" -> TaskSchedule.OneTime(
-            date = LocalDate.parse(date!!),
-            time = time?.let { LocalTime.parse(it) }
-        )
-        "RECURRING" -> TaskSchedule.Recurring(
-            time = LocalTime.parse(time!!),
-            recurrence = Json.decodeFromString(recurrence!!)
-        )
-        else -> throw IllegalArgumentException("Unknown scheduleType: $scheduleType")
-    }
+    val schedule = TaskSchedule.OneTime(
+        date = LocalDate.parse(date!!),
+        time = time?.let { LocalTime.parse(it) }
+    )
     return DayTask(
         id = id,
         blockId = blockId,
         title = title,
         schedule = schedule,
-        status = TaskStatus.valueOf(status),
+        // Los estados legacy (POSTPONED/CANCELLED) los convierte MIGRATION_15_16,
+        // pero un cliente antiguo puede colarlos por sync: no reventamos por eso.
+        status = runCatching { TaskStatus.valueOf(status) }.getOrDefault(TaskStatus.PENDING),
         completedAt = completedAt?.let { LocalDateTime.parse(it) },
-        postponedTo = postponedTo?.let { LocalDateTime.parse(it) },
         sourceTaskId = sourceTaskId,
         hasBeenRewarded = hasBeenRewarded,
         notificationsEnabled = notificationsEnabled,
@@ -52,12 +44,6 @@ fun DayTask.toEntity(): DayTaskEntity {
             time = schedule.time?.toString()
             recurrence = null
         }
-        is TaskSchedule.Recurring -> {
-            scheduleType = "RECURRING"
-            date = null
-            time = schedule.time.toString()
-            recurrence = Json.encodeToString(schedule.recurrence)
-        }
     }
 
     return DayTaskEntity(
@@ -70,7 +56,8 @@ fun DayTask.toEntity(): DayTaskEntity {
         recurrence = recurrence,
         status = status.name,
         completedAt = completedAt?.toString(),
-        postponedTo = postponedTo?.toString(),
+        // ponytail: columna legacy, ya no se usa. Se cae en la próxima recreación de day_tasks.
+        postponedTo = null,
         sourceTaskId = sourceTaskId,
         hasBeenRewarded = hasBeenRewarded,
         notificationsEnabled = notificationsEnabled,

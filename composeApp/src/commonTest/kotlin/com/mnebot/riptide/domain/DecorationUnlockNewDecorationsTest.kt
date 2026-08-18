@@ -36,7 +36,6 @@ class DecorationUnlockNewDecorationsTest {
         score = score,
         tasksTotal = 5,
         tasksCompleted = if (score == 1.0f) 5 else 3,
-        streakDay = 1,
         feedbackMessage = ""
     )
 

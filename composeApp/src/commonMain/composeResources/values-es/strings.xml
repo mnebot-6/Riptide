@@ -36,7 +36,6 @@
     <string name="menu_edit">Editar</string>
     <string name="menu_postpone">Posponer</string>
     <string name="menu_delete">Eliminar</string>
-    <string name="msg_streak">%1$d días</string>
     <string name="msg_error">Error: %1$s</string>
 
     <!-- MainDrawer -->
@@ -46,7 +45,6 @@
     <string name="btn_my_ecosystem">Criaturas</string>
     <string name="btn_live_wallpaper">Fondo de pantalla en vivo</string>
     <string name="section_settings">AJUSTES</string>
-    <string name="label_night_summary">Resumen nocturno</string>
 
     <!-- EcosystemScreen -->
     <string name="title_ecosystem">Criaturas</string>
@@ -236,8 +234,6 @@
     <string name="stats_best_week">MEJOR SEMANA</string>
     <string name="stats_this_month">Este mes</string>
     <string name="stats_vs_last_month">vs mes anterior</string>
-    <string name="stats_streaks_title">RACHAS POR BLOQUE</string>
-    <string name="stats_no_streaks">Aún no hay rachas activas</string>
     <string name="stat_perfect_days">Días perfectos</string>
     <string name="stat_avg_completion">Completado medio</string>
     <string name="stat_total_tasks">Total tareas</string>
@@ -295,11 +291,9 @@
     <string name="a11y_open_calendar">Abrir calendario</string>
     <string name="a11y_go_to_today">Ir a hoy</string>
     <string name="a11y_clear_search">Borrar búsqueda</string>
-    <string name="a11y_task_postponed">Pospuesta</string>
     <string name="a11y_task_expired">Expirada</string>
     <string name="a11y_locked">Bloqueado</string>
     <string name="a11y_back">Volver</string>
-    <string name="a11y_streak_count">Cuenta de racha</string>
     <string name="a11y_notification">Notificación de tarea</string>
     <string name="a11y_search">Buscar</string>
     <string name="a11y_riptide_logo">Logo de Riptide</string>
@@ -322,18 +316,10 @@
     <string name="label_recurrence_type">Recurrencia</string>
     <string name="recurrence_weekly">Semanal</string>
     <string name="recurrence_monthly_day">Mensual</string>
-    <string name="recurrence_nth_weekday">Día de la semana</string>
     <string name="recurrence_yearly">Anual</string>
     <string name="label_day_of_month">Día</string>
-    <string name="label_every_n_months">Cada (meses)</string>
     <string name="label_month">Mes</string>
     <string name="label_yearly_date">Fecha (año irrelevante)</string>
-    <string name="label_nth_occurrence">Ocurrencia</string>
-    <string name="nth_1">1º</string>
-    <string name="nth_2">2º</string>
-    <string name="nth_3">3º</string>
-    <string name="nth_4">4º</string>
-    <string name="nth_last">Último</string>
 
     <!-- Sync conflict dialog -->
     <string name="sync_conflict_title">Datos existentes encontrados</string>

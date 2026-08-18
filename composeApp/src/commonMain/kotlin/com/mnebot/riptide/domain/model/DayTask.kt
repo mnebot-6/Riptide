@@ -4,17 +4,25 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
-enum class TaskStatus { PENDING, COMPLETED, EXPIRED, POSTPONED, CANCELLED }
+/**
+ * Tres estados, sin solapes:
+ * - PENDING: aún se puede hacer (solo hoy y días futuros)
+ * - COMPLETED: hecha
+ * - EXPIRED: el día se cerró sin completarla
+ *
+ * Posponer mueve la fecha de la propia tarea; borrar usa el soft delete de sync.
+ */
+enum class TaskStatus { PENDING, COMPLETED, EXPIRED }
 
+/**
+ * Toda instancia vive en un día concreto: la recurrencia pertenece a la definición
+ * ([RecurringTaskDef]), no a la instancia. Antes había un caso `Recurring` que nunca
+ * se llegaba a escribir en base de datos.
+ */
 sealed class TaskSchedule {
     data class OneTime(
         val date: LocalDate,
         val time: LocalTime?
-    ) : TaskSchedule()
-
-    data class Recurring(
-        val time: LocalTime,
-        val recurrence: Recurrence
     ) : TaskSchedule()
 }
 
@@ -25,7 +33,6 @@ data class DayTask(
     val schedule: TaskSchedule,
     val status: TaskStatus,
     val completedAt: LocalDateTime?,
-    val postponedTo: LocalDateTime?,
     val sourceTaskId: String?,
     val hasBeenRewarded: Boolean = false,
     val notificationsEnabled: Boolean = false,

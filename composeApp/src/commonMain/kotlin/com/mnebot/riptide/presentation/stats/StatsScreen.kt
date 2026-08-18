@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mnebot.riptide.domain.model.DaySummary
-import com.mnebot.riptide.domain.model.WorkBlock
 import com.mnebot.riptide.presentation.main.currentDate
 import com.mnebot.riptide.presentation.main.parseColor
 import kotlinx.datetime.DateTimeUnit
@@ -387,37 +386,6 @@ fun StatsScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            // Streaks per block
-            if (uiState.streaksByBlock.isNotEmpty()) {
-                Text(
-                    text = stringResource(Res.string.stats_streaks_title),
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.sp
-                )
-                Spacer(Modifier.height(10.dp))
-
-                uiState.streaksByBlock.forEach { (block, streak) ->
-                    StreakRow(block = block, streak = streak.currentStreak)
-                    Spacer(Modifier.height(8.dp))
-                }
-            } else if (!uiState.isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CardBackground)
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(Res.string.stats_no_streaks),
-                        color = TextSecondary,
-                        fontSize = 14.sp
-                    )
-                }
-            }
         }
     }
 }
@@ -623,47 +591,6 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
         Text(value, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(2.dp))
         Text(label, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun StreakRow(block: WorkBlock, streak: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(CardBackground)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(parseColor(block.color))
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = "${block.icon} ${block.name}",
-            color = TextPrimary,
-            fontSize = 14.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_flame),
-                contentDescription = stringResource(Res.string.a11y_streak_count),
-                tint = Color(0xFFFFB347),
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "$streak",
-                color = TextPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 

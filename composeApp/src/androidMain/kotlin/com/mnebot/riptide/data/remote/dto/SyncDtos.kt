@@ -43,7 +43,6 @@ data class SyncRequest(
     val dayTasks: List<DayTaskDto> = emptyList(),
     val recurringTaskDefs: List<RecurringTaskDefDto> = emptyList(),
     val daySummaries: List<DaySummaryDto> = emptyList(),
-    val blockStreaks: List<BlockStreakDto> = emptyList(),
     val ecosystemStates: List<EcosystemStateDto> = emptyList(),
     val marineCreatures: List<MarineCreatureDto> = emptyList()
 )
@@ -56,7 +55,6 @@ data class SyncResponse(
     val dayTasks: List<DayTaskDto> = emptyList(),
     val recurringTaskDefs: List<RecurringTaskDefDto> = emptyList(),
     val daySummaries: List<DaySummaryDto> = emptyList(),
-    val blockStreaks: List<BlockStreakDto> = emptyList(),
     val ecosystemStates: List<EcosystemStateDto> = emptyList(),
     val marineCreatures: List<MarineCreatureDto> = emptyList()
 )
@@ -132,15 +130,6 @@ data class DaySummaryDto(
     val tasksCompleted: Int,
     val streakDay: Int,
     val feedbackMessage: String,
-    val updatedAt: String? = null
-)
-
-@Serializable
-data class BlockStreakDto(
-    val blockId: String,
-    val currentStreak: Int,
-    val longestStreak: Int = 0,
-    val lastActiveDate: String,
     val updatedAt: String? = null
 )
 

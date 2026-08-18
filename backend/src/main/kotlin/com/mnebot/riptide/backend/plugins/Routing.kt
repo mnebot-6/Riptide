@@ -59,7 +59,6 @@ fun Application.configureRouting() {
         dayTaskRoutes()
         recurringTaskDefRoutes()
         daySummaryRoutes()
-        blockStreakRoutes()
         ecosystemStateRoutes()
         marineCreatureRoutes()
 

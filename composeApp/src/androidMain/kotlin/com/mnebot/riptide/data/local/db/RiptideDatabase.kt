@@ -7,6 +7,33 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mnebot.riptide.data.local.dao.*
 import com.mnebot.riptide.data.local.entity.*
 
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // TaskStatus queda en PENDING | COMPLETED | EXPIRED.
+        // Las filas POSTPONED son el fantasma que dejaba el posponer antiguo (la copia
+        // ya existe en la fecha destino) y las CANCELLED eran un soft delete a mano:
+        // ambas pasan al soft delete real de sync.
+        database.execSQL(
+            """
+            UPDATE day_tasks
+               SET isDeleted = 1,
+                   status = 'EXPIRED',
+                   updatedAt = strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime')
+             WHERE status IN ('POSTPONED', 'CANCELLED')
+            """.trimIndent()
+        )
+
+        // La racha ya no se persiste: se deriva de day_summaries.
+        database.execSQL("DROP TABLE IF EXISTS block_streaks")
+
+        // NthWeekdayOfMonth ya no existe. Las definiciones que lo usaban se desactivan
+        // en vez de quedar como zombis que no generan nada.
+        database.execSQL(
+            "UPDATE recurring_task_defs SET isActive = 0 WHERE recurrence LIKE '%NthWeekdayOfMonth%'"
+        )
+    }
+}
+
 val MIGRATION_14_15 = object : Migration(14, 15) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Calendar feature was removed post-launch; drop the orphan table.
@@ -88,11 +115,10 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         DayTaskEntity::class,
         RecurringTaskDefEntity::class,
         DaySummaryEntity::class,
-        BlockStreakEntity::class,
         EcosystemStateEntity::class,
         MarineCreatureEntity::class
     ],
-    version = 15
+    version = 16
 )
 
 abstract class RiptideDatabase : RoomDatabase() {
@@ -101,7 +127,6 @@ abstract class RiptideDatabase : RoomDatabase() {
     abstract fun dayTaskDao(): DayTaskDao
     abstract fun recurringTaskDefDao(): RecurringTaskDefDao
     abstract fun daySummaryDao(): DaySummaryDao
-    abstract fun blockStreakDao(): BlockStreakDao
     abstract fun ecosystemStateDao(): EcosystemStateDao
     abstract fun marineCreatureDao(): MarineCreatureDao
 }

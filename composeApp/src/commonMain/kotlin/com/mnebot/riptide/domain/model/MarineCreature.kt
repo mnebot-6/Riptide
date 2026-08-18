@@ -100,7 +100,20 @@ data class MarineCreature(
     val species: CreatureSpecies,
     val nickname: String?,
     val unlockedAtLevel: Int,
+    /** Legacy: el XP vive en la categoría, no en la criatura. Se conserva por sync. */
     val experience: Int,
+    /** Legacy: usa [visualLevel]. Se conserva por sync. */
     val creatureLevel: Int,
     val unlockedAt: LocalDateTime
-)
+) {
+    /**
+     * Nivel visual (1..5) derivado del nivel de su categoría: una criatura crece
+     * porque su categoría crece. Sin un segundo pozo de XP que mantener.
+     */
+    fun visualLevel(categoryLevel: Int): Int =
+        (1 + (categoryLevel - unlockedAtLevel) / 2).coerceIn(1, MAX_VISUAL_LEVEL)
+
+    companion object {
+        const val MAX_VISUAL_LEVEL = 5
+    }
+}

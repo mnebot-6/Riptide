@@ -33,20 +33,10 @@ class DecorationUnlockChecker(
         checkGoldenTrident()
     )
 
-    /**
-     * TREASURE_CHEST: 7 consecutive calendar days each with DaySummary.score == 1.0f,
-     * no date gaps allowed.
-     */
+    /** TREASURE_CHEST: 7 días de racha. */
     suspend fun checkTreasureChest(): CreatureSpecies? {
         if (isAlreadyUnlocked(CreatureSpecies.TREASURE_CHEST)) return null
-        val latest = daySummaryRepository.getLatestN(7)
-        if (latest.size < 7) return null
-        val sorted = latest.sortedByDescending { it.date }
-        if (sorted.any { it.score < 1.0f }) return null
-        // Verify no gaps: each consecutive pair must differ by exactly 1 day
-        for (i in 0 until sorted.size - 1) {
-            if (sorted[i].date.toEpochDays() - sorted[i + 1].date.toEpochDays() != 1L) return null
-        }
+        if (currentStreak() < 7) return null
         return doUnlock(CreatureSpecies.TREASURE_CHEST)
     }
 
@@ -83,13 +73,10 @@ class DecorationUnlockChecker(
         return doUnlock(CreatureSpecies.DIVING_HELMET)
     }
 
-    /** CORAL_THRONE: 14 consecutive perfect days. */
+    /** CORAL_THRONE: 14 días de racha. */
     suspend fun checkCoralThrone(): CreatureSpecies? {
         if (isAlreadyUnlocked(CreatureSpecies.CORAL_THRONE)) return null
-        val latest = daySummaryRepository.getLatestN(14)
-        if (latest.size < 14) return null
-        val streak = countConsecutivePerfectDays(latest)
-        if (streak < 14) return null
+        if (currentStreak() < 14) return null
         return doUnlock(CreatureSpecies.CORAL_THRONE)
     }
 
@@ -112,8 +99,7 @@ class DecorationUnlockChecker(
 
     /** Returns decoration unlock progress for UI display. */
     suspend fun getProgress(): DecorationProgress {
-        val latest = daySummaryRepository.getLatestN(14)
-        val streak = countConsecutivePerfectDays(latest)
+        val streak = currentStreak()
         val totalCompleted = dayTaskRepository.countCompletedAllTime()
         val wallpaperActive = userPreferencesRepository.isWallpaperActivated()
         val googleSignedIn = userPreferencesRepository.getLoggedInUser() != null
@@ -205,19 +191,14 @@ class DecorationUnlockChecker(
         return species
     }
 
-    /**
-     * Counts how many of the most recent summaries form a consecutive streak of perfect days
-     * (score == 1.0f, no date gaps). Summaries need not already be sorted.
-     */
-    private fun countConsecutivePerfectDays(summaries: List<DaySummary>): Int {
-        if (summaries.isEmpty()) return 0
-        val sorted = summaries.sortedByDescending { it.date }
-        var streak = 0
-        for (i in sorted.indices) {
-            if (sorted[i].score < 1.0f) break
-            if (i > 0 && sorted[i - 1].date.toEpochDays() - sorted[i].date.toEpochDays() != 1L) break
-            streak++
-        }
-        return streak
+    /** La misma racha que ve el usuario, sin criterio propio. */
+    private suspend fun currentStreak(): Int {
+        val recent = daySummaryRepository.getLatestN(STREAK_LOOKBACK_DAYS)
+        val mostRecent = recent.maxByOrNull { it.date }?.date ?: return 0
+        return DayStreak.currentFrom(recent, mostRecent)
+    }
+
+    private companion object {
+        const val STREAK_LOOKBACK_DAYS = 60
     }
 }

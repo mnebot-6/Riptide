@@ -111,7 +111,6 @@ fun TaskFormSheet(
             when (existingDef?.recurrence) {
                 is Recurrence.Yearly -> RecurrenceTypeUI.YEARLY
                 is Recurrence.MonthlyDay -> RecurrenceTypeUI.MONTHLY_DAY
-                is Recurrence.NthWeekdayOfMonth -> RecurrenceTypeUI.NTH_WEEKDAY
                 else -> RecurrenceTypeUI.WEEKLY
             }
         )
@@ -119,23 +118,11 @@ fun TaskFormSheet(
     var monthlyDay by remember(existingDef) {
         mutableIntStateOf((existingDef?.recurrence as? Recurrence.MonthlyDay)?.day ?: 1)
     }
-    var monthlyInterval by remember(existingDef) {
-        mutableIntStateOf((existingDef?.recurrence as? Recurrence.MonthlyDay)?.intervalMonths ?: 1)
-    }
     var yearlyMonth by remember(existingDef) {
         mutableIntStateOf((existingDef?.recurrence as? Recurrence.Yearly)?.month ?: 1)
     }
     var yearlyDay by remember(existingDef) {
         mutableIntStateOf((existingDef?.recurrence as? Recurrence.Yearly)?.day ?: 1)
-    }
-    var nthOccurrence by remember(existingDef) {
-        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.nth ?: 1)
-    }
-    var nthDayOfWeek by remember(existingDef) {
-        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.dayOfWeek ?: 1)
-    }
-    var nthInterval by remember(existingDef) {
-        mutableIntStateOf((existingDef?.recurrence as? Recurrence.NthWeekdayOfMonth)?.intervalMonths ?: 1)
     }
 
     Box(
@@ -315,11 +302,6 @@ fun TaskFormSheet(
                         modifier = Modifier.weight(1f)
                     ) { recurrenceType = RecurrenceTypeUI.MONTHLY_DAY; daysError = false }
                     RecurrenceTypeChip(
-                        label = stringResource(Res.string.recurrence_nth_weekday),
-                        selected = recurrenceType == RecurrenceTypeUI.NTH_WEEKDAY,
-                        modifier = Modifier.weight(1f)
-                    ) { recurrenceType = RecurrenceTypeUI.NTH_WEEKDAY; daysError = false }
-                    RecurrenceTypeChip(
                         label = stringResource(Res.string.recurrence_yearly),
                         selected = recurrenceType == RecurrenceTypeUI.YEARLY,
                         modifier = Modifier.weight(1f)
@@ -351,10 +333,6 @@ fun TaskFormSheet(
                             nullable = false,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(modifier = Modifier.height(14.dp))
-                        SheetSectionLabel(stringResource(Res.string.label_every_n_months))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        IntervalNumberField(value = monthlyInterval, onChange = { monthlyInterval = it })
                     }
                     RecurrenceTypeUI.YEARLY -> {
                         // One picker for both month and day-of-month — the year is ignored.
@@ -371,50 +349,6 @@ fun TaskFormSheet(
                             nullable = false,
                             modifier = Modifier.fillMaxWidth()
                         )
-                    }
-                    RecurrenceTypeUI.NTH_WEEKDAY -> {
-                        SheetSectionLabel(stringResource(Res.string.label_nth_occurrence))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            val occurrenceLabels = listOf(
-                                1 to stringResource(Res.string.nth_1),
-                                2 to stringResource(Res.string.nth_2),
-                                3 to stringResource(Res.string.nth_3),
-                                4 to stringResource(Res.string.nth_4),
-                                5 to stringResource(Res.string.nth_last)
-                            )
-                            occurrenceLabels.forEachIndexed { index, (n, label) ->
-                                SegmentedButton(
-                                    selected = nthOccurrence == n,
-                                    onClick = { nthOccurrence = n },
-                                    shape = SegmentedButtonDefaults.itemShape(
-                                        index = index,
-                                        count = occurrenceLabels.size
-                                    ),
-                                    colors = SegmentedButtonDefaults.colors(
-                                        activeContainerColor = ChipAccent,
-                                        activeContentColor = TextPrimary,
-                                        activeBorderColor = ChipAccent,
-                                        inactiveContainerColor = CardBackground,
-                                        inactiveContentColor = TextSecondary,
-                                        inactiveBorderColor = CardBorder
-                                    ),
-                                    label = { Text(label, fontSize = 13.sp) }
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        SheetSectionLabel(stringResource(Res.string.label_days))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        WeekdayCircleRow(
-                            days = days,
-                            isSelected = { nthDayOfWeek == it },
-                            onToggle = { nthDayOfWeek = it }
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
-                        SheetSectionLabel(stringResource(Res.string.label_every_n_months))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        IntervalNumberField(value = nthInterval, onChange = { nthInterval = it })
                     }
                 }
             }
@@ -776,9 +710,8 @@ fun TaskFormSheet(
                                         val slots = selectedDays.keys.map { WeeklySlot(it, null, null) }
                                         Recurrence.Weekly(slots)
                                     }
-                                    RecurrenceTypeUI.MONTHLY_DAY -> Recurrence.MonthlyDay(monthlyDay, monthlyInterval)
+                                    RecurrenceTypeUI.MONTHLY_DAY -> Recurrence.MonthlyDay(monthlyDay)
                                     RecurrenceTypeUI.YEARLY -> Recurrence.Yearly(yearlyMonth, yearlyDay)
-                                    RecurrenceTypeUI.NTH_WEEKDAY -> Recurrence.NthWeekdayOfMonth(nthOccurrence, nthDayOfWeek, nthInterval)
                                 }
                                 onSaveRecurring(title, selectedBlockId!!, recurringTime, recurrence, notificationsEnabled, finalTargetCount, finalNotes, finalTimerDuration, isPriority)
                             }
@@ -933,7 +866,7 @@ private fun FeatureToggleChip(
     }
 }
 
-private enum class RecurrenceTypeUI { WEEKLY, MONTHLY_DAY, YEARLY, NTH_WEEKDAY }
+private enum class RecurrenceTypeUI { WEEKLY, MONTHLY_DAY, YEARLY }
 
 private val ChipAccent = Color(0xFF1A73E8)
 
@@ -1010,32 +943,3 @@ private fun WeekdayCircleRow(
  * Numeric input for "every N months". Uses Material3 [OutlinedTextField] with the numeric
  * keyboard — a stock component the user already recognises from form inputs elsewhere.
  */
-@Composable
-private fun IntervalNumberField(value: Int, onChange: (Int) -> Unit) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
-    OutlinedTextField(
-        value = text,
-        onValueChange = { input ->
-            // Accept up to 2 digits; clamp 1..12. Empty string while user is editing is fine.
-            val sanitized = input.filter { it.isDigit() }.take(2)
-            text = sanitized
-            sanitized.toIntOrNull()?.let { parsed ->
-                onChange(parsed.coerceIn(1, 12))
-            }
-        },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            focusedContainerColor = CardBackground,
-            unfocusedContainerColor = CardBackground,
-            focusedBorderColor = ChipAccent,
-            unfocusedBorderColor = CardBorder,
-            cursorColor = ChipAccent
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-    )
-}

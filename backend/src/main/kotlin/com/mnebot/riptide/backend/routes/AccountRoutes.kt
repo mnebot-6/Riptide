@@ -29,7 +29,6 @@ fun Route.accountRoutes() {
                 // FK-safe order: dependents first, then refresh tokens, then user row.
                 MarineCreaturesTable.deleteWhere { userId eq uid }
                 EcosystemStatesTable.deleteWhere { userId eq uid }
-                BlockStreaksTable.deleteWhere { userId eq uid }
                 DaySummariesTable.deleteWhere { userId eq uid }
                 DayTasksTable.deleteWhere { userId eq uid }
                 RecurringTaskDefsTable.deleteWhere { userId eq uid }

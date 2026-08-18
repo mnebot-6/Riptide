@@ -13,10 +13,13 @@ class FakeDayTaskRepository : DayTaskRepository {
 
     override suspend fun getByDate(date: LocalDate): List<DayTask> =
         tasks.filter { task ->
-            when (val s = task.schedule) {
-                is com.mnebot.riptide.domain.model.TaskSchedule.OneTime -> s.date == date
-                is com.mnebot.riptide.domain.model.TaskSchedule.Recurring -> true
-            }
+            (task.schedule as com.mnebot.riptide.domain.model.TaskSchedule.OneTime).date == date
+        }
+
+    override suspend fun getByDateRange(from: LocalDate, to: LocalDate): List<DayTask> =
+        tasks.filter { task ->
+            val s = task.schedule
+            s is com.mnebot.riptide.domain.model.TaskSchedule.OneTime && s.date in from..to
         }
 
     override suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask> =
@@ -33,7 +36,8 @@ class FakeDayTaskRepository : DayTaskRepository {
     override suspend fun getBySourceTask(sourceTaskId: String): List<DayTask> =
         tasks.filter { it.sourceTaskId == sourceTaskId }
 
-    override suspend fun getPendingBefore(date: LocalDate): List<DayTask> = emptyList()
+    override suspend fun getSourceIdsForDate(date: LocalDate): List<String> =
+        getByDate(date).mapNotNull { it.sourceTaskId }.distinct()
     override suspend fun insert(task: DayTask) { tasks.add(task) }
     override suspend fun update(task: DayTask) {
         val idx = tasks.indexOfFirst { it.id == task.id }

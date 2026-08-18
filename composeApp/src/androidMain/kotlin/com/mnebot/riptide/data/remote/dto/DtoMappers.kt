@@ -146,24 +146,6 @@ fun DaySummaryDto.toEntity() = DaySummaryEntity(
     updatedAt = updatedAt ?: ""
 )
 
-// -- BlockStreak -------------------------------------------------------------
-
-fun BlockStreakEntity.toDto() = BlockStreakDto(
-    blockId = blockId,
-    currentStreak = currentStreak,
-    longestStreak = longestStreak,
-    lastActiveDate = lastActiveDate,
-    updatedAt = updatedAt.ifEmpty { null }
-)
-
-fun BlockStreakDto.toEntity() = BlockStreakEntity(
-    blockId = blockId,
-    currentStreak = currentStreak,
-    longestStreak = longestStreak,
-    lastActiveDate = lastActiveDate,
-    updatedAt = updatedAt ?: ""
-)
-
 // -- EcosystemState ----------------------------------------------------------
 
 fun EcosystemStateEntity.toDto() = EcosystemStateDto(

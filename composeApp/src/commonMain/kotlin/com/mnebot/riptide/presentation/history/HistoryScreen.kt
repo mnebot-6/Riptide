@@ -402,7 +402,6 @@ private fun HistoryTaskRow(task: DayTask, block: WorkBlock?) {
         )
         val time = when (val s = task.schedule) {
             is TaskSchedule.OneTime -> s.time
-            is TaskSchedule.Recurring -> s.time
         }
         if (time != null) {
             Spacer(Modifier.width(8.dp))

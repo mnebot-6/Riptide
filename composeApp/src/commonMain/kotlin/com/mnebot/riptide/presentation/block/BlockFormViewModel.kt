@@ -34,7 +34,8 @@ class BlockFormViewModel(
                 } else {
                     workBlockRepository.update(block)
                 }
-                marineCategoryAssigner.reassign()
+                // Solo el bloque nuevo recibe categorías; los existentes no se tocan
+                marineCategoryAssigner.assignMissing()
                 _result.value = BlockFormResult.Saved
             } catch (e: Exception) {
                 _result.value = BlockFormResult.Error(e.message ?: "Error desconocido")
@@ -46,7 +47,6 @@ class BlockFormViewModel(
         viewModelScope.launch {
             try {
                 workBlockRepository.delete(blockId)
-                marineCategoryAssigner.reassign()
                 _result.value = BlockFormResult.Deleted
             } catch (e: Exception) {
                 _result.value = BlockFormResult.Error(e.message ?: "Error desconocido")

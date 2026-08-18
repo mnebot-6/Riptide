@@ -42,11 +42,11 @@ class TaskClickAction : ActionCallback {
                 val db = DatabaseProvider.getDatabase(context)
                 val dao = db.dayTaskDao()
                 val entity = dao.getById(taskId)
-                if (entity != null) {
-                    val nowIso = Clock.System.now()
-                        .toLocalDateTime(TimeZone.currentSystemDefault())
-                        .toString()
-                    val updated = WidgetTaskMutator.applyClickToEntity(entity, nowIso)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                // Solo el día en curso admite cambios de estado: si el widget arrastra
+                // un snapshot de ayer, el clic no debe tocar un día ya cerrado.
+                if (entity != null && entity.date == now.date.toString()) {
+                    val updated = WidgetTaskMutator.applyClickToEntity(entity, now.toString())
                     dao.update(updated)
                 }
 

@@ -16,7 +16,10 @@ fun RecurringTaskDefEntity.toDomain(): RecurringTaskDef = RecurringTaskDef(
     blockId = blockId,
     title = title,
     time = time?.let { LocalTime.parse(it) },
-    recurrence = Json.decodeFromString<Recurrence>(recurrence),
+    // NthWeekdayOfMonth desapareció en v16; MIGRATION_15_16 desactiva las que lo usaban,
+    // pero una fila que llegue por sync desde un cliente antiguo no debe reventar.
+    recurrence = runCatching { Json.decodeFromString<Recurrence>(recurrence) }
+        .getOrDefault(Recurrence.None),
     isActive = isActive,
     notificationsEnabled = notificationsEnabled,
     targetCount = targetCount,

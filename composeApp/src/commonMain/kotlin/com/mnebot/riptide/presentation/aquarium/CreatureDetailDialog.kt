@@ -19,7 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.mnebot.riptide.domain.EcosystemLevelCalculator
 import com.mnebot.riptide.domain.model.CreatureRarity
+import com.mnebot.riptide.domain.model.EcosystemState
 import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.displayNameRes
@@ -35,9 +37,11 @@ private val TextSecondary = Color(0xB3FFFFFF)
 fun CreatureDetailDialog(
     creature: MarineCreature,
     spec: CreatureSpec,
+    categoryState: EcosystemState?,
     onDismiss: () -> Unit,
     onNicknameChanged: (String) -> Unit
 ) {
+    val categoryLevel = categoryState?.currentLevel ?: 1
     var nickname by remember(creature.id) { mutableStateOf(creature.nickname ?: "") }
     val isDecoration = spec.category == MarineCategory.DECORATION || spec.category == MarineCategory.COMPANION
 
@@ -49,7 +53,7 @@ fun CreatureDetailDialog(
                 .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(80.dp))
+            CreatureIcon(spec = spec, level = creature.visualLevel(categoryLevel), modifier = Modifier.size(80.dp))
 
             Spacer(Modifier.height(8.dp))
 
@@ -126,8 +130,11 @@ fun CreatureDetailDialog(
 
                 Spacer(Modifier.height(20.dp))
 
-                // xpRequiredForLevel viene de CreatureExtensions.kt
-                XpBar(creature = creature)
+                XpBar(
+                    displayLevel = creature.visualLevel(categoryLevel),
+                    categoryLevel = categoryLevel,
+                    categoryXp = categoryState?.totalExperience ?: 0
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -163,18 +170,19 @@ fun CreatureDetailDialog(
 }
 
 @Composable
-private fun XpBar(creature: MarineCreature) {
-    val xpForCurrent = xpRequiredForLevel(creature.creatureLevel)
-    val xpForNext = xpRequiredForLevel(creature.creatureLevel + 1)
+private fun XpBar(displayLevel: Int, categoryLevel: Int, categoryXp: Int) {
+    // La criatura crece porque crece su categoría: la barra muestra ese progreso.
+    val xpForCurrent = EcosystemLevelCalculator.xpForLevel(categoryLevel)
+    val xpForNext = EcosystemLevelCalculator.xpForLevel(categoryLevel + 1)
     val range = (xpForNext - xpForCurrent).coerceAtLeast(1)
-    val progress = ((creature.experience - xpForCurrent).toFloat() / range).coerceIn(0f, 1f)
+    val progress = ((categoryXp - xpForCurrent).toFloat() / range).coerceIn(0f, 1f)
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = stringResource(Res.string.label_level_full, creature.creatureLevel),
+            text = stringResource(Res.string.label_level_full, displayLevel),
             color = Accent,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold

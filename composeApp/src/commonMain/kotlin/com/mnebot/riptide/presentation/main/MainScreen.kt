@@ -70,10 +70,7 @@ private fun sortedBlocks(
         { block ->
             // Hora más temprana de tarea pendiente (no completada/pospuesta)
             val earliestPendingTime = tasksByBlock[block.id]
-                ?.filter {
-                    it.status != TaskStatus.POSTPONED &&
-                        it.status != TaskStatus.COMPLETED
-                }
+                ?.filter { it.status != TaskStatus.COMPLETED }
                 ?.mapNotNull { (it.schedule as? TaskSchedule.OneTime)?.time }
                 ?.minOrNull()
                 ?.toSecondOfDay()
@@ -163,7 +160,7 @@ fun MainScreen(
             MainHeader(
                 selectedDate = uiState.selectedDate,
                 today = currentDate(),
-                tasksByBlock = uiState.tasksByBlock,
+                tasksByDate = uiState.tasksByDate,
                 globalStreak = uiState.globalStreak,
                 onCalendarClick = { showDatePicker = true },
                 onTodayClick = { viewModel.selectDate(currentDate()) },
@@ -189,7 +186,6 @@ fun MainScreen(
                     quickTaskBlock = block
                     showTaskSheet = true
                 },
-                streaksByBlock = uiState.streaksByBlock,
                 onIncrement = { viewModel.incrementTaskCount(it) },
                 onDecrement = { viewModel.decrementTaskCount(it) },
                 onPriorityToggle = { viewModel.toggleTaskPriority(it) },
@@ -670,7 +666,7 @@ fun MainScreen(
 private fun MainHeader(
     selectedDate: LocalDate,
     today: LocalDate,
-    tasksByBlock: Map<String?, List<DayTask>>,
+    tasksByDate: Map<LocalDate, List<DayTask>>,
     globalStreak: Int = 0,
     onCalendarClick: () -> Unit,
     onTodayClick: () -> Unit,
@@ -680,18 +676,6 @@ private fun MainHeader(
     onDateSelected: (LocalDate) -> Unit,
     onWeekChange: (LocalDate) -> Unit
 ) {
-    val allTasksToday = remember(tasksByBlock) { tasksByBlock.values.flatten() }
-    val tasksByDate = remember(allTasksToday) {
-        allTasksToday
-            .groupBy { task ->
-                when (val schedule = task.schedule) {
-                    is TaskSchedule.OneTime -> schedule.date
-                    is TaskSchedule.Recurring -> null
-                }
-            }
-            .filterKeys { it != null }
-            .mapKeys { it.key!! }
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -787,7 +771,6 @@ private fun MainContent(
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
     onBlockHeaderLongPress: (WorkBlock) -> Unit,
-    streaksByBlock: Map<String, Int>,
     onIncrement: (DayTask) -> Unit = {},
     onDecrement: (DayTask) -> Unit = {},
     onPriorityToggle: (DayTask) -> Unit = {},
@@ -806,6 +789,9 @@ private fun MainContent(
     }
     var completedBlocksExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    // Solo el día en curso se puede marcar/desmarcar. El pasado ya está cerrado y
+    // el futuro aún no ha ocurrido: ambos son de lectura.
+    val isEditable = selectedDate == currentDate()
 
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color(0x33FFFFFF)))
 
@@ -837,6 +823,7 @@ private fun MainContent(
                     item {
                         UnassignedSection(
                             tasks = activeUnassigned,
+                            isEditable = isEditable,
                             onTaskToggle = onTaskToggle,
                             onTaskLongPress = onTaskLongPress,
                             onIncrement = onIncrement,
@@ -854,12 +841,11 @@ private fun MainContent(
                 // Active blocks (with at least one pending task)
                 items(activeBlocks, key = { it.id }) { block ->
                     val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
-                    val streak = streaksByBlock[block.id] ?: 0
                     BlockSection(
                         block = block,
                         tasks = tasks,
                         selectedDate = selectedDate,
-                        streak = streak,
+                        isEditable = isEditable,
                         onTaskToggle = onTaskToggle,
                         onTaskLongPress = onTaskLongPress,
                         onHeaderLongPress = onBlockHeaderLongPress,
@@ -887,12 +873,11 @@ private fun MainContent(
                     if (completedBlocksExpanded) {
                         items(completedBlocks, key = { "done_${it.id}" }) { block ->
                             val tasks = sortedTasks(tasksByBlock[block.id] ?: emptyList())
-                            val streak = streaksByBlock[block.id] ?: 0
                             BlockSection(
                                 block = block,
                                 tasks = tasks,
                                 selectedDate = selectedDate,
-                                streak = streak,
+                                isEditable = isEditable,
                                 onTaskToggle = onTaskToggle,
                                 onTaskLongPress = onTaskLongPress,
                                 onHeaderLongPress = onBlockHeaderLongPress,
@@ -914,6 +899,7 @@ private fun MainContent(
                     item {
                         UnassignedSection(
                             tasks = completedUnassigned,
+                            isEditable = isEditable,
                             onTaskToggle = onTaskToggle,
                             onTaskLongPress = onTaskLongPress,
                             onIncrement = onIncrement,
@@ -1060,7 +1046,7 @@ private fun BlockSection(
     block: WorkBlock,
     tasks: List<DayTask>,
     selectedDate: LocalDate,
-    streak: Int,
+    isEditable: Boolean = true,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
     onHeaderLongPress: (WorkBlock) -> Unit,
@@ -1078,7 +1064,6 @@ private fun BlockSection(
         BlockHeader(
             block = block,
             selectedDate = selectedDate,
-            streak = streak,
             onLongPress = { onHeaderLongPress(block) }
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -1086,6 +1071,7 @@ private fun BlockSection(
             SwipeableTaskCard(
                 task = task,
                 blockColor = parseColor(block.color),
+                isEditable = isEditable,
                 onToggle = { onTaskToggle(task) },
                 onLongPress = { onTaskLongPress(task) },
                 onIncrement = { onIncrement(task) },
@@ -1108,7 +1094,6 @@ private fun BlockSection(
 private fun BlockHeader(
     block: WorkBlock,
     selectedDate: LocalDate,
-    streak: Int,
     onLongPress: () -> Unit
 ) {
     Row(
@@ -1133,23 +1118,6 @@ private fun BlockHeader(
                 val slot = recurrence.slots.first { it.dayOfWeek == selectedDate.dayOfWeek.isoDayNumber }
                 Text("${slot.startTime} - ${slot.endTime}", color = TextSecondary, fontSize = 12.sp)
             }
-            if (streak >= 2) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_flame),
-                        contentDescription = null,
-                        tint = Color(0xFFFFB347),
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        text = stringResource(Res.string.msg_streak, streak),
-                        color = Color(0xFFFFB347),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
     }
 }
@@ -1158,6 +1126,7 @@ private fun BlockHeader(
 private fun SwipeableTaskCard(
     task: DayTask,
     blockColor: Color,
+    isEditable: Boolean = true,
     onToggle: () -> Unit,
     onLongPress: () -> Unit,
     onIncrement: () -> Unit,
@@ -1206,7 +1175,8 @@ private fun SwipeableTaskCard(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .pointerInput(task.id) {
+                .pointerInput(task.id, isEditable) {
+                    if (!isEditable) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             val isCompleted = task.status == TaskStatus.COMPLETED
@@ -1233,6 +1203,7 @@ private fun SwipeableTaskCard(
         ) {
             TaskCard(
                 task = task,
+                isEditable = isEditable,
                 blockColor = blockColor,
                 onToggle = onToggle,
                 onLongPress = onLongPress,
@@ -1255,6 +1226,7 @@ private fun SwipeableTaskCard(
 private fun TaskCard(
     task: DayTask,
     blockColor: Color,
+    isEditable: Boolean = true,
     onToggle: () -> Unit,
     onLongPress: () -> Unit,
     onIncrement: () -> Unit = {},
@@ -1270,7 +1242,6 @@ private fun TaskCard(
     val haptic = LocalHapticFeedback.current
     val isCompleted = task.status == TaskStatus.COMPLETED
     val isExpired = task.status == TaskStatus.EXPIRED
-    val isPostponed = task.status == TaskStatus.POSTPONED
     val taskTime = (task.schedule as? TaskSchedule.OneTime)?.time
     var showNotesDialog by remember { mutableStateOf(false) }
     val taskCardBg = rememberAdaptiveCardColor()
@@ -1282,7 +1253,7 @@ private fun TaskCard(
             .clip(RoundedCornerShape(12.dp))
             .background(taskCardBg)
             .combinedClickable(onClick = {
-                if (task.isCountable && !isCompleted) {
+                if (task.isCountable && !isCompleted && isEditable) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onIncrement()
                 }
@@ -1306,11 +1277,11 @@ private fun TaskCard(
             Text(
                 text = task.title,
                 color = when {
-                    isCompleted || isExpired || isPostponed -> TextSecondary
+                    isCompleted || isExpired -> TextSecondary
                     else -> TextPrimary
                 },
                 fontSize = 14.sp,
-                fontWeight = if (isCompleted || isExpired || isPostponed) FontWeight.Normal else FontWeight.Medium,
+                fontWeight = if (isCompleted || isExpired) FontWeight.Normal else FontWeight.Medium,
                 textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                 maxLines = 1
             )
@@ -1321,17 +1292,6 @@ private fun TaskCard(
                     text = "${taskTime.hour.toString().padStart(2, '0')}:${
                         taskTime.minute.toString().padStart(2, '0')
                     }",
-                    color = TextSecondary,
-                    fontSize = 11.sp
-                )
-            }
-
-            // Postponed info
-            if (isPostponed && task.postponedTo != null) {
-                Text(
-                    text = "→ ${task.postponedTo.date} ${
-                        task.postponedTo.time.hour.toString().padStart(2, '0')
-                    }:${task.postponedTo.time.minute.toString().padStart(2, '0')}",
                     color = TextSecondary,
                     fontSize = 11.sp
                 )
@@ -1353,16 +1313,9 @@ private fun TaskCard(
         }
 
         // Right side: all applicable indicators shown simultaneously
-        if (isPostponed) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_clock),
-                contentDescription = stringResource(Res.string.a11y_task_postponed),
-                tint = TextSecondary,
-                modifier = Modifier.size(18.dp)
-            )
-        } else {
+        run {
             // Timer controls (if task has timer and not completed)
-            if (task.timerDurationMinutes != null && !isCompleted) {
+            if (task.timerDurationMinutes != null && !isCompleted && isEditable) {
                 if (timerState != null) {
                     // Timer running or paused
                     val mins = timerState.remainingSeconds / 60
@@ -1467,6 +1420,7 @@ private fun TaskCard(
                     }
                     Checkbox(
                         checked = isCompleted,
+                        enabled = isEditable,
                         onCheckedChange = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onToggle()
@@ -1686,6 +1640,7 @@ private fun InteractiveMarkdownText(
 @Composable
 private fun UnassignedSection(
     tasks: List<DayTask>,
+    isEditable: Boolean = true,
     onTaskToggle: (DayTask) -> Unit,
     onTaskLongPress: (DayTask) -> Unit,
     onIncrement: (DayTask) -> Unit = {},
@@ -1724,6 +1679,7 @@ private fun UnassignedSection(
         tasks.forEach { task ->
             SwipeableTaskCard(
                 task = task,
+                isEditable = isEditable,
                 blockColor = Color(0x66FFFFFF),
                 onToggle = { onTaskToggle(task) },
                 onLongPress = { onTaskLongPress(task) },

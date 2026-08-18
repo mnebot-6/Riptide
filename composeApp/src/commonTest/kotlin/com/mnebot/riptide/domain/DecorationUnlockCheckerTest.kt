@@ -33,7 +33,6 @@ class DecorationUnlockCheckerTest {
         score = score,
         tasksTotal = 5,
         tasksCompleted = if (score == 1.0f) 5 else 3,
-        streakDay = 1,
         feedbackMessage = ""
     )
 
@@ -45,7 +44,6 @@ class DecorationUnlockCheckerTest {
         schedule = TaskSchedule.OneTime(today, null),
         status = status,
         completedAt = null,
-        postponedTo = null,
         sourceTaskId = null
     )
 
@@ -90,9 +88,10 @@ class DecorationUnlockCheckerTest {
     }
 
     @Test
-    fun checkTreasureChest_oneSummaryNotPerfect_returnsNull() = runTest {
+    fun checkTreasureChest_oneDayBelowThreshold_returnsNull() = runTest {
         val summaryRepo = FakeDaySummaryRepository()
-        summaryRepo.insert(makeSummary(today, 0.8f))
+        // 0.5 queda por debajo del umbral de día conseguido (0.80) y rompe la racha
+        summaryRepo.insert(makeSummary(today, 0.5f))
         for (i in 1..6) {
             summaryRepo.insert(makeSummary(today - DatePeriod(days = i), 1.0f))
         }

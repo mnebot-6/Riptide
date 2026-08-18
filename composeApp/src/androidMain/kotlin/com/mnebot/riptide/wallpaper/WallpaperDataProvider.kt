@@ -24,9 +24,17 @@ class WallpaperDataProvider(context: Context) {
         val unlockedCreatures = allCreatures.filter { it.species in unlockedSpecies }
         val fixedCreatures = unlockedCreatures.filter { it.swimDuration == 0 }
 
+        // El nivel visual se deriva del nivel de la categoría, igual que en la app
+        val levelByCategory = db.ecosystemStateDao().getAll()
+            .associate { it.category to it.currentLevel }
+
         val creatureLevelBySpecies = entities.mapNotNull { entity ->
             try {
-                CreatureSpecies.valueOf(entity.species) to entity.creatureLevel
+                val species = CreatureSpecies.valueOf(entity.species)
+                val spec = allCreatures.firstOrNull { it.species == species } ?: return@mapNotNull null
+                val categoryLevel = levelByCategory[spec.category.name] ?: 1
+                val visualLevel = (1 + (categoryLevel - entity.unlockedAtLevel) / 2).coerceIn(1, 5)
+                species to visualLevel
             } catch (_: Exception) { null }
         }.toMap()
 

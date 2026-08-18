@@ -28,7 +28,7 @@ object WidgetDataLoader {
         val blockTimeCache = HashMap<String, Int?>(blocks.size)
 
         val items = tasks
-            .filter { it.status != "POSTPONED" && !it.isDeleted }
+            .filter { !it.isDeleted }
             .map { entity ->
                 val block: WorkBlockEntity? = entity.blockId?.let { blocksById[it] }
                 val blockTimeMinutes = block?.let {

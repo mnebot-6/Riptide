@@ -36,7 +36,6 @@
     <string name="menu_edit">Edit</string>
     <string name="menu_postpone">Postpone</string>
     <string name="menu_delete">Delete</string>
-    <string name="msg_streak">%1$d days</string>
     <string name="msg_error">Error: %1$s</string>
 
     <!-- MainDrawer -->
@@ -46,7 +45,6 @@
     <string name="btn_my_ecosystem">Creatures</string>
     <string name="btn_live_wallpaper">Live wallpaper</string>
     <string name="section_settings">SETTINGS</string>
-    <string name="label_night_summary">Night summary</string>
 
     <!-- EcosystemScreen -->
     <string name="title_ecosystem">Creatures</string>
@@ -236,8 +234,6 @@
     <string name="stats_best_week">BEST WEEK</string>
     <string name="stats_this_month">This month</string>
     <string name="stats_vs_last_month">vs last month</string>
-    <string name="stats_streaks_title">STREAKS BY BLOCK</string>
-    <string name="stats_no_streaks">No active streaks yet</string>
     <string name="stat_perfect_days">Perfect days</string>
     <string name="stat_avg_completion">Avg. completion</string>
     <string name="stat_total_tasks">Total tasks</string>
@@ -295,11 +291,9 @@
     <string name="a11y_open_calendar">Open calendar</string>
     <string name="a11y_go_to_today">Go to today</string>
     <string name="a11y_clear_search">Clear search</string>
-    <string name="a11y_task_postponed">Postponed</string>
     <string name="a11y_task_expired">Expired</string>
     <string name="a11y_locked">Locked</string>
     <string name="a11y_back">Back</string>
-    <string name="a11y_streak_count">Streak count</string>
     <string name="a11y_notification">Task notification</string>
     <string name="a11y_search">Search</string>
     <string name="a11y_riptide_logo">Riptide logo</string>
@@ -322,18 +316,10 @@
     <string name="label_recurrence_type">Recurrence</string>
     <string name="recurrence_weekly">Weekly</string>
     <string name="recurrence_monthly_day">Monthly</string>
-    <string name="recurrence_nth_weekday">Nth weekday</string>
     <string name="recurrence_yearly">Yearly</string>
     <string name="label_day_of_month">Day</string>
-    <string name="label_every_n_months">Every (months)</string>
     <string name="label_month">Month</string>
     <string name="label_yearly_date">Date (year ignored)</string>
-    <string name="label_nth_occurrence">Occurrence</string>
-    <string name="nth_1">1st</string>
-    <string name="nth_2">2nd</string>
-    <string name="nth_3">3rd</string>
-    <string name="nth_4">4th</string>
-    <string name="nth_last">Last</string>
 
     <!-- Sync conflict dialog -->
     <string name="sync_conflict_title">Existing data found</string>

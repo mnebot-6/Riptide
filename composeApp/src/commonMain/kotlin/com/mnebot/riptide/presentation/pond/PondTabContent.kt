@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.mnebot.riptide.domain.model.EcosystemState
+import com.mnebot.riptide.domain.model.MarineCategory
 import com.mnebot.riptide.domain.model.MarineCreature
 import com.mnebot.riptide.presentation.aquarium.CreatureDetailDialog
 import com.mnebot.riptide.presentation.aquarium.CreatureFreezeState
@@ -33,6 +35,7 @@ fun PondTabContent(
     creaturePositions: List<CreaturePosition>,
     creatureFreezeState: CreatureFreezeState,
     selectedCreature: Pair<MarineCreature, CreatureSpec>?,
+    ecosystemByCategory: Map<MarineCategory, EcosystemState> = emptyMap(),
     onCreatureTap: (MarineCreature, CreatureSpec) -> Unit,
     onCreatureDismiss: () -> Unit,
     onCreatureNicknameChanged: (String, String) -> Unit,
@@ -89,6 +92,7 @@ fun PondTabContent(
             CreatureDetailDialog(
                 creature = creature,
                 spec = spec,
+                categoryState = ecosystemByCategory[spec.category],
                 onDismiss = onCreatureDismiss,
                 onNicknameChanged = { nickname ->
                     onCreatureNicknameChanged(creature.id, nickname)

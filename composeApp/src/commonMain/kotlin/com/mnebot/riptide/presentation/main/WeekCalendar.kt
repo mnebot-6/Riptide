@@ -103,8 +103,7 @@ fun WeekCalendar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         days.forEach { date ->
-            val tasksForDay = (tasksByDate[date] ?: emptyList())
-                .filter { it.status != TaskStatus.POSTPONED }
+            val tasksForDay = tasksByDate[date] ?: emptyList()
             val total = tasksForDay.size
             val completed = tasksForDay.count { it.status == TaskStatus.COMPLETED }
 
@@ -207,7 +206,7 @@ private fun dayInitial(dayOfWeek: DayOfWeek): String {
     }
 }
 
-private fun getWeekStart(date: LocalDate): LocalDate {
+fun getWeekStart(date: LocalDate): LocalDate {
     val daysFromMonday = date.dayOfWeek.ordinal
     return date.minus(daysFromMonday, DateTimeUnit.DAY)
 }

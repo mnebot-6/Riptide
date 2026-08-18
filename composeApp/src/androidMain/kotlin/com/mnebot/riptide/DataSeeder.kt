@@ -94,17 +94,17 @@ object DataSeeder {
         workBlockRepo.insert(blockFormacion)
         workBlockRepo.insert(blockOcio)
 
-        assigner.reassign()
+        assigner.assignMissing()
 
         val tasks = listOf(
             DayTask(generateUUID(), blockTrabajo.id, "Revisar correos",
-                TaskSchedule.OneTime(today, LocalTime(9, 0)), TaskStatus.PENDING, null, null, null),
+                TaskSchedule.OneTime(today, LocalTime(9, 0)), TaskStatus.PENDING, null, null),
             DayTask(generateUUID(), blockTrabajo.id, "Tarea importante del día",
-                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null, null),
+                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null),
             DayTask(generateUUID(), blockPersonal.id, "Algo para ti hoy",
-                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null, null),
+                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null),
             DayTask(generateUUID(), blockSalud.id, "Beber 2L de agua",
-                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null, null),
+                TaskSchedule.OneTime(today, null), TaskStatus.PENDING, null, null),
         )
         tasks.forEach { dayTaskRepo.insert(it) }
     }

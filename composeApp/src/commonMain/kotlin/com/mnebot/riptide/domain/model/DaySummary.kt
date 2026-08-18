@@ -8,6 +8,5 @@ data class DaySummary(
     val score: Float,
     val tasksTotal: Int,
     val tasksCompleted: Int,
-    val streakDay: Int,
     val feedbackMessage: String
 )

@@ -11,6 +11,9 @@ interface DayTaskDao {
     @Query("SELECT * FROM day_tasks WHERE date = :date AND isDeleted = 0 ORDER BY time ASC, title ASC")
     suspend fun getByDate(date: String): List<DayTaskEntity>
 
+    @Query("SELECT * FROM day_tasks WHERE date >= :from AND date <= :to AND isDeleted = 0 ORDER BY time ASC, title ASC")
+    suspend fun getByDateRange(from: String, to: String): List<DayTaskEntity>
+
     @Query("SELECT * FROM day_tasks WHERE blockId = :blockId AND isDeleted = 0")
     suspend fun getByBlock(blockId: String): List<DayTaskEntity>
 
@@ -35,8 +38,12 @@ interface DayTaskDao {
     @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId")
     suspend fun deleteBySourceTask(sourceTaskId: String)
 
-    @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId AND (status = 'PENDING' OR status = 'POSTPONED') AND date >= :fromDate")
+    @Query("DELETE FROM day_tasks WHERE sourceTaskId = :sourceTaskId AND status = 'PENDING' AND date >= :fromDate")
     suspend fun deleteBySourceTaskFromDate(sourceTaskId: String, fromDate: String)
+
+    /** Incluye las borradas a propósito: el generador no debe recrearlas. */
+    @Query("SELECT DISTINCT sourceTaskId FROM day_tasks WHERE date = :date AND sourceTaskId IS NOT NULL")
+    suspend fun getSourceIdsForDate(date: String): List<String>
 
     @Query("SELECT * FROM day_tasks WHERE date = :date AND blockId = :blockId AND isDeleted = 0")
     suspend fun getByDateAndBlock(date: String, blockId: String): List<DayTaskEntity>

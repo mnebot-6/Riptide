@@ -59,7 +59,6 @@ class HistoryViewModel(
             val tasksByDate: Map<LocalDate, List<DayTask>> = tasks.groupBy { task ->
                 when (val s = task.schedule) {
                     is TaskSchedule.OneTime -> s.date
-                    is TaskSchedule.Recurring -> task.completedAt?.date ?: today
                 }
             }
 

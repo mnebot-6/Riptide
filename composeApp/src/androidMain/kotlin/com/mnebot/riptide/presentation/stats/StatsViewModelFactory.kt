@@ -11,9 +11,7 @@ class StatsViewModelFactory(private val context: Context) : ViewModelProvider.Fa
         val db = DatabaseProvider.getDatabase(context)
         @Suppress("UNCHECKED_CAST")
         return StatsViewModel(
-            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao()),
-            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
-            workBlockRepository = WorkBlockRepositoryImpl(db.workBlockDao())
+            daySummaryRepository = DaySummaryRepositoryImpl(db.daySummaryDao())
         ) as T
     }
 }

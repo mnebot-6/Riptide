@@ -51,7 +51,6 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
                 blockCategoryRepo,
                 ecosystemStateRepo
             ),
-            blockStreakRepository = BlockStreakRepositoryImpl(db.blockStreakDao()),
             daySummaryRepository = daySummaryRepo,
             ecosystemProcessor = EcosystemProcessor(ecosystemStateRepo, marineCreatureRepo),
             lootboxResolver = LootboxResolver(marineCreatureRepo),

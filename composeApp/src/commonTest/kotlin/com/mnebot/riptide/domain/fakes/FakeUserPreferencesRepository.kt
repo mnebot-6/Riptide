@@ -14,8 +14,6 @@ class FakeUserPreferencesRepository : UserPreferencesRepository {
 
     fun activateWallpaper() { wallpaperActivated = true }
 
-    override fun getNightSummaryTime(): Flow<LocalTime> = flowOf(LocalTime(23, 30))
-    override suspend fun setNightSummaryTime(time: LocalTime) {}
     override suspend fun getPendingUnlocks(): List<String> = emptyList()
     override suspend fun setPendingUnlocks(emojis: List<String>) {}
     override suspend fun getPendingLootboxes(): List<PendingLootbox> = pendingLootboxes.toList()

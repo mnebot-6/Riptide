@@ -78,7 +78,6 @@ object DatabaseFactory {
                 DayTasksTable,
                 RecurringTaskDefsTable,
                 DaySummariesTable,
-                BlockStreaksTable,
                 EcosystemStatesTable,
                 MarineCreaturesTable
             )

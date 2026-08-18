@@ -10,7 +10,6 @@ fun DaySummaryEntity.toDomain(): DaySummary = DaySummary(
     score = score,
     tasksTotal = tasksTotal,
     tasksCompleted = tasksCompleted,
-    streakDay = streakDay,
     feedbackMessage = feedbackMessage
 )
 
@@ -20,6 +19,7 @@ fun DaySummary.toEntity(): DaySummaryEntity = DaySummaryEntity(
     score = score,
     tasksTotal = tasksTotal,
     tasksCompleted = tasksCompleted,
-    streakDay = streakDay,
+    // ponytail: columna legacy, se cae en la próxima recreación de day_summaries
+    streakDay = 0,
     feedbackMessage = feedbackMessage
 )

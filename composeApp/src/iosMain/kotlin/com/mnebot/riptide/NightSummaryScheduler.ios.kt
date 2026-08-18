@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.datetime.LocalTime
 
 class NightSummarySchedulerImpl : NightSummaryScheduler {
-    override fun getNightSummaryTime(): Flow<LocalTime> = flowOf(LocalTime(23, 30))
-    override suspend fun setNightSummaryTime(time: LocalTime) {}
-    override fun scheduleWorker(time: LocalTime) {}
+    override fun scheduleWorker() {}
+
+    override fun getMorningReminderTime(): Flow<LocalTime?> = flowOf(null)
+    override suspend fun setMorningReminderTime(time: LocalTime?) {}
+    override fun scheduleMorningReminder(time: LocalTime?) {}
 }

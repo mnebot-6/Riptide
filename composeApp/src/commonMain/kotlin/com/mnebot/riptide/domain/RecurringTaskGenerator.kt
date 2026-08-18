@@ -19,8 +19,7 @@ class RecurringTaskGenerator(
 
         for (i in 0..daysAhead) {
             val date = from.plusDays(i)
-            val existingTasks = dayTaskRepository.getByDate(date)
-            val existingSourceIds = existingTasks.mapNotNull { it.sourceTaskId }.toSet()
+            val existingSourceIds = dayTaskRepository.getSourceIdsForDate(date).toSet()
 
             for (def in defs) {
                 if (def.id in existingSourceIds) continue
@@ -37,7 +36,7 @@ class RecurringTaskGenerator(
                         ),
                         status = TaskStatus.PENDING,
                         completedAt = null,
-                        postponedTo = null,
+
                         sourceTaskId = def.id,
                         notificationsEnabled = def.notificationsEnabled,
                         targetCount = def.targetCount,
@@ -51,6 +50,44 @@ class RecurringTaskGenerator(
         }
     }
 
+    /**
+     * Propaga un cambio de definición a las instancias PENDING de [from] en adelante,
+     * conservando lo que el usuario escribió en cada una (notas y progreso contable).
+     * Las instancias que ya no encajan con la nueva recurrencia se borran; las que
+     * faltan las crea [generateUpTo].
+     */
+    suspend fun applyDefinitionChange(
+        def: RecurringTaskDef,
+        from: LocalDate,
+        daysAhead: Int = 7
+    ) {
+        val instances = dayTaskRepository.getBySourceTask(def.id)
+            .filter { it.status == TaskStatus.PENDING }
+            .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= from } == true }
+
+        for (task in instances) {
+            val date = (task.schedule as TaskSchedule.OneTime).date
+            if (!def.isActive || !shouldGenerateForDate(def, date)) {
+                dayTaskRepository.delete(task.id)
+                continue
+            }
+            dayTaskRepository.update(
+                task.copy(
+                    blockId = def.blockId,
+                    title = def.title,
+                    schedule = TaskSchedule.OneTime(date = date, time = def.time),
+                    notificationsEnabled = def.notificationsEnabled,
+                    targetCount = def.targetCount,
+                    timerDurationMinutes = def.timerDurationMinutes,
+                    isPriority = def.isPriority
+                    // notes y currentCount son del usuario: no se tocan
+                )
+            )
+        }
+
+        if (def.isActive) generateUpTo(from, daysAhead)
+    }
+
     internal fun shouldGenerateForDate(def: RecurringTaskDef, date: LocalDate): Boolean {
         return when (val r = def.recurrence) {
             is Recurrence.None -> false
@@ -59,30 +96,7 @@ class RecurringTaskGenerator(
                 r.slots.any { it.dayOfWeek == dayOfWeek }
             }
             is Recurrence.Yearly -> (date.month.ordinal + 1) == r.month && date.day == r.day
-            is Recurrence.MonthlyDay -> {
-                if (date.day != r.day) false
-                else {
-                    val interval = r.intervalMonths.coerceAtLeast(1)
-                    interval == 1 || ((date.month.ordinal + 1) - 1) % interval == 0
-                }
-            }
-            is Recurrence.NthWeekdayOfMonth -> {
-                val isoDow = date.dayOfWeek.isoDayNumber
-                if (isoDow != r.dayOfWeek) false
-                else {
-                    val occurrence = (date.day - 1) / 7 + 1
-                    val matchesNth = if (r.nth == 5) {
-                        // Last occurrence: next week's same weekday is in next month
-                        val nextWeek = date.plus(DatePeriod(days = 7))
-                        nextWeek.month != date.month
-                    } else occurrence == r.nth
-                    if (!matchesNth) false
-                    else {
-                        val interval = r.intervalMonths.coerceAtLeast(1)
-                        interval == 1 || ((date.month.ordinal + 1) - 1) % interval == 0
-                    }
-                }
-            }
+            is Recurrence.MonthlyDay -> date.day == r.day
         }
     }
 }

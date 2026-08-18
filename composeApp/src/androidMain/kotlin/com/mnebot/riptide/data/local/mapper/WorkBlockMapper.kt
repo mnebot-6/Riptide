@@ -38,8 +38,7 @@ private fun serializeRecurrence(recurrence: Recurrence): String {
         }
         // Blocks only support None/Weekly. Other recurrence types apply to RecurringTaskDef.
         is Recurrence.Yearly,
-        is Recurrence.MonthlyDay,
-        is Recurrence.NthWeekdayOfMonth -> "none"
+        is Recurrence.MonthlyDay -> "none"
     }
 }
 

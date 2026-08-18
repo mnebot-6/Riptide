@@ -46,7 +46,6 @@ class TaskFormViewModel(
                 schedule = TaskSchedule.OneTime(date = date, time = time),
                 status = TaskStatus.PENDING,
                 completedAt = null,
-                postponedTo = null,
                 sourceTaskId = null
             )
             if (existingTaskId != null) {
@@ -116,24 +115,17 @@ class TaskFormViewModel(
         }
     }
 
+    /** Posponer mueve la tarea: misma fila, nueva fecha. */
     fun postponeTask(task: DayTask, postponedTo: LocalDateTime) {
         viewModelScope.launch {
             dayTaskRepository.update(
                 task.copy(
-                    status = TaskStatus.POSTPONED,
-                    postponedTo = postponedTo
-                )
-            )
-            // Crea nueva instancia en la fecha/hora pospuesta
-            dayTaskRepository.insert(
-                task.copy(
-                    id = generateUUID(),
                     schedule = TaskSchedule.OneTime(
                         date = postponedTo.date,
                         time = postponedTo.time
                     ),
                     status = TaskStatus.PENDING,
-                    postponedTo = null
+                    completedAt = null
                 )
             )
             _result.value = TaskFormResult.Saved

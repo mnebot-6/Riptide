@@ -2,11 +2,9 @@ package com.mnebot.riptide.presentation.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mnebot.riptide.domain.DayStreak
 import com.mnebot.riptide.domain.model.DaySummary
-import com.mnebot.riptide.domain.model.WorkBlock
-import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
-import com.mnebot.riptide.domain.repository.WorkBlockRepository
 import com.mnebot.riptide.presentation.main.currentDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +18,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.number
 
 class StatsViewModel(
-    private val daySummaryRepository: DaySummaryRepository,
-    private val blockStreakRepository: BlockStreakRepository,
-    private val workBlockRepository: WorkBlockRepository
+    private val daySummaryRepository: DaySummaryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -44,17 +40,7 @@ class StatsViewModel(
             val today = currentDate()
             val range = _uiState.value.range
 
-            val allStreaks = blockStreakRepository.getAll()
-            val blocks = workBlockRepository.getAll()
-            val streaksByBlock = blocks
-                .mapNotNull { block ->
-                    val streak = allStreaks.firstOrNull { it.blockId == block.id }
-                        ?: return@mapNotNull null
-                    if (streak.currentStreak > 0) block to streak else null
-                }
-                .sortedByDescending { (_, streak) -> streak.currentStreak }
-
-            val longestStreakEver = allStreaks.maxOfOrNull { it.longestStreak } ?: 0
+            val longestStreakEver = DayStreak.longest(daySummaryRepository.getAll())
 
             when (range) {
                 StatsRange.WEEK, StatsRange.MONTH -> {
@@ -65,7 +51,6 @@ class StatsViewModel(
                     _uiState.update {
                         it.copy(
                             summaries = summaries,
-                            streaksByBlock = streaksByBlock,
                             longestStreakEver = longestStreakEver,
                             isLoading = false
                         )
@@ -106,7 +91,6 @@ class StatsViewModel(
                     _uiState.update {
                         it.copy(
                             summaries = allSummaries,
-                            streaksByBlock = streaksByBlock,
                             longestStreakEver = longestStreakEver,
                             avgDailyCompletion = avgDailyCompletion,
                             totalDaysActive = totalDaysActive,

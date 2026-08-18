@@ -13,14 +13,14 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
     override suspend fun getByDate(date: LocalDate): List<DayTask> =
         dao.getByDate(date.toString()).map { it.toDomain() }
 
+    override suspend fun getByDateRange(from: LocalDate, to: LocalDate): List<DayTask> =
+        dao.getByDateRange(from.toString(), to.toString()).map { it.toDomain() }
+
     override suspend fun getByBlock(blockId: String): List<DayTask> =
         dao.getByBlock(blockId).map { it.toDomain() }
 
     override suspend fun getBySourceTask(sourceTaskId: String): List<DayTask> =
         dao.getBySourceTask(sourceTaskId).map { it.toDomain() }
-
-    override suspend fun getPendingBefore(date: LocalDate): List<DayTask> =
-        dao.getPendingBefore(date.toString()).map { it.toDomain() }
 
     override suspend fun insert(task: DayTask) =
         dao.insert(task.toEntity().copy(updatedAt = nowIso()))
@@ -47,6 +47,9 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
 
     override suspend fun getByDateAndBlock(date: LocalDate, blockId: String): List<DayTask> =
         dao.getByDateAndBlock(date.toString(), blockId).map { it.toDomain() }
+
+    override suspend fun getSourceIdsForDate(date: LocalDate): List<String> =
+        dao.getSourceIdsForDate(date.toString())
 
     override suspend fun getCompletedRange(from: LocalDate, to: LocalDate): List<DayTask> =
         dao.getCompletedRange(from.toString(), to.toString()).map { it.toDomain() }

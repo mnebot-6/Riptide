@@ -7,9 +7,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 interface UserPreferencesRepository {
-    fun getNightSummaryTime(): Flow<LocalTime>
-    suspend fun setNightSummaryTime(time: LocalTime)
-
     // Legacy — migrar a lootboxes y borrar
     suspend fun getPendingUnlocks(): List<String>
     suspend fun setPendingUnlocks(emojis: List<String>)

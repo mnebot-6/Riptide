@@ -122,13 +122,15 @@ fun NavGraphBuilder.mainGraph(
         // Sync conflict dialog
         if (uiState.pendingSyncConflict) {
             SyncConflictDialog(
+                // El flag debe bajarse ANTES de sync(): sync() aborta mientras
+                // hasPendingInitialSync() sea true.
                 onKeepLocal = {
                     mainViewModel.dismissSyncConflict()
                     scope.launch {
                         api?.deleteUserData()
                         initialSyncPreparer?.stampAllEntities()
-                        syncManager?.sync(force = true)
                         userPreferences?.setPendingInitialSync(false)
+                        syncManager?.sync(force = true)
                     }
                 },
                 onRestoreServer = {
@@ -136,8 +138,8 @@ fun NavGraphBuilder.mainGraph(
                     scope.launch {
                         initialSyncPreparer?.clearAllLocalData()
                         userPreferences?.setLastSyncTime("")
-                        syncManager?.sync(force = true)
                         userPreferences?.setPendingInitialSync(false)
+                        syncManager?.sync(force = true)
                         mainViewModel.reload()
                     }
                 }
@@ -245,8 +247,6 @@ fun NavGraphBuilder.mainGraph(
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
-        val nightSummaryTime by nightSummaryScheduler.getNightSummaryTime()
-            .collectAsStateWithLifecycle(initialValue = kotlinx.datetime.LocalTime(23, 30))
         val morningReminderTime by nightSummaryScheduler.getMorningReminderTime()
             .collectAsStateWithLifecycle(initialValue = null)
 
@@ -255,14 +255,9 @@ fun NavGraphBuilder.mainGraph(
         )
 
         SettingsScreen(
-            nightSummaryTime = nightSummaryTime,
             morningReminderTime = morningReminderTime,
             wallpaperFps = uiState.wallpaperFps,
             onWallpaperFpsChanged = { mainViewModel.setWallpaperFps(it) },
-            onNightSummaryTimeChanged = { time ->
-                nightSummaryScheduler.scheduleWorker(time)
-                mainViewModel.updateNightSummaryTime(time)
-            },
             onMorningReminderTimeChanged = { time ->
                 scope.launch { nightSummaryScheduler.setMorningReminderTime(time) }
                 nightSummaryScheduler.scheduleMorningReminder(time)

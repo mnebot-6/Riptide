@@ -74,17 +74,36 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(NOTIF_NIGHT_SUMMARY, notification)
     }
 
-    fun sendMorningReminderNotification(context: Context, untimedTaskTitles: List<String> = emptyList()) {
+    /**
+     * Aviso matutino. Lleva también el resumen del día anterior: el cierre ocurre a
+     * las 23:59:59 y a esa hora una notificación no la lee nadie.
+     */
+    fun sendMorningReminderNotification(
+        context: Context,
+        untimedTaskTitles: List<String> = emptyList(),
+        yesterdayCompleted: Int? = null,
+        yesterdayTotal: Int? = null
+    ) {
         val title = context.getString(R.string.notif_morning_reminder_title)
-        val body = if (untimedTaskTitles.isEmpty()) {
-            context.getString(R.string.notif_morning_reminder_body)
+
+        val yesterdayLine = if (yesterdayCompleted != null && yesterdayTotal != null && yesterdayTotal > 0) {
+            context.getString(R.string.notif_night_summary_title) + ": " +
+                context.getString(R.string.notif_night_summary_body, yesterdayCompleted, yesterdayTotal)
+        } else null
+
+        val todayLines = if (untimedTaskTitles.isEmpty()) {
+            listOf(context.getString(R.string.notif_morning_reminder_body))
         } else {
-            untimedTaskTitles.joinToString(separator = "\n") { "• $it" }
+            untimedTaskTitles.map { "• $it" }
         }
+
+        val body = (listOfNotNull(yesterdayLine) + todayLines).joinToString(separator = "\n")
+        val isMultiline = yesterdayLine != null || untimedTaskTitles.isNotEmpty()
+
         val notification = buildNotification(context, CHANNEL_MORNING_REMINDER) {
             setContentTitle(title)
             setContentText(body)
-            if (untimedTaskTitles.isNotEmpty()) {
+            if (isMultiline) {
                 setStyle(NotificationCompat.BigTextStyle().bigText(body))
             }
             setPriority(NotificationCompat.PRIORITY_DEFAULT)

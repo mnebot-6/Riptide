@@ -31,7 +31,6 @@ fun Route.syncRoutes() {
             if (request.dayTasks.size > maxBatch) throw ValidationException("dayTasks exceeds max batch size of $maxBatch")
             if (request.recurringTaskDefs.size > maxBatch) throw ValidationException("recurringTaskDefs exceeds max batch size of $maxBatch")
             if (request.daySummaries.size > maxBatch) throw ValidationException("daySummaries exceeds max batch size of $maxBatch")
-            if (request.blockStreaks.size > maxBatch) throw ValidationException("blockStreaks exceeds max batch size of $maxBatch")
             if (request.ecosystemStates.size > maxBatch) throw ValidationException("ecosystemStates exceeds max batch size of $maxBatch")
             if (request.marineCreatures.size > maxBatch) throw ValidationException("marineCreatures exceeds max batch size of $maxBatch")
 
@@ -62,12 +61,6 @@ fun Route.syncRoutes() {
             request.daySummaries.forEach { dto ->
                 Validation.validateDaySummary(dto.id, dto.date, dto.feedbackMessage)
             }
-            request.blockStreaks.forEach { dto ->
-                Validation.validateBlockStreak(
-                    dto.blockId, dto.lastActiveDate,
-                    currentStreak = dto.currentStreak, longestStreak = dto.longestStreak
-                )
-            }
             request.ecosystemStates.forEach { dto ->
                 Validation.validateEcosystemState(
                     dto.id, dto.category, dto.lastUpdated,
@@ -95,7 +88,6 @@ fun Route.syncRoutes() {
                 upsertRecurringTaskDefs(request.recurringTaskDefs, uid, now)
                 upsertDayTasks(request.dayTasks, uid, now)
                 upsertDaySummaries(request.daySummaries, uid, now)
-                upsertBlockStreaks(request.blockStreaks, uid, now)
                 upsertEcosystemStates(request.ecosystemStates, uid, now)
                 upsertMarineCreatures(request.marineCreatures, uid, now)
 
@@ -107,7 +99,6 @@ fun Route.syncRoutes() {
                     dayTasks = pullDayTasks(uid, since),
                     recurringTaskDefs = pullRecurringTaskDefs(uid, since),
                     daySummaries = pullDaySummaries(uid, since),
-                    blockStreaks = pullBlockStreaks(uid, since),
                     ecosystemStates = pullEcosystemStates(uid, since),
                     marineCreatures = pullMarineCreatures(uid, since)
                 )
@@ -125,7 +116,6 @@ fun Route.syncRoutes() {
                 // FK order: dependents first
                 MarineCreaturesTable.deleteWhere { userId eq uid }
                 EcosystemStatesTable.deleteWhere { userId eq uid }
-                BlockStreaksTable.deleteWhere { userId eq uid }
                 DaySummariesTable.deleteWhere { userId eq uid }
                 DayTasksTable.deleteWhere { userId eq uid }
                 RecurringTaskDefsTable.deleteWhere { userId eq uid }
@@ -385,41 +375,6 @@ private fun upsertDaySummaries(items: List<DaySummaryDto>, uid: String, now: Loc
     }
 }
 
-private fun upsertBlockStreaks(items: List<BlockStreakDto>, uid: String, now: LocalDateTime) {
-    for (dto in items) {
-        val existing = BlockStreaksTable.selectAll()
-            .where { (BlockStreaksTable.blockId eq dto.blockId) and (BlockStreaksTable.userId eq uid) }
-            .singleOrNull()
-
-        if (existing == null) {
-            BlockStreaksTable.insert {
-                it[blockId] = dto.blockId
-                it[userId] = uid
-                it[currentStreak] = dto.currentStreak
-                it[longestStreak] = dto.longestStreak
-                it[lastActiveDate] = dto.lastActiveDate
-                it[updatedAt] = now
-            }
-        } else {
-            val serverUpdated = existing[BlockStreaksTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
-
-            if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
-                BlockStreaksTable.update({
-                    (BlockStreaksTable.blockId eq dto.blockId) and (BlockStreaksTable.userId eq uid)
-                }) {
-                    it[currentStreak] = dto.currentStreak
-                    it[longestStreak] = dto.longestStreak
-                    it[lastActiveDate] = dto.lastActiveDate
-                    it[updatedAt] = now
-                }
-            }
-        }
-    }
-}
-
 private fun upsertEcosystemStates(items: List<EcosystemStateDto>, uid: String, now: LocalDateTime) {
     for (dto in items) {
         val existing = EcosystemStatesTable.selectAll()
@@ -614,23 +569,6 @@ private fun pullDaySummaries(uid: String, since: LocalDateTime?): List<DaySummar
             streakDay = row[DaySummariesTable.streakDay],
             feedbackMessage = row[DaySummariesTable.feedbackMessage],
             updatedAt = row[DaySummariesTable.updatedAt].toString()
-        )
-    }
-}
-
-private fun pullBlockStreaks(uid: String, since: LocalDateTime?): List<BlockStreakDto> {
-    val query = BlockStreaksTable.selectAll()
-        .where { BlockStreaksTable.userId eq uid }
-    if (since != null) {
-        query.andWhere { BlockStreaksTable.updatedAt greater since }
-    }
-    return query.map { row ->
-        BlockStreakDto(
-            blockId = row[BlockStreaksTable.blockId],
-            currentStreak = row[BlockStreaksTable.currentStreak],
-            longestStreak = row[BlockStreaksTable.longestStreak],
-            lastActiveDate = row[BlockStreaksTable.lastActiveDate],
-            updatedAt = row[BlockStreaksTable.updatedAt].toString()
         )
     }
 }

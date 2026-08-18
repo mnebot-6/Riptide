@@ -19,7 +19,8 @@ data class MainUiState(
     val selectedDate: LocalDate,
     val blocks: List<WorkBlock> = emptyList(),
     val tasksByBlock: Map<String?, List<DayTask>> = emptyMap(),
-    val streaksByBlock: Map<String, Int> = emptyMap(),
+    /** Tareas de la semana visible, para las barras de progreso del calendario. */
+    val tasksByDate: Map<LocalDate, List<DayTask>> = emptyMap(),
     val ecosystemByCategory: Map<MarineCategory, EcosystemState> = emptyMap(),
     val creatureLevelBySpecies: Map<CreatureSpecies, Int> = emptyMap(),
     val creaturesData: List<MarineCreature> = emptyList(),

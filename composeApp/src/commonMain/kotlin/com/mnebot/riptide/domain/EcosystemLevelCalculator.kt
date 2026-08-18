@@ -26,15 +26,22 @@ object EcosystemLevelCalculator {
     fun xpForNextLevel(currentLevel: Int): Int =
         xpForLevel(currentLevel + 1) - xpForLevel(currentLevel)
 
-    fun nightBonus(score: Float, bestStreak: Int): Int {
+    /**
+      * Bonus del cierre del día. Los tres sumandos son incentivos internos: el
+      * usuario solo ve crecer el ecosistema, no el número.
+      */
+    fun nightBonus(score: Float, streak: Int, fullBlocks: Int = 0): Int {
         val scoreBonus = when {
             score >= 1.0f -> 50
             score >= 0.7f -> 25
             score >= 0.4f -> 10
             else -> 0
         }
-        return scoreBonus + (bestStreak * 5)
+        return scoreBonus + (streak * 5) + (fullBlocks * XP_PER_FULL_BLOCK)
     }
 
     const val XP_PER_TASK = 10
+
+    /** Bonus discreto por terminar todas las tareas de un bloque en el día. */
+    const val XP_PER_FULL_BLOCK = 5
 }

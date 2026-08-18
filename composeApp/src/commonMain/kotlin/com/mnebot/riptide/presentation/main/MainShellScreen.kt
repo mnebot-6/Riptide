@@ -93,6 +93,7 @@ fun MainShellScreen(
                     creaturePositions = creaturePositions.value,
                     creatureFreezeState = creatureFreezeState,
                     selectedCreature = pondSelectedCreature,
+                    ecosystemByCategory = uiState.ecosystemByCategory,
                     onCreatureTap = { creature, spec ->
                         pondSelectedCreature = creature to spec
                     },

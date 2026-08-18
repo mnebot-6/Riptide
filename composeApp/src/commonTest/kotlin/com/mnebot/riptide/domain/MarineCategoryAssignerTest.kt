@@ -47,7 +47,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.CRUSTACEAN))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         val cats = catRepo.categoriesFor("b1")
         assertEquals(3, cats.size, "Single block gets all unlocked non-DECORATION categories")
@@ -69,7 +69,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.MOLLUSK))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         val cats1 = catRepo.categoriesFor("b1")
         val cats2 = catRepo.categoriesFor("b2")
@@ -95,7 +95,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.DECORATION, unlocked = true))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         val cats = catRepo.categoriesFor("b1")
         assertTrue(MarineCategory.DECORATION !in cats, "DECORATION should not be assigned")
@@ -115,7 +115,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.MAMMAL, unlocked = false))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         val cats = catRepo.categoriesFor("b1")
         assertEquals(1, cats.size)
@@ -130,7 +130,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.FISH))
 
         val (assigner, catRepo) = assigner(ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         // No crash, no assignments
         assertTrue(catRepo.categoriesFor("anything").isEmpty())
@@ -145,7 +145,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.CEPHALOPOD, unlocked = false))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         assertTrue(catRepo.categoriesFor("b1").isEmpty())
     }
@@ -163,7 +163,7 @@ class MarineCategoryAssignerTest {
         ecoRepo.seed(ecosystemState(MarineCategory.FLORA))
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         // Cada bloque debe tener al menos 1 categoria
         for (id in listOf("b1", "b2", "b3", "b4")) {
@@ -184,7 +184,7 @@ class MarineCategoryAssignerTest {
         }
 
         val (assigner, catRepo) = assigner(blockRepo, ecoRepo = ecoRepo)
-        assigner.reassign()
+        assigner.assignMissing()
 
         val cats = catRepo.categoriesFor("b1")
         assertEquals(cats.size, cats.toSet().size, "No duplicate categories in a single block")

@@ -153,6 +153,7 @@ fun EcosystemScreen(
         CreatureDetailDialog(
             creature = creature,
             spec = spec,
+            categoryState = ecosystemByCategory[spec.category],
             onDismiss = { selectedCreature = null },
             onNicknameChanged = { nickname ->
                 onCreatureNicknameChanged(creature.id, nickname)
@@ -251,6 +252,7 @@ private fun EcosystemCategorySection(
                             UnlockedCreatureCard(
                                 spec = spec,
                                 creature = creature,
+                                categoryLevel = categoryLevel,
                                 onClick = { onCreatureTap(creature, spec) }
                             )
                         } else {
@@ -275,6 +277,7 @@ private fun EcosystemCategorySection(
 private fun UnlockedCreatureCard(
     spec: CreatureSpec,
     creature: MarineCreature,
+    categoryLevel: Int,
     onClick: () -> Unit
 ) {
     Column(
@@ -287,7 +290,7 @@ private fun UnlockedCreatureCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CreatureIcon(spec = spec, level = creature.creatureLevel, modifier = Modifier.size(52.dp))
+        CreatureIcon(spec = spec, level = creature.visualLevel(categoryLevel), modifier = Modifier.size(52.dp))
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = creature.nickname ?: stringResource(spec.species.displayNameRes()),

@@ -53,9 +53,7 @@ private val DividerColor = Color(0x33FFFFFF)
 
 @Composable
 fun SettingsScreen(
-    nightSummaryTime: LocalTime,
     morningReminderTime: LocalTime?,
-    onNightSummaryTimeChanged: (LocalTime) -> Unit,
     onMorningReminderTimeChanged: (LocalTime?) -> Unit,
     wallpaperFps: Int,
     onWallpaperFpsChanged: (Int) -> Unit,
@@ -207,11 +205,6 @@ fun SettingsScreen(
                 // Notifications section
                 SectionTitle(stringResource(Res.string.section_settings))
                 Spacer(modifier = Modifier.height(12.dp))
-                NightSummaryTimeSetting(
-                    currentTime = nightSummaryTime,
-                    onTimeChanged = onNightSummaryTimeChanged
-                )
-                Spacer(modifier = Modifier.height(4.dp))
                 MorningReminderSetting(
                     currentTime = morningReminderTime,
                     onTimeChanged = onMorningReminderTimeChanged
@@ -431,29 +424,6 @@ private fun DeleteAccountDialog(
             }
         }
     )
-}
-
-@Composable
-private fun NightSummaryTimeSetting(currentTime: LocalTime, onTimeChanged: (LocalTime) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            painter = painterResource(Res.drawable.ic_moon),
-            contentDescription = null,
-            tint = TextSecondary,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(stringResource(Res.string.label_night_summary), color = TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        TimeInputField(
-            value = currentTime,
-            onValueChange = { it?.let { t -> onTimeChanged(t) } },
-            nullable = false,
-            compact = true
-        )
-    }
 }
 
 @Composable

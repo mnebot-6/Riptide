@@ -28,8 +28,6 @@ class UserPreferencesRepositoryImpl(
 ) : UserPreferencesRepository {
 
     companion object {
-        private val KEY_NIGHT_HOUR = intPreferencesKey("night_summary_hour")
-        private val KEY_NIGHT_MINUTE = intPreferencesKey("night_summary_minute")
         private val KEY_PENDING_UNLOCKS = stringPreferencesKey("pending_unlocks")
         private val KEY_PENDING_LOOTBOXES = stringPreferencesKey("pending_lootboxes")
         private val KEY_DISMISSED_SUMMARY_DATE = stringPreferencesKey("dismissed_summary_date")
@@ -47,24 +45,8 @@ class UserPreferencesRepositoryImpl(
         private val KEY_WALLPAPER_FPS = intPreferencesKey("wallpaper_fps")
         private val KEY_TASK_ONBOARDING_SHOWN = booleanPreferencesKey("task_creation_onboarding_shown")
         private val KEY_PENDING_INITIAL_SYNC = booleanPreferencesKey("pending_initial_sync")
-        private const val DEFAULT_HOUR = 23
-        private const val DEFAULT_MINUTE = 30
         private const val DISABLED = -1          // sentinel for "no morning reminder"
         private const val SEPARATOR = "|"
-    }
-
-    override fun getNightSummaryTime(): Flow<LocalTime> =
-        context.dataStore.data.map { prefs ->
-            val hour = prefs[KEY_NIGHT_HOUR] ?: DEFAULT_HOUR
-            val minute = prefs[KEY_NIGHT_MINUTE] ?: DEFAULT_MINUTE
-            LocalTime(hour, minute)
-        }
-
-    override suspend fun setNightSummaryTime(time: LocalTime) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_NIGHT_HOUR] = time.hour
-            prefs[KEY_NIGHT_MINUTE] = time.minute
-        }
     }
 
     override suspend fun getPendingUnlocks(): List<String> {

@@ -3,6 +3,7 @@ package com.mnebot.riptide.presentation.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mnebot.riptide.TaskReminderScheduler
+import com.mnebot.riptide.domain.DayStreak
 import com.mnebot.riptide.domain.DecorationUnlockChecker
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.LootboxResolver
@@ -11,7 +12,6 @@ import com.mnebot.riptide.domain.RecurringTaskGenerator
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.domain.repository.BlockCategoryRepository
 import kotlinx.coroutines.flow.Flow
-import com.mnebot.riptide.domain.repository.BlockStreakRepository
 import com.mnebot.riptide.domain.repository.DaySummaryRepository
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.EcosystemStateRepository
@@ -35,6 +35,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -45,7 +46,6 @@ class MainViewModel(
     private val recurringTaskDefRepository: RecurringTaskDefRepository,
     private val recurringTaskGenerator: RecurringTaskGenerator,
     private val marineCategoryAssigner: MarineCategoryAssigner,
-    private val blockStreakRepository: BlockStreakRepository,
     private val daySummaryRepository: DaySummaryRepository,
     private val ecosystemProcessor: EcosystemProcessor,
     private val lootboxResolver: LootboxResolver,
@@ -88,6 +88,11 @@ class MainViewModel(
         viewModelScope.launch {
             val user = userPreferencesRepository.getLoggedInUser()
             _uiState.update { it.copy(loggedInUser = user) }
+            // El conflicto quedó sin resolver (crash, app cerrada). Sin volver a
+            // mostrarlo el sync se queda bloqueado para siempre.
+            if (userPreferencesRepository.hasPendingInitialSync()) {
+                _uiState.update { it.copy(pendingSyncConflict = true) }
+            }
         }
         // Observe sync status
         viewModelScope.launch {
@@ -150,16 +155,19 @@ class MainViewModel(
         loadDay(date)
     }
 
+    /**
+     * Marcar/desmarcar solo tiene sentido en el día en curso: el pasado está cerrado
+     * y el futuro no ha ocurrido. El guard vive aquí, no solo en la UI, porque el
+     * widget también llama a este camino.
+     */
     fun toggleTaskCompleted(task: DayTask) {
+        if (!task.isEditableToday()) return
         viewModelScope.launch {
             val newStatus: TaskStatus
             val completedAt: LocalDateTime?
 
             if (task.status == TaskStatus.COMPLETED) {
-                // Si el resumen nocturno ya procesó esta fecha → EXPIRED, si no → PENDING
-                val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date
-                val summaryExists = taskDate != null && daySummaryRepository.getByDate(taskDate) != null
-                newStatus = if (summaryExists) TaskStatus.EXPIRED else TaskStatus.PENDING
+                newStatus = TaskStatus.PENDING
                 completedAt = null
             } else {
                 newStatus = TaskStatus.COMPLETED
@@ -196,7 +204,7 @@ class MainViewModel(
     // ── Countable tasks ───────────────────────────────────────────────────
 
     fun incrementTaskCount(task: DayTask) {
-        if (!task.isCountable) return
+        if (!task.isCountable || !task.isEditableToday()) return
         viewModelScope.launch {
             val newCount = (task.currentCount + 1).coerceAtMost(task.targetCount!!)
             val autoComplete = newCount >= task.targetCount
@@ -230,17 +238,13 @@ class MainViewModel(
     }
 
     fun decrementTaskCount(task: DayTask) {
-        if (!task.isCountable) return
+        if (!task.isCountable || !task.isEditableToday()) return
         viewModelScope.launch {
             val newCount = (task.currentCount - 1).coerceAtLeast(0)
             val wasCompleted = task.status == TaskStatus.COMPLETED
             val needsRevert = wasCompleted && newCount < task.targetCount!!
 
-            val newStatus = if (needsRevert) {
-                val taskDate = (task.schedule as? TaskSchedule.OneTime)?.date
-                val summaryExists = taskDate != null && daySummaryRepository.getByDate(taskDate) != null
-                if (summaryExists) TaskStatus.EXPIRED else TaskStatus.PENDING
-            } else task.status
+            val newStatus = if (needsRevert) TaskStatus.PENDING else task.status
 
             dayTaskRepository.update(
                 task.copy(
@@ -280,6 +284,7 @@ class MainViewModel(
     // ── Timer (runtime only) ─────────────────────────────────────────────
 
     fun startTimer(taskId: String, durationMinutes: Int) {
+        if (_uiState.value.selectedDate != currentDate()) return
         timerJobs[taskId]?.cancel()
         val totalSeconds = durationMinutes * 60
         _timerStates.update { it + (taskId to TimerState(totalSeconds, true, totalSeconds)) }
@@ -374,7 +379,6 @@ class MainViewModel(
                     schedule = TaskSchedule.OneTime(date = date, time = time),
                     status = TaskStatus.PENDING,
                     completedAt = null,
-                    postponedTo = null,
                     sourceTaskId = null,
                     notificationsEnabled = notificationsEnabled,
                     targetCount = targetCount,
@@ -459,29 +463,29 @@ class MainViewModel(
     ) {
         viewModelScope.launch {
             val def = recurringTaskDefRepository.getById(sourceId) ?: return@launch
-            // Cancel reminders for all pending future instances before deleting them
             val today = currentDate()
-            val pendingFuture = dayTaskRepository.getBySourceTask(sourceId)
+
+            // Los recordatorios se reprograman abajo; se cancelan todos primero
+            dayTaskRepository.getBySourceTask(sourceId)
                 .filter { it.status == TaskStatus.PENDING }
                 .filter { (it.schedule as? TaskSchedule.OneTime)?.date?.let { d -> d >= today } == true }
-            pendingFuture.forEach { task ->
-                taskReminderScheduler?.cancelReminder(task.id)
-                dayTaskRepository.delete(task.id)
-            }
-            recurringTaskDefRepository.update(
-                def.copy(
-                    title = title,
-                    blockId = blockId,
-                    time = time,
-                    recurrence = recurrence,
-                    notificationsEnabled = notificationsEnabled,
-                    targetCount = targetCount,
-                    noteTemplate = noteTemplate,
-                    timerDurationMinutes = timerDurationMinutes,
-                    isPriority = isPriority
-                )
+                .forEach { taskReminderScheduler?.cancelReminder(it.id) }
+
+            val updatedDef = def.copy(
+                title = title,
+                blockId = blockId,
+                time = time,
+                recurrence = recurrence,
+                notificationsEnabled = notificationsEnabled,
+                targetCount = targetCount,
+                noteTemplate = noteTemplate,
+                timerDurationMinutes = timerDurationMinutes,
+                isPriority = isPriority
             )
-            recurringTaskGenerator.generateUpTo(today, daysAhead = 7)
+            recurringTaskDefRepository.update(updatedDef)
+            // Actualiza las instancias en sitio: las notas y el progreso contable que
+            // el usuario ya había escrito sobreviven al cambio de definición.
+            recurringTaskGenerator.applyDefinitionChange(updatedDef, today, daysAhead = 7)
             // Schedule reminders for newly generated instances
             if (notificationsEnabled && time != null) {
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -501,21 +505,20 @@ class MainViewModel(
         }
     }
 
-    suspend fun insertBlockAndReassign(block: WorkBlock) {
+    suspend fun insertBlock(block: WorkBlock) {
         workBlockRepository.insert(block)
-        marineCategoryAssigner.reassign()
+        marineCategoryAssigner.assignMissing()
         loadDay(_uiState.value.selectedDate)
     }
 
-    suspend fun updateBlockAndReassign(block: WorkBlock) {
+    /** Editar un bloque no toca sus categorías marinas: el ecosistema no se remueve. */
+    suspend fun updateBlock(block: WorkBlock) {
         workBlockRepository.update(block)
-        marineCategoryAssigner.reassign()
         loadDay(_uiState.value.selectedDate)
     }
 
-    suspend fun deleteBlockAndReassign(blockId: String) {
+    suspend fun deleteBlock(blockId: String) {
         workBlockRepository.delete(blockId)
-        marineCategoryAssigner.reassign()
         loadDay(_uiState.value.selectedDate)
     }
 
@@ -525,11 +528,12 @@ class MainViewModel(
             try {
                 val blocks = loadBlocksWithCategories()
 
-                // XP sweep: award XP for tasks completed via widget (hasBeenRewarded=false)
+                // XP de rezagados: tareas completadas desde el widget. Solo el día en
+                // curso — el pasado ya lo liquidó el cierre nocturno.
                 val rawTasks = dayTaskRepository.getByDate(date)
-                val unrewarded = rawTasks.filter {
-                    it.status == TaskStatus.COMPLETED && !it.hasBeenRewarded
-                }
+                val unrewarded = if (date == currentDate()) {
+                    rawTasks.filter { it.status == TaskStatus.COMPLETED && !it.hasBeenRewarded }
+                } else emptyList()
                 val allNewLootboxes = mutableListOf<PendingLootbox>()
                 for (task in unrewarded) {
                     val block = blocks.find { it.id == task.blockId }
@@ -543,16 +547,18 @@ class MainViewModel(
                 }
 
                 val tasks = rawTasks
-                    .filter { it.status != TaskStatus.CANCELLED }
                     .map { task ->
                         // Reflect the reward flag we just set
                         if (unrewarded.any { it.id == task.id }) task.copy(hasBeenRewarded = true) else task
                     }
                 val tasksByBlock: Map<String?, List<DayTask>> = tasks.groupBy { it.blockId }
 
-                val streaksByBlock = blocks.associate { block ->
-                    block.id to (blockStreakRepository.getByBlockId(block.id)?.currentStreak ?: 0)
-                }
+                // Semana visible completa: las barras del calendario necesitan los 7 días,
+                // no solo el seleccionado.
+                val weekStart = getWeekStart(date)
+                val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
+                val tasksByDate = dayTaskRepository.getByDateRange(weekStart, weekEnd)
+                    .groupBy { (it.schedule as TaskSchedule.OneTime).date }
 
                 val ecosystemByCategory = MarineCategory.entries.mapNotNull { category ->
                     ecosystemStateRepository.getByCategory(category)?.let { category to it }
@@ -562,7 +568,15 @@ class MainViewModel(
                     ecosystemStateRepository.getByCategory(category) ?: return@flatMap emptyList<MarineCreature>()
                     marineCreatureRepository.getByCategory(category)
                 }
-                val creatureLevelBySpecies = allCreaturesFromDb.associate { it.species to it.creatureLevel }
+                val creatureLevelBySpecies = allCreaturesFromDb.associate { creature ->
+                    val categoryLevel = MarineCategory.entries
+                        .firstOrNull { it.name == creature.ecosystemId }
+                        ?.let { ecosystemByCategory[it]?.currentLevel }
+                        ?: ecosystemByCategory.values
+                            .firstOrNull { it.id == creature.ecosystemId }?.currentLevel
+                        ?: 1
+                    creature.species to creature.visualLevel(categoryLevel)
+                }
 
                 val globalStreak = calculateGlobalStreak(date)
 
@@ -570,7 +584,7 @@ class MainViewModel(
                     it.copy(
                         blocks = blocks,
                         tasksByBlock = tasksByBlock,
-                        streaksByBlock = streaksByBlock,
+                        tasksByDate = tasksByDate,
                         globalStreak = globalStreak,
                         isLoading = false,
                         error = null,
@@ -597,23 +611,14 @@ class MainViewModel(
         }
     }
 
+    /**
+     * La única racha: días conseguidos consecutivos, derivada de los resúmenes.
+     * Se cuenta desde ayer porque el día en curso aún no se ha cerrado.
+     */
     private suspend fun calculateGlobalStreak(referenceDate: LocalDate): Int {
         val from = referenceDate.minus(89, DateTimeUnit.DAY)
         val summaries = daySummaryRepository.getRange(from, referenceDate)
-        val summaryByDate = summaries.associateBy { it.date }
-        // Start from yesterday — today's summary hasn't been generated yet
-        var date = referenceDate.minus(1, DateTimeUnit.DAY)
-        var streak = 0
-        while (date >= from) {
-            val summary = summaryByDate[date]
-            if (summary != null && summary.tasksCompleted > 0) {
-                streak++
-                date = date.minus(1, DateTimeUnit.DAY)
-            } else {
-                break
-            }
-        }
-        return streak
+        return DayStreak.currentFrom(summaries, referenceDate.minus(1, DateTimeUnit.DAY))
     }
 
     private suspend fun checkPendingSummary() {
@@ -682,25 +687,22 @@ class MainViewModel(
         }
     }
 
+    /** Posponer mueve la tarea: misma fila, nueva fecha. Sin copias ni fantasmas. */
     fun postponeTask(task: DayTask, date: LocalDate, time: LocalTime?) {
         viewModelScope.launch {
             taskReminderScheduler?.cancelReminder(task.id)
-            val postponedTo = LocalDateTime(date, time ?: LocalTime(0, 0))
-            dayTaskRepository.update(task.copy(status = TaskStatus.POSTPONED, postponedTo = postponedTo))
-            val newId = generateUUID()
-            dayTaskRepository.insert(
+            dayTaskRepository.update(
                 task.copy(
-                    id = newId,
                     schedule = TaskSchedule.OneTime(date = date, time = time),
                     status = TaskStatus.PENDING,
-                    postponedTo = null
+                    completedAt = null
                 )
             )
             if (task.notificationsEnabled && time != null) {
                 val scheduledAt = LocalDateTime(date, time)
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 if (scheduledAt > now) {
-                    taskReminderScheduler?.scheduleReminder(newId, task.title, scheduledAt)
+                    taskReminderScheduler?.scheduleReminder(task.id, task.title, scheduledAt)
                 }
             }
             loadDay(_uiState.value.selectedDate)
@@ -709,10 +711,15 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Borra una instancia concreta de una recurrente. El soft delete basta: el
+     * generador consulta los sourceId de la fecha incluyendo los borrados, así que
+     * no la vuelve a crear.
+     */
     fun deleteRecurringTaskInstance(task: DayTask) {
         viewModelScope.launch {
             taskReminderScheduler?.cancelReminder(task.id)
-            dayTaskRepository.update(task.copy(status = TaskStatus.CANCELLED))
+            dayTaskRepository.delete(task.id)
             loadDay(_uiState.value.selectedDate)
             onTaskMutated?.invoke()
             onSyncMutation?.invoke()
@@ -827,11 +834,9 @@ class MainViewModel(
         }
     }
 
-    fun updateNightSummaryTime(time: LocalTime) {
-        viewModelScope.launch {
-            userPreferencesRepository.setNightSummaryTime(time)
-        }
-    }
+    /** Solo el día en curso admite cambios de estado. */
+    private fun DayTask.isEditableToday(): Boolean =
+        (schedule as? TaskSchedule.OneTime)?.date == currentDate()
 
     // Persiste el nickname editado desde el dialog de detalle de criatura
     fun updateCreatureNickname(creatureId: String, nickname: String) {

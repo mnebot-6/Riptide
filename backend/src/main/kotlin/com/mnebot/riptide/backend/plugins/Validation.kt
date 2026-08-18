@@ -9,7 +9,7 @@ object Validation {
     private val HEX_COLOR_REGEX = Regex("^#[0-9a-fA-F]{6}$")
 
     private val VALID_SCHEDULE_TYPES = setOf("ONE_TIME", "RECURRING")
-    private val VALID_STATUSES = setOf("PENDING", "COMPLETED", "EXPIRED", "POSTPONED")
+    private val VALID_STATUSES = setOf("PENDING", "COMPLETED", "EXPIRED")
     private val VALID_CATEGORIES = setOf(
         "FISH", "FLORA", "CRUSTACEAN", "MOLLUSK", "PELAGIC",
         "CEPHALOPOD", "REPTILE", "MAMMAL", "DECORATION", "COMPANION"
@@ -146,12 +146,6 @@ object Validation {
         requireMaxLength(feedbackMessage, MAX_FEEDBACK_LENGTH, "feedbackMessage")
     }
 
-    fun validateBlockStreak(blockId: String, lastActiveDate: String, currentStreak: Int = 0, longestStreak: Int = 0) {
-        requireUuid(blockId, "blockId")
-        requireIsoDate(lastActiveDate, "lastActiveDate")
-        requireNonNegativeInt(currentStreak, 100_000, "currentStreak")
-        requireNonNegativeInt(longestStreak, 100_000, "longestStreak")
-    }
 
     fun validateEcosystemState(id: String, category: String, lastUpdated: String, totalExperience: Int = 0, currentLevel: Int = 0) {
         requireUuid(id, "id")

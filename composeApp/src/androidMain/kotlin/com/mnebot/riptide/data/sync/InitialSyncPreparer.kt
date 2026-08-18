@@ -2,6 +2,8 @@ package com.mnebot.riptide.data.sync
 
 import com.mnebot.riptide.data.local.db.RiptideDatabase
 import com.mnebot.riptide.data.local.nowIso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Stamps all pre-existing entities with a valid updatedAt timestamp
@@ -16,7 +18,6 @@ class InitialSyncPreparer(private val db: RiptideDatabase) {
         db.dayTaskDao().stampUpdatedAt(now)
         db.recurringTaskDefDao().stampUpdatedAt(now)
         db.daySummaryDao().stampUpdatedAt(now)
-        db.blockStreakDao().stampUpdatedAt(now)
         db.ecosystemStateDao().stampUpdatedAt(now)
         db.marineCreatureDao().stampUpdatedAt(now)
     }
@@ -24,7 +25,8 @@ class InitialSyncPreparer(private val db: RiptideDatabase) {
     suspend fun hasLocalData(): Boolean =
         db.workBlockDao().getAll().isNotEmpty()
 
-    suspend fun clearAllLocalData() {
+    /** clearAllTables() is blocking and asserts it is off the main thread. */
+    suspend fun clearAllLocalData() = withContext(Dispatchers.IO) {
         db.clearAllTables()
     }
 }

@@ -2,6 +2,7 @@ package com.mnebot.riptide.domain
 
 import com.mnebot.riptide.domain.fakes.FakeDaySummaryRepository
 import com.mnebot.riptide.domain.fakes.FakeDayTaskRepository
+import com.mnebot.riptide.domain.model.DaySummary
 import com.mnebot.riptide.domain.model.DayTask
 import com.mnebot.riptide.domain.model.TaskSchedule
 import com.mnebot.riptide.domain.model.TaskStatus
@@ -11,9 +12,12 @@ import kotlinx.datetime.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * El cierre ocurre a las 23:59:59: TODA tarea del día cuenta, con hora o sin ella.
+ * score = completadas / total, sin ponderación.
+ */
 class NightSummaryProcessorTest {
 
     private val today = LocalDate(2024, 6, 15)
@@ -24,7 +28,7 @@ class NightSummaryProcessorTest {
         id = id, blockId = blockId, title = "Task $id",
         schedule = TaskSchedule.OneTime(today, null),
         status = TaskStatus.COMPLETED,
-        completedAt = null, postponedTo = null, sourceTaskId = null
+        completedAt = null, sourceTaskId = null
     )
 
     private fun pendingTask(
@@ -35,14 +39,7 @@ class NightSummaryProcessorTest {
         id = id, blockId = blockId, title = "Task $id",
         schedule = TaskSchedule.OneTime(today, time),
         status = TaskStatus.PENDING,
-        completedAt = null, postponedTo = null, sourceTaskId = null
-    )
-
-    private fun postponedTask(id: String, blockId: String? = "blockA") = DayTask(
-        id = id, blockId = blockId, title = "Task $id",
-        schedule = TaskSchedule.OneTime(today, null),
-        status = TaskStatus.POSTPONED,
-        completedAt = null, postponedTo = null, sourceTaskId = null
+        completedAt = null, sourceTaskId = null
     )
 
     private fun makeProcessor(
@@ -51,7 +48,6 @@ class NightSummaryProcessorTest {
     ) = NightSummaryProcessor(
         dayTaskRepository = taskRepo,
         daySummaryRepository = summaryRepo,
-        blockStreakProcessor = null,
         ecosystemProcessor = null,
         userPreferencesRepository = null
     )
@@ -64,10 +60,9 @@ class NightSummaryProcessorTest {
             it.addTask(completedTask("t1"))
         }
         val summaryRepo = FakeDaySummaryRepository().also {
-            it.insert(com.mnebot.riptide.domain.model.DaySummary(
+            it.insert(DaySummary(
                 id = "existing", date = today, score = 1f,
-                tasksTotal = 1, tasksCompleted = 1, streakDay = 0,
-                feedbackMessage = "Already done"
+                tasksTotal = 1, tasksCompleted = 1,                feedbackMessage = "Already done"
             ))
         }
         val processor = makeProcessor(taskRepo, summaryRepo)
@@ -77,17 +72,21 @@ class NightSummaryProcessorTest {
         assertEquals(1, summaryRepo.inserted().size, "Should not insert a second summary")
     }
 
-    // ── Empty tasks: no-op ────────────────────────────────────────────────────
+    // ── Día neutral: se guarda igualmente con total 0 ─────────────────────────
 
     @Test
-    fun emptyTasks_noSummaryInserted() = runTest {
+    fun emptyDay_insertsNeutralSummary() = runTest {
         val taskRepo = FakeDayTaskRepository() // empty
         val summaryRepo = FakeDaySummaryRepository()
         val processor = makeProcessor(taskRepo, summaryRepo)
 
         processor.processDay(today)
 
-        assertTrue(summaryRepo.inserted().isEmpty())
+        val summary = summaryRepo.inserted().firstOrNull()
+        assertNotNull(summary, "Un día sin tareas debe quedar registrado como neutral")
+        assertEquals(0, summary.tasksTotal)
+        assertEquals(0, summary.tasksCompleted)
+        assertEquals(0f, summary.score)
     }
 
     // ── All completed: score = 1.0 ────────────────────────────────────────────
@@ -111,36 +110,15 @@ class NightSummaryProcessorTest {
         assertEquals(1.0f, summary.score)
     }
 
-    // ── Partial completion: correct score ─────────────────────────────────────
+    // ── Partial completion: score plano ───────────────────────────────────────
 
     @Test
     fun partialCompletion_correctScore() = runTest {
-        val summaryTime = LocalTime(23, 0)
-        val taskRepo = FakeDayTaskRepository().also {
-            it.addTask(completedTask("t1"))           // evaluable (completed)
-            it.addTask(completedTask("t2"))           // evaluable (completed)
-            it.addTask(pendingTask("t3", time = LocalTime(10, 0)))  // evaluable (time < summaryTime)
-            it.addTask(pendingTask("t4", time = LocalTime(10, 0)))  // evaluable (time < summaryTime)
-        }
-        val summaryRepo = FakeDaySummaryRepository()
-        val processor = makeProcessor(taskRepo, summaryRepo)
-
-        processor.processDay(today, summaryTime = summaryTime)
-
-        val summary = summaryRepo.inserted().firstOrNull()
-        assertNotNull(summary)
-        assertEquals(4, summary.tasksTotal)
-        assertEquals(2, summary.tasksCompleted)
-        assertEquals(0.5f, summary.score)
-    }
-
-    // ── Postponed tasks excluded from evaluation ──────────────────────────────
-
-    @Test
-    fun postponedTasks_excluded() = runTest {
         val taskRepo = FakeDayTaskRepository().also {
             it.addTask(completedTask("t1"))
-            it.addTask(postponedTask("t2"))
+            it.addTask(completedTask("t2"))
+            it.addTask(pendingTask("t3", time = LocalTime(10, 0)))
+            it.addTask(pendingTask("t4", time = LocalTime(10, 0)))
         }
         val summaryRepo = FakeDaySummaryRepository()
         val processor = makeProcessor(taskRepo, summaryRepo)
@@ -149,37 +127,56 @@ class NightSummaryProcessorTest {
 
         val summary = summaryRepo.inserted().firstOrNull()
         assertNotNull(summary)
-        // Only t1 is evaluable (t2 is POSTPONED, excluded from nonPostponed)
-        assertEquals(1, summary.tasksTotal)
-        assertEquals(1, summary.tasksCompleted)
-        assertEquals(1.0f, summary.score)
+        assertEquals(4, summary.tasksTotal)
+        assertEquals(2, summary.tasksCompleted)
+        assertEquals(0.5f, summary.score)
     }
 
-    // ── No evaluable tasks → no summary ──────────────────────────────────────
+    // ── Tareas sin hora: cuentan igual que las demás ──────────────────────────
 
     @Test
-    fun noEvaluableTasks_noSummary() = runTest {
-        // PENDING OneTime tasks with no time are NOT evaluable
-        // (filter requires taskTime != null AND summaryTime != null)
+    fun untimedTasks_areCountedAndExpired() = runTest {
         val taskRepo = FakeDayTaskRepository().also {
-            it.addTask(pendingTask("t1", time = null))
+            it.addTask(completedTask("t1"))
             it.addTask(pendingTask("t2", time = null))
         }
         val summaryRepo = FakeDaySummaryRepository()
         val processor = makeProcessor(taskRepo, summaryRepo)
 
-        // No summaryTime passed → pending tasks without time are not evaluable
-        processor.processDay(today, summaryTime = null)
+        processor.processDay(today)
 
-        assertTrue(summaryRepo.inserted().isEmpty(),
-            "Should not create summary when no tasks are evaluable")
+        val summary = summaryRepo.inserted().firstOrNull()
+        assertNotNull(summary)
+        assertEquals(2, summary.tasksTotal, "Una tarea sin hora también cuenta")
+        assertEquals(1, summary.tasksCompleted)
+        assertEquals(0.5f, summary.score)
+
+        val t2 = taskRepo.getByDate(today).find { it.id == "t2" }
+        assertEquals(TaskStatus.EXPIRED, t2?.status, "Sin hora también expira al cerrar el día")
     }
 
-    // ── Pending evaluable tasks are expired ───────────────────────────────────
+    // ── Una tarea a las 23:00 se evalúa el mismo día ──────────────────────────
 
     @Test
-    fun evaluablePendingTasks_getExpired() = runTest {
-        val summaryTime = LocalTime(23, 0)
+    fun lateTask_isEvaluatedSameDay() = runTest {
+        val taskRepo = FakeDayTaskRepository().also {
+            it.addTask(pendingTask("t1", time = LocalTime(23, 0)))
+        }
+        val summaryRepo = FakeDaySummaryRepository()
+        val processor = makeProcessor(taskRepo, summaryRepo)
+
+        processor.processDay(today)
+
+        val summary = summaryRepo.inserted().firstOrNull()
+        assertNotNull(summary)
+        assertEquals(1, summary.tasksTotal)
+        assertEquals(0f, summary.score)
+    }
+
+    // ── Pending tasks are expired ─────────────────────────────────────────────
+
+    @Test
+    fun pendingTasks_getExpired() = runTest {
         val taskRepo = FakeDayTaskRepository().also {
             it.addTask(completedTask("t1"))
             it.addTask(pendingTask("t2", time = LocalTime(10, 0)))
@@ -187,13 +184,10 @@ class NightSummaryProcessorTest {
         val summaryRepo = FakeDaySummaryRepository()
         val processor = makeProcessor(taskRepo, summaryRepo)
 
-        processor.processDay(today, summaryTime = summaryTime)
+        processor.processDay(today)
 
-        // The pending task should have been expired
-        val tasks = taskRepo.getByDate(today)
-        val t2 = tasks.find { it.id == "t2" }
-        assertEquals(TaskStatus.EXPIRED, t2?.status,
-            "Evaluable PENDING tasks should be set to EXPIRED")
+        val t2 = taskRepo.getByDate(today).find { it.id == "t2" }
+        assertEquals(TaskStatus.EXPIRED, t2?.status, "PENDING pasa a EXPIRED al cerrar")
     }
 
     // ── Task with no blockId still counted ───────────────────────────────────
@@ -215,11 +209,10 @@ class NightSummaryProcessorTest {
         assertEquals(2, summary.tasksCompleted)
     }
 
-    // ── Score 0 when all evaluable are pending (and expired) ─────────────────
+    // ── Score 0 cuando no se completó nada ───────────────────────────────────
 
     @Test
-    fun allPendingEvaluable_score0() = runTest {
-        val summaryTime = LocalTime(23, 0)
+    fun allPending_score0() = runTest {
         val taskRepo = FakeDayTaskRepository().also {
             it.addTask(pendingTask("t1", time = LocalTime(9, 0)))
             it.addTask(pendingTask("t2", time = LocalTime(11, 0)))
@@ -227,12 +220,43 @@ class NightSummaryProcessorTest {
         val summaryRepo = FakeDaySummaryRepository()
         val processor = makeProcessor(taskRepo, summaryRepo)
 
-        processor.processDay(today, summaryTime = summaryTime)
+        processor.processDay(today)
 
         val summary = summaryRepo.inserted().firstOrNull()
         assertNotNull(summary)
         assertEquals(2, summary.tasksTotal)
         assertEquals(0, summary.tasksCompleted)
         assertEquals(0f, summary.score)
+    }
+
+    // ── Catch-up: cierra los días que el worker no llegó a cerrar ─────────────
+
+    @Test
+    fun processPendingDays_closesGapUpToYesterday() = runTest {
+        val lastClosed = LocalDate(2024, 6, 12)
+        val summaryRepo = FakeDaySummaryRepository().also {
+            it.insert(DaySummary(
+                id = "s1", date = lastClosed, score = 1f,
+                tasksTotal = 1, tasksCompleted = 1,                feedbackMessage = ""
+            ))
+        }
+        val processor = makeProcessor(FakeDayTaskRepository(), summaryRepo)
+
+        processor.processPendingDays(today)   // today = 2024-06-15
+
+        val closedDates = summaryRepo.inserted().map { it.date }.toSet()
+        assertTrue(LocalDate(2024, 6, 13) in closedDates)
+        assertTrue(LocalDate(2024, 6, 14) in closedDates)
+        assertTrue(today !in closedDates, "El día en curso no se cierra")
+    }
+
+    @Test
+    fun processPendingDays_noHistory_doesNothing() = runTest {
+        val summaryRepo = FakeDaySummaryRepository()
+        val processor = makeProcessor(FakeDayTaskRepository(), summaryRepo)
+
+        processor.processPendingDays(today)
+
+        assertTrue(summaryRepo.inserted().isEmpty(), "Sin historial no hay nada que recuperar")
     }
 }

@@ -9,9 +9,7 @@ class NightSummarySchedulerImpl(context: Context) : NightSummaryScheduler {
     private val prefs = UserPreferencesRepositoryImpl(context.applicationContext)
     private val appContext = context.applicationContext
 
-    override fun getNightSummaryTime(): Flow<LocalTime> = prefs.getNightSummaryTime()
-    override suspend fun setNightSummaryTime(time: LocalTime) = prefs.setNightSummaryTime(time)
-    override fun scheduleWorker(time: LocalTime) = NightSummaryWorker.schedule(appContext, time)
+    override fun scheduleWorker() = NightSummaryWorker.schedule(appContext)
 
     override fun getMorningReminderTime(): Flow<LocalTime?> = prefs.getMorningReminderTime()
     override suspend fun setMorningReminderTime(time: LocalTime?) = prefs.setMorningReminderTime(time)
