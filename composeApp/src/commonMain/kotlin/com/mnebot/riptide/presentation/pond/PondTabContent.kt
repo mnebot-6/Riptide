@@ -32,7 +32,7 @@ private val TextPrimary = Color(0xFFFFFFFF)
 @Composable
 fun PondTabContent(
     creaturesData: List<MarineCreature>,
-    creaturePositions: List<CreaturePosition>,
+    creaturePositions: State<List<CreaturePosition>>,
     creatureFreezeState: CreatureFreezeState,
     selectedCreature: Pair<MarineCreature, CreatureSpec>?,
     ecosystemByCategory: Map<MarineCategory, EcosystemState> = emptyMap(),
@@ -51,10 +51,13 @@ fun PondTabContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(creaturePositions, creaturesData) {
+                // Keyed on `creaturesData` only: `creaturePositions` is rewritten every
+                // frame by the aquarium draw pass, and keying on it restarted this gesture
+                // handler ~60x/s, so no tap ever reached its up event.
+                .pointerInput(creaturesData) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        val hit = findHitCreature(down.position, creaturePositions)
+                        val hit = findHitCreature(down.position, creaturePositions.value)
                             ?: return@awaitEachGesture
                         // Wait for the up. If the user drags or another node consumes,
                         // `waitForUpOrCancellation` returns null and we skip — the parent
@@ -73,7 +76,7 @@ fun PondTabContent(
 
         FloatingActionButton(
             onClick = onNavigateToEcosystem,
-            containerColor = adaptiveBg,
+            containerColor = adaptiveBg.copy(alpha = 1f),
             contentColor = TextPrimary,
             shape = CircleShape,
             modifier = Modifier

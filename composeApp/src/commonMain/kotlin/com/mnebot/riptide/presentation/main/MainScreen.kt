@@ -781,11 +781,20 @@ private fun MainContent(
     onTimerCancel: (String) -> Unit = {},
     onNotesChanged: (DayTask, String?) -> Unit = { _, _ -> },
 ) {
-    val (activeBlocks, completedBlocks) = remember(blocks, tasksByBlock) {
+    // Which blocks were already finished when this day was loaded. Snapshot on purpose:
+    // if a block jumped into the collapsed "completed" section the moment the user ticked
+    // its last task, the LazyColumn would re-anchor on the moved key and drag the scroll
+    // along with it. The block stays put and gets tidied on the next load of the day.
+    val preCompletedBlockIds = remember(selectedDate, blocks, tasksByBlock.keys) {
+        blocks.filter { block ->
+            tasksByBlock[block.id]?.let { tasks ->
+                tasks.isNotEmpty() && tasks.all { it.status == TaskStatus.COMPLETED }
+            } == true
+        }.map { it.id }.toSet()
+    }
+    val (activeBlocks, completedBlocks) = remember(blocks, tasksByBlock, preCompletedBlockIds) {
         val withTasks = blocks.filter { tasksByBlock[it.id]?.isNotEmpty() == true }
-        withTasks.partition { block ->
-            tasksByBlock[block.id]?.any { it.status != TaskStatus.COMPLETED } == true
-        }
+        withTasks.partition { block -> block.id !in preCompletedBlockIds }
     }
     var completedBlocksExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()

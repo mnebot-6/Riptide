@@ -90,7 +90,7 @@ fun MainShellScreen(
                 )
                 BottomNavTab.POND -> PondTabContent(
                     creaturesData = uiState.creaturesData,
-                    creaturePositions = creaturePositions.value,
+                    creaturePositions = creaturePositions,
                     creatureFreezeState = creatureFreezeState,
                     selectedCreature = pondSelectedCreature,
                     ecosystemByCategory = uiState.ecosystemByCategory,
