@@ -29,7 +29,7 @@ class DayTaskRepositoryImpl(private val dao: DayTaskDao) : DayTaskRepository {
         dao.update(task.toEntity().copy(updatedAt = nowIso()))
 
     override suspend fun updateStatus(id: String, status: TaskStatus) =
-        dao.updateStatus(id, status.name)
+        dao.updateStatus(id, status.name, nowIso())
 
     override suspend fun delete(id: String) {
         val existing = dao.getById(id) ?: return

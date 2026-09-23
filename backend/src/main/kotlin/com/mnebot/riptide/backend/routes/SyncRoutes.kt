@@ -12,8 +12,30 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
+/**
+ * Todo el control de sincronización vive en UTC.
+ *
+ * El cliente manda marcas ISO con sufijo 'Z' y el servidor las guarda tal cual, de modo
+ * que `clientUpdated.isAfter(serverUpdated)` compara dos puntos de la misma línea de
+ * tiempo. Comparar relojes de pared de zonas distintas hacía que el servidor descartara
+ * en silencio borrados y ediciones del movil y luego se los devolviera resucitados.
+ */
+private fun parseClientTimestamp(raw: String?): LocalDateTime? {
+    if (raw.isNullOrBlank()) return null
+    return runCatching { Instant.parse(raw).atZone(ZoneOffset.UTC).toLocalDateTime() }
+        .recoverCatching { LocalDateTime.parse(raw, DateTimeFormatter.ISO_DATE_TIME) }
+        .getOrNull()
+}
+
+private fun nowUtc(): LocalDateTime = LocalDateTime.now(ZoneOffset.UTC)
+
+/** Se devuelve con 'Z' para que el cliente compare contra sus propias marcas UTC. */
+private fun LocalDateTime.toUtcIso(): String = this.toInstant(ZoneOffset.UTC).toString()
 
 fun Route.syncRoutes() {
     authenticate("auth-jwt") {
@@ -76,10 +98,8 @@ fun Route.syncRoutes() {
                 )
             }
 
-            val since = request.lastSyncTime?.let {
-                LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME)
-            }
-            val now = LocalDateTime.now()
+            val since = parseClientTimestamp(request.lastSyncTime)
+            val now = nowUtc()
 
             val response = dbQuery {
                 // ── PUSH: Upsert client changes (FK order) ──
@@ -93,7 +113,7 @@ fun Route.syncRoutes() {
 
                 // ── PULL: Gather server changes ──
                 FullSyncResponse(
-                    serverTime = now.toString(),
+                    serverTime = now.toUtcIso(),
                     workBlocks = pullWorkBlocks(uid, since),
                     blockCategories = pullBlockCategories(uid, since),
                     dayTasks = pullDayTasks(uid, since),
@@ -153,9 +173,7 @@ private fun upsertWorkBlocks(items: List<WorkBlockDto>, uid: String, now: LocalD
             if (existing[WorkBlocksTable.isDeleted] && !dto.isDeleted) continue
 
             val serverUpdated = existing[WorkBlocksTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 WorkBlocksTable.update({
@@ -193,9 +211,7 @@ private fun upsertBlockCategories(items: List<BlockCategoryDto>, uid: String, no
             }
         } else {
             val serverUpdated = existing[BlockCategoriesTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 BlockCategoriesTable.update({
@@ -237,9 +253,7 @@ private fun upsertRecurringTaskDefs(items: List<RecurringTaskDefDto>, uid: Strin
             if (existing[RecurringTaskDefsTable.isDeleted] && !dto.isDeleted) continue
 
             val serverUpdated = existing[RecurringTaskDefsTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 RecurringTaskDefsTable.update({
@@ -298,9 +312,7 @@ private fun upsertDayTasks(items: List<DayTaskDto>, uid: String, now: LocalDateT
             if (existing[DayTasksTable.isDeleted] && !dto.isDeleted) continue
 
             val serverUpdated = existing[DayTasksTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 // hasBeenRewarded uses OR logic: once rewarded, always rewarded
@@ -354,9 +366,7 @@ private fun upsertDaySummaries(items: List<DaySummaryDto>, uid: String, now: Loc
             }
         } else {
             val serverUpdated = existing[DaySummariesTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 DaySummariesTable.update({
@@ -394,9 +404,7 @@ private fun upsertEcosystemStates(items: List<EcosystemStateDto>, uid: String, n
             }
         } else {
             val serverUpdated = existing[EcosystemStatesTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 EcosystemStatesTable.update({
@@ -436,9 +444,7 @@ private fun upsertMarineCreatures(items: List<MarineCreatureDto>, uid: String, n
             }
         } else {
             val serverUpdated = existing[MarineCreaturesTable.updatedAt]
-            val clientUpdated = dto.updatedAt?.let {
-                runCatching { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }.getOrNull()
-            }
+            val clientUpdated = parseClientTimestamp(dto.updatedAt)
 
             if (clientUpdated != null && clientUpdated.isAfter(serverUpdated)) {
                 MarineCreaturesTable.update({
@@ -475,7 +481,7 @@ private fun pullWorkBlocks(uid: String, since: LocalDateTime?): List<WorkBlockDt
             icon = row[WorkBlocksTable.icon],
             recurrenceJson = row[WorkBlocksTable.recurrenceJson],
             isActive = row[WorkBlocksTable.isActive],
-            updatedAt = row[WorkBlocksTable.updatedAt].toString(),
+            updatedAt = row[WorkBlocksTable.updatedAt].toUtcIso(),
             isDeleted = row[WorkBlocksTable.isDeleted]
         )
     }
@@ -491,7 +497,7 @@ private fun pullBlockCategories(uid: String, since: LocalDateTime?): List<BlockC
         BlockCategoryDto(
             blockId = row[BlockCategoriesTable.blockId],
             category = row[BlockCategoriesTable.category],
-            updatedAt = row[BlockCategoriesTable.updatedAt].toString()
+            updatedAt = row[BlockCategoriesTable.updatedAt].toUtcIso()
         )
     }
 }
@@ -522,7 +528,7 @@ private fun pullDayTasks(uid: String, since: LocalDateTime?): List<DayTaskDto> {
             notes = row[DayTasksTable.notes],
             timerDurationMinutes = row[DayTasksTable.timerDurationMinutes],
             isPriority = row[DayTasksTable.isPriority],
-            updatedAt = row[DayTasksTable.updatedAt].toString(),
+            updatedAt = row[DayTasksTable.updatedAt].toUtcIso(),
             isDeleted = row[DayTasksTable.isDeleted]
         )
     }
@@ -547,7 +553,7 @@ private fun pullRecurringTaskDefs(uid: String, since: LocalDateTime?): List<Recu
             noteTemplate = row[RecurringTaskDefsTable.noteTemplate],
             timerDurationMinutes = row[RecurringTaskDefsTable.timerDurationMinutes],
             isPriority = row[RecurringTaskDefsTable.isPriority],
-            updatedAt = row[RecurringTaskDefsTable.updatedAt].toString(),
+            updatedAt = row[RecurringTaskDefsTable.updatedAt].toUtcIso(),
             isDeleted = row[RecurringTaskDefsTable.isDeleted]
         )
     }
@@ -568,7 +574,7 @@ private fun pullDaySummaries(uid: String, since: LocalDateTime?): List<DaySummar
             tasksCompleted = row[DaySummariesTable.tasksCompleted],
             streakDay = row[DaySummariesTable.streakDay],
             feedbackMessage = row[DaySummariesTable.feedbackMessage],
-            updatedAt = row[DaySummariesTable.updatedAt].toString()
+            updatedAt = row[DaySummariesTable.updatedAt].toUtcIso()
         )
     }
 }
@@ -587,7 +593,7 @@ private fun pullEcosystemStates(uid: String, since: LocalDateTime?): List<Ecosys
             currentLevel = row[EcosystemStatesTable.currentLevel],
             isUnlocked = row[EcosystemStatesTable.isUnlocked],
             lastUpdated = row[EcosystemStatesTable.lastUpdated],
-            updatedAt = row[EcosystemStatesTable.updatedAt].toString()
+            updatedAt = row[EcosystemStatesTable.updatedAt].toUtcIso()
         )
     }
 }
@@ -609,7 +615,7 @@ private fun pullMarineCreatures(uid: String, since: LocalDateTime?): List<Marine
             experience = row[MarineCreaturesTable.experience],
             creatureLevel = row[MarineCreaturesTable.creatureLevel],
             unlockedAt = row[MarineCreaturesTable.unlockedAt],
-            updatedAt = row[MarineCreaturesTable.updatedAt].toString()
+            updatedAt = row[MarineCreaturesTable.updatedAt].toUtcIso()
         )
     }
 }

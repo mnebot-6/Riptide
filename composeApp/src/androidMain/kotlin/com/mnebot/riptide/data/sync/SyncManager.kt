@@ -1,6 +1,7 @@
 package com.mnebot.riptide.data.sync
 
 import com.mnebot.riptide.data.local.db.RiptideDatabase
+import com.mnebot.riptide.data.local.nowIso
 import com.mnebot.riptide.data.remote.RiptideApi
 import com.mnebot.riptide.data.remote.dto.*
 import com.mnebot.riptide.domain.model.SyncStatus
@@ -19,7 +20,9 @@ private const val TAG = "RiptideSync"
 class SyncManager(
     private val db: RiptideDatabase,
     private val api: RiptideApi,
-    private val userPrefs: UserPreferencesRepository
+    private val userPrefs: UserPreferencesRepository,
+    /** Se invoca tras aplicar cambios del servidor (refrescar widget, etc). */
+    private val onServerChangesApplied: (suspend () -> Unit)? = null
 ) {
 
     sealed class SyncResult {
@@ -57,6 +60,10 @@ class SyncManager(
             // "" significa "nunca sincronizado": el servidor no puede parsearlo como fecha.
             val lastSync = userPrefs.getLastSyncTime()?.takeIf { it.isNotBlank() }
             val since = lastSync ?: ""
+            // Corte tomado ANTES de leer nada. La marca de agua es local, no la del
+            // servidor: si se guardase serverTime, todo lo que el usuario tocase durante
+            // el viaje de ida y vuelta caería fuera de la ventana y no se subiría jamás.
+            val cutoff = nowIso()
             val pushBlocks = db.workBlockDao().getModifiedSince(since).map { it.toDto() }
             val pushCats = db.blockCategoryDao().getModifiedSince(since).map { it.toDto() }
             val pushTasks = db.dayTaskDao().getModifiedSince(since).map { it.toDto() }
@@ -95,7 +102,8 @@ class SyncManager(
                     "eco=${response.ecosystemStates.size} creatures=${response.marineCreatures.size}"
             )
             applyServerChanges(response)
-            userPrefs.setLastSyncTime(response.serverTime)
+            userPrefs.setLastSyncTime(cutoff)
+            onServerChangesApplied?.invoke()
 
             _status.value = SyncStatus.SUCCESS
             _lastError.value = null
@@ -127,15 +135,21 @@ class SyncManager(
         }
         if (response.dayTasks.isNotEmpty()) {
             // Special merge for hasBeenRewarded: never revert true -> false
-            val serverTasks = response.dayTasks.map { dto ->
+            val serverTasks = response.dayTasks.mapNotNull { dto ->
                 val localTask = db.dayTaskDao().getById(dto.id)
+                // El pull devuelve también lo que acabamos de subir. Si la copia local
+                // es igual o más nueva, aplicarla borraría lo que el usuario tocó
+                // mientras la petición viajaba.
+                if (localTask != null && dto.updatedAt != null &&
+                    localTask.updatedAt.isNotBlank() && localTask.updatedAt >= dto.updatedAt
+                ) return@mapNotNull null
                 if (localTask != null && localTask.hasBeenRewarded && !dto.hasBeenRewarded) {
                     dto.copy(hasBeenRewarded = true).toEntity()
                 } else {
                     dto.toEntity()
                 }
             }
-            db.dayTaskDao().upsertAll(serverTasks)
+            if (serverTasks.isNotEmpty()) db.dayTaskDao().upsertAll(serverTasks)
         }
         if (response.daySummaries.isNotEmpty()) {
             db.daySummaryDao().upsertAll(response.daySummaries.map { it.toEntity() })

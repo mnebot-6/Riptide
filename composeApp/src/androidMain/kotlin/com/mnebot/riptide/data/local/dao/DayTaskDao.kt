@@ -29,8 +29,9 @@ interface DayTaskDao {
     @Update
     suspend fun update(task: DayTaskEntity)
 
-    @Query("UPDATE day_tasks SET status = :status WHERE id = :id")
-    suspend fun updateStatus(id: String, status: String)
+    /** updatedAt es obligatorio: sin él el cambio de estado nunca entra en el push de sync. */
+    @Query("UPDATE day_tasks SET status = :status, updatedAt = :now WHERE id = :id")
+    suspend fun updateStatus(id: String, status: String, now: String)
 
     @Query("DELETE FROM day_tasks WHERE id = :id")
     suspend fun delete(id: String)

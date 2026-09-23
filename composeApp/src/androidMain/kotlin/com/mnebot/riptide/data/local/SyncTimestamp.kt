@@ -1,10 +1,12 @@
 package com.mnebot.riptide.data.local
 
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
-/** Returns the current timestamp as an ISO-8601 string for sync tracking. */
-fun nowIso(): String = Clock.System.now()
-    .toLocalDateTime(TimeZone.currentSystemDefault())
-    .toString()
+/**
+ * Marca de tiempo para el control de sincronización, SIEMPRE en UTC con sufijo 'Z'.
+ *
+ * No usar la zona local: el servidor compara `updatedAt` del cliente contra el suyo
+ * para resolver conflictos, y dos relojes de pared en zonas distintas hacen que el
+ * servidor rechace cambios del móvil (borrados que resucitan) o al revés.
+ */
+fun nowIso(): String = Clock.System.now().toString()

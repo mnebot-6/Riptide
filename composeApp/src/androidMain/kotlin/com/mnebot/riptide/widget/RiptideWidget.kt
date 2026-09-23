@@ -44,7 +44,9 @@ import com.mnebot.riptide.MainActivity
 import com.mnebot.riptide.R
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.seconds
 import java.time.LocalDate as JavaLocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -73,9 +75,15 @@ class RiptideWidget : GlanceAppWidget() {
         try {
             val dataStore = WidgetSnapshotStateDefinition.getDataStore(context, "")
             val current = dataStore.data.first()
-            val today = Clock.System.now()
-                .toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
-            if (current.dateIso != today || current.generatedAtIso.isBlank()) {
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            val today = now.date.toString()
+            // Sin recarga por antigüedad el widget se quedaba congelado: nada en Android
+            // le avisa de lo que cambian el sync de fondo, el cierre nocturno o el
+            // generador de recurrentes, así que seguía enseñando tareas ya borradas.
+            if (current.dateIso != today ||
+                current.generatedAtIso.isBlank() ||
+                isStale(current.generatedAtIso, now)
+            ) {
                 val fresh = WidgetDataLoader.load(context)
                 updateAppWidgetState(context, WidgetSnapshotStateDefinition, id) { fresh }
             }
@@ -87,6 +95,23 @@ class RiptideWidget : GlanceAppWidget() {
             val snapshot = currentState<WidgetSnapshot>()
             WidgetContent(snapshot)
         }
+    }
+
+    /**
+     * Margen corto pero suficiente para no pisar el snapshot optimista de un clic:
+     * [TaskClickAction] vuelve a sellar `generatedAtIso` antes de tocar Room.
+     */
+    private fun isStale(generatedAtIso: String, now: kotlinx.datetime.LocalDateTime): Boolean {
+        val generated = runCatching {
+            kotlinx.datetime.LocalDateTime.parse(generatedAtIso)
+        }.getOrNull() ?: return true
+        val tz = TimeZone.currentSystemDefault()
+        val elapsed = now.toInstant(tz) - generated.toInstant(tz)
+        return elapsed > STALE_AFTER
+    }
+
+    private companion object {
+        val STALE_AFTER = 60.seconds
     }
 }
 

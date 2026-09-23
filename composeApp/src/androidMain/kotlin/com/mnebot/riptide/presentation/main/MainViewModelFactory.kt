@@ -35,7 +35,9 @@ class MainViewModelFactory(private val context: Context) : ViewModelProvider.Fac
         val tokenProvider = DataStoreTokenProvider(userPreferencesRepo)
         val httpClient = ApiClient.create(tokenProvider)
         val api = RiptideApi(httpClient)
-        val syncManager = SyncManager(db, api, userPreferencesRepo)
+        val syncManager = SyncManager(db, api, userPreferencesRepo) {
+            WidgetUpdater.refreshAll(context.applicationContext)
+        }
         // SyncTrigger needs a CoroutineScope — created lazily in the ViewModel via lambdas
         var syncTrigger: SyncTrigger? = null
 

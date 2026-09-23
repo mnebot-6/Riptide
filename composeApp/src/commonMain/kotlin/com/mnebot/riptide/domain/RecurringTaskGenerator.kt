@@ -3,7 +3,6 @@ package com.mnebot.riptide.domain
 import com.mnebot.riptide.domain.model.*
 import com.mnebot.riptide.domain.repository.DayTaskRepository
 import com.mnebot.riptide.domain.repository.RecurringTaskDefRepository
-import com.mnebot.riptide.generateUUID
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.DatePeriod
@@ -27,7 +26,7 @@ class RecurringTaskGenerator(
 
                 dayTaskRepository.insert(
                     DayTask(
-                        id = generateUUID(),
+                        id = instanceId(def.id, date),
                         blockId = def.blockId,
                         title = def.title,
                         schedule = TaskSchedule.OneTime(
@@ -86,6 +85,25 @@ class RecurringTaskGenerator(
         }
 
         if (def.isActive) generateUpTo(from, daysAhead)
+    }
+
+    /**
+     * Id determinista: la misma definición y el mismo día producen siempre el mismo id.
+     * Con un UUID aleatorio, dos móviles (o una reinstalación que genera antes de bajarse
+     * el servidor) creaban dos filas distintas para la misma tarea y el sync las mostraba
+     * duplicadas. Con esto el upsert las colapsa en una sola.
+     *
+     * Tiene forma de UUID porque el backend valida `id` como UUID (y la columna es
+     * varchar(36)): un "$defId:$date" en claro tumbaba el sync entero.
+     */
+    internal fun instanceId(defId: String, date: LocalDate): String {
+        val name = "$defId:$date".encodeToByteArray()
+        // FNV-1a de 64 bits con dos semillas → 128 bits, idénticos en Android e iOS.
+        fun fnv(seed: Long) = name.fold(seed) { h, b -> (h xor (b.toLong() and 0xff)) * 0x100000001b3L }
+        val hex = listOf(fnv(-0x340d631b7bdddcdbL), fnv(0x5bd1e9955bd1e995L))
+            .joinToString("") { it.toULong().toString(16).padStart(16, '0') }
+        return "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-" +
+            "${hex.substring(16, 20)}-${hex.substring(20)}"
     }
 
     internal fun shouldGenerateForDate(def: RecurringTaskDef, date: LocalDate): Boolean {

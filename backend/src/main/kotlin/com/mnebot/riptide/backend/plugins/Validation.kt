@@ -5,7 +5,10 @@ object Validation {
     private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     private val ISO_DATE_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2}$")
     private val ISO_TIME_REGEX = Regex("^\\d{2}:\\d{2}(:\\d{2})?$")
-    private val ISO_DATETIME_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}")
+    // Regex.matches() exige coincidencia completa: segundos, fracción y zona deben
+    // estar en el patrón o "2026-09-23T11:25:03.171802" se rechaza.
+    private val ISO_DATETIME_REGEX =
+        Regex("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,9})?)?(Z|[+-]\\d{2}:\\d{2})?$")
     private val HEX_COLOR_REGEX = Regex("^#[0-9a-fA-F]{6}$")
 
     private val VALID_SCHEDULE_TYPES = setOf("ONE_TIME", "RECURRING")

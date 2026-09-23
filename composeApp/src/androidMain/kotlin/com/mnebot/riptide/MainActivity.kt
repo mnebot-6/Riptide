@@ -74,7 +74,9 @@ class MainActivity : ComponentActivity() {
         val api = RiptideApi(httpClient)
         val dbForSync = DatabaseProvider.getDatabase(applicationContext)
         val authManager = AuthManager(api, userPreferencesRepository)
-        val syncManager = SyncManager(dbForSync, api, userPreferencesRepository)
+        val syncManager = SyncManager(dbForSync, api, userPreferencesRepository) {
+            WidgetUpdater.refreshAll(applicationContext)
+        }
         val initialSyncPreparer = InitialSyncPreparer(dbForSync)
 
         // Launch sync on startup if logged in and no pending conflict

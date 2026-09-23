@@ -39,6 +39,43 @@ class RecurringTaskGeneratorTest {
         notificationsEnabled = notificationsEnabled
     )
 
+    // ── Id determinista (deduplicacion entre dispositivos) ───────────────────
+
+    @Test
+    fun instance_id_is_deterministic_across_devices() = runTest {
+        val defA = FakeRecurringTaskDefRepository()
+        defA.insert(weeklyDef(days = listOf(1)))
+        val (genA, repoA) = generator(defA)
+        genA.generateUpTo(monday, daysAhead = 0)
+
+        // Otro dispositivo, base de datos vacia, misma definicion y mismo dia.
+        val defB = FakeRecurringTaskDefRepository()
+        defB.insert(weeklyDef(days = listOf(1)))
+        val (genB, repoB) = generator(defB)
+        genB.generateUpTo(monday, daysAhead = 0)
+
+        assertEquals(
+            repoA.getByDate(monday).single().id,
+            repoB.getByDate(monday).single().id,
+            "Ids distintos para la misma (definicion, dia) duplican la tarea al sincronizar"
+        )
+        // El backend rechaza el sync entero si el id no tiene forma de UUID.
+        assertTrue(
+            Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+                .matches(repoA.getByDate(monday).single().id)
+        )
+    }
+
+    @Test
+    fun instance_id_is_stable_value() {
+        // Fijado: si cambia el algoritmo, las instancias ya creadas se duplican en el sync.
+        val (gen, _) = generator()
+        assertEquals(
+            "a279adb3-ba7f-c7b8-878e-d1b60d4fd468",
+            gen.instanceId("0e3b589e-3554-46c8-b35e-4d3513af7f23", LocalDate(2026, 9, 23))
+        )
+    }
+
     // ── Generacion basica ────────────────────────────────────────────────────
 
     @Test

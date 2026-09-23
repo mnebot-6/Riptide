@@ -8,6 +8,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.mnebot.riptide.data.local.db.DatabaseProvider
+import com.mnebot.riptide.data.local.nowIso
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
@@ -32,8 +33,9 @@ class TaskClickAction : ActionCallback {
             // 1) Optimistic mutation of the snapshot (synchronous, before any DB I/O).
             //    This makes the click feel instant: Glance recomposes from updated state.
             val widget = RiptideWidget()
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             updateAppWidgetState(context, WidgetSnapshotStateDefinition, glanceId) { snap ->
-                WidgetTaskMutator.toggleInSnapshot(snap, taskId)
+                WidgetTaskMutator.toggleInSnapshot(snap, taskId, now.toString())
             }
             widget.update(context, glanceId)
 
@@ -42,11 +44,14 @@ class TaskClickAction : ActionCallback {
                 val db = DatabaseProvider.getDatabase(context)
                 val dao = db.dayTaskDao()
                 val entity = dao.getById(taskId)
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 // Solo el día en curso admite cambios de estado: si el widget arrastra
                 // un snapshot de ayer, el clic no debe tocar un día ya cerrado.
                 if (entity != null && entity.date == now.date.toString()) {
-                    val updated = WidgetTaskMutator.applyClickToEntity(entity, now.toString())
+                    val updated = WidgetTaskMutator.applyClickToEntity(
+                        entity,
+                        completedAtIso = now.toString(),
+                        updatedAtIso = nowIso()
+                    )
                     dao.update(updated)
                 }
 

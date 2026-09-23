@@ -4,11 +4,19 @@ import com.mnebot.riptide.data.local.entity.DayTaskEntity
 
 object WidgetTaskMutator {
 
-    fun toggleInSnapshot(snapshot: WidgetSnapshot, taskId: String): WidgetSnapshot {
+    /**
+     * [generatedAtIso] resella el snapshot: si no, `provideGlance` lo ve viejo y
+     * recarga de Room antes de que el clic se haya persistido, deshaciendo el cambio
+     * en pantalla.
+     */
+    fun toggleInSnapshot(snapshot: WidgetSnapshot, taskId: String, generatedAtIso: String): WidgetSnapshot {
         val updatedItems = snapshot.items.map { item ->
             if (item.id != taskId) item else applyClick(item)
         }
-        return snapshot.copy(items = WidgetTaskSorter.sort(updatedItems))
+        return snapshot.copy(
+            items = WidgetTaskSorter.sort(updatedItems),
+            generatedAtIso = generatedAtIso
+        )
     }
 
     fun applyClick(item: WidgetTaskItem): WidgetTaskItem {
@@ -30,7 +38,15 @@ object WidgetTaskMutator {
         }
     }
 
-    fun applyClickToEntity(entity: DayTaskEntity, nowIso: String): DayTaskEntity {
+    /**
+     * [completedAtIso] es hora local (se muestra al usuario); [updatedAtIso] es UTC
+     * porque es lo que compara el servidor al resolver conflictos de sync.
+     */
+    fun applyClickToEntity(
+        entity: DayTaskEntity,
+        completedAtIso: String,
+        updatedAtIso: String
+    ): DayTaskEntity {
         val target = entity.targetCount
         val isCountable = target != null && target > 0
         val isCompleted = entity.status == "COMPLETED"
@@ -40,13 +56,13 @@ object WidgetTaskMutator {
                 currentCount = 0,
                 completedAt = null,
                 hasBeenRewarded = false,
-                updatedAt = nowIso
+                updatedAt = updatedAtIso
             )
             isCompleted -> entity.copy(
                 status = "PENDING",
                 completedAt = null,
                 hasBeenRewarded = false,
-                updatedAt = nowIso
+                updatedAt = updatedAtIso
             )
             isCountable -> {
                 val newCount = entity.currentCount + 1
@@ -54,19 +70,19 @@ object WidgetTaskMutator {
                     entity.copy(
                         currentCount = newCount,
                         status = "COMPLETED",
-                        completedAt = nowIso,
+                        completedAt = completedAtIso,
                         hasBeenRewarded = false,
-                        updatedAt = nowIso
+                        updatedAt = updatedAtIso
                     )
                 } else {
-                    entity.copy(currentCount = newCount, updatedAt = nowIso)
+                    entity.copy(currentCount = newCount, updatedAt = updatedAtIso)
                 }
             }
             else -> entity.copy(
                 status = "COMPLETED",
-                completedAt = nowIso,
+                completedAt = completedAtIso,
                 hasBeenRewarded = false,
-                updatedAt = nowIso
+                updatedAt = updatedAtIso
             )
         }
     }

@@ -16,6 +16,7 @@ import com.mnebot.riptide.data.remote.DataStoreTokenProvider
 import com.mnebot.riptide.data.remote.RiptideApi
 import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import java.util.concurrent.TimeUnit
+import com.mnebot.riptide.widget.WidgetUpdater
 
 /**
  * Periodic background sync via WorkManager.
@@ -37,7 +38,9 @@ class SyncWorker(
         val client = ApiClient.create(tokenProvider)
         val api = RiptideApi(client)
         val db = DatabaseProvider.getDatabase(applicationContext)
-        val syncManager = SyncManager(db, api, userPrefs)
+        val syncManager = SyncManager(db, api, userPrefs) {
+            WidgetUpdater.refreshAll(applicationContext)
+        }
 
         Log.i(TAG, "Periodic sync attempt #${runAttemptCount + 1}")
         return when (val result = syncManager.sync()) {

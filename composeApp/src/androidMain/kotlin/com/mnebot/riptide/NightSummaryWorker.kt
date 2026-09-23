@@ -18,6 +18,7 @@ import com.mnebot.riptide.data.repository.UserPreferencesRepositoryImpl
 import com.mnebot.riptide.domain.DecorationUnlockChecker
 import com.mnebot.riptide.domain.EcosystemProcessor
 import com.mnebot.riptide.domain.NightSummaryProcessor
+import com.mnebot.riptide.widget.WidgetUpdater
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -73,6 +74,10 @@ class NightSummaryWorker(
             ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         processor.processDay(target, blockCategories)
+
+        // El cierre expira tareas y estrena día: sin esto el widget sigue enseñando
+        // la lista de ayer hasta que alguien abra la app.
+        WidgetUpdater.refreshAll(context)
 
         schedule(context)
 
