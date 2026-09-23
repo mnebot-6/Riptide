@@ -164,7 +164,9 @@ object Validation {
         unlockedAtLevel: Int = 0, experience: Int = 0, creatureLevel: Int = 0
     ) {
         requireUuid(id, "id")
-        requireUuid(ecosystemId, "ecosystemId")
+        // Decoraciones y compañeros no tienen ecosistema propio: usan el nombre de la
+        // categoría como ecosystemId (ver MarineCreaturesTable).
+        if (ecosystemId !in VALID_CATEGORIES) requireUuid(ecosystemId, "ecosystemId")
         requireEnum(category, VALID_CATEGORIES, "category")
         requireNotBlank(species, "species")
         requireMaxLength(species, MAX_ICON_LENGTH, "species")

@@ -42,6 +42,16 @@ fun BlockCategoryDto.toEntity() = BlockCategoryEntity(
 
 // -- DayTask -----------------------------------------------------------------
 
+/**
+ * POSTPONED/CANCELLED ya no existen (v16), pero el servidor aún guarda filas de
+ * clientes antiguos y el pull las reintroduce. Misma regla que MIGRATION_15_16:
+ * pasan a soft delete. Se aplica en ambos sentidos porque el backend rechaza el
+ * sync entero si recibe un status fuera de PENDING | COMPLETED | EXPIRED.
+ */
+private val LEGACY_STATUSES = setOf("POSTPONED", "CANCELLED")
+private fun normalizedStatus(status: String) = if (status in LEGACY_STATUSES) "EXPIRED" else status
+private fun normalizedDeleted(status: String, isDeleted: Boolean) = isDeleted || status in LEGACY_STATUSES
+
 fun DayTaskEntity.toDto() = DayTaskDto(
     id = id,
     blockId = blockId,
@@ -50,14 +60,14 @@ fun DayTaskEntity.toDto() = DayTaskDto(
     date = date,
     time = time,
     recurrence = recurrence,
-    status = status,
+    status = normalizedStatus(status),
     completedAt = completedAt,
     postponedTo = postponedTo,
     sourceTaskId = sourceTaskId,
     hasBeenRewarded = hasBeenRewarded,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt.ifEmpty { null },
-    isDeleted = isDeleted,
+    isDeleted = normalizedDeleted(status, isDeleted),
     targetCount = targetCount,
     currentCount = currentCount,
     notes = notes,
@@ -73,14 +83,14 @@ fun DayTaskDto.toEntity() = DayTaskEntity(
     date = date,
     time = time,
     recurrence = recurrence,
-    status = status,
+    status = normalizedStatus(status),
     completedAt = completedAt,
     postponedTo = postponedTo,
     sourceTaskId = sourceTaskId,
     hasBeenRewarded = hasBeenRewarded,
     notificationsEnabled = notificationsEnabled,
     updatedAt = updatedAt ?: "",
-    isDeleted = isDeleted,
+    isDeleted = normalizedDeleted(status, isDeleted),
     targetCount = targetCount,
     currentCount = currentCount,
     notes = notes,
